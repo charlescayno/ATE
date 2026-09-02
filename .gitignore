@@ -1,0 +1,15 @@
+*.pyc
+__pycache__/
+*.log
+app_log.txt
+.vscode/
+References/Simple_PySide_Base/
+LoadReg_OutputRipple.ipynb
+gpib_test.py
+ui/GUI_BASE2.ui
+ATE/
+build/
+dist/
+test_codes/
+TODO.txt
+conda_env/
