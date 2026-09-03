@@ -44,9 +44,10 @@ class EfficiencyTest_2Port(BaseTestObject):
     i2c_ui_definitions.add_lineedit("Nominal Vout 2 (V)", 1)
     i2c_ui_definitions.add_lineedit("Nominal Iout 2 (A)", 2)
     i2c_ui_definitions.add_lineedit("Fixed Aux Load (A)", 3)
+    i2c_ui_definitions.add_lineedit("Port 2 Loads (%)", 4)
     i2c_ui_definitions.add_cbx("Dual Load Mode", [
         "Option A: Proportional Sync (Both Ports 100% -> 10%)",
-        "Option B: Cross-Reg Matrix (Port 2 at 100%, 50%, 0%)",
+        "Option B: Cross-Reg Matrix (Port 2 at Specified % Loads)",
         "Option C: Fixed Aux / Swept Main (Port 2 Fixed Load)"
     ], 1)
 
@@ -83,7 +84,7 @@ class EfficiencyTest_2Port(BaseTestObject):
         general_options = GeneralOptions(),
         usbpd_options = USBPDOptions(),
         line_ramp_settings = LineRamp(),
-        i2c_test_parameters = I2CTestParameters(params=[12.0, 2.0, 0.0], cbx_params=["Option A: Proportional Sync (Both Ports 100% -> 10%)"]))
+        i2c_test_parameters = I2CTestParameters(params=[12.0, 2.0, 0.0, "100, 50, 0"], cbx_params=["Option A: Proportional Sync (Both Ports 100% -> 10%)"]))
 
     def __init__(self, test_item):
         super().__init__()
@@ -463,6 +464,13 @@ class EfficiencyTest_2Port(BaseTestObject):
             self.vout_2_V = float(self.i2c_test_parameters.param[0]) if (len(self.i2c_test_parameters.param) > 0 and self.i2c_test_parameters.param[0]) else 12.0
             self.i_max_2_A = float(self.i2c_test_parameters.param[1]) if (len(self.i2c_test_parameters.param) > 1 and self.i2c_test_parameters.param[1]) else 2.0
             self.fixed_aux_A = float(self.i2c_test_parameters.param[2]) if (len(self.i2c_test_parameters.param) > 2 and self.i2c_test_parameters.param[2]) else 0.0
+            cross_reg_raw = self.i2c_test_parameters.param[3] if len(self.i2c_test_parameters.param) > 3 else "100, 50, 0"
+            try:
+                self.cross_reg_pct2_list = [float(x.strip().rstrip('%')) for x in str(cross_reg_raw).split(',') if x.strip()]
+                if not self.cross_reg_pct2_list:
+                    self.cross_reg_pct2_list = [100.0, 50.0, 0.0]
+            except Exception:
+                self.cross_reg_pct2_list = [100.0, 50.0, 0.0]
             cbx_mode = str(self.i2c_test_parameters.cbx_param[0]) if len(self.i2c_test_parameters.cbx_param) > 0 else ""
             if "Option B" in cbx_mode:
                 self.dual_load_mode = "Option B: Cross-Reg Matrix"
@@ -474,6 +482,7 @@ class EfficiencyTest_2Port(BaseTestObject):
             self.vout_2_V = 12.0
             self.i_max_2_A = 2.0
             self.fixed_aux_A = 0.0
+            self.cross_reg_pct2_list = [100.0, 50.0, 0.0]
             self.dual_load_mode = "Option A: Proportional Sync"
 
         self.test_progress:float = 0 
@@ -611,6 +620,13 @@ class EfficiencyTest_2Port(BaseTestObject):
             self.vout_2_V = float(self.i2c_test_parameters.param[0]) if (len(self.i2c_test_parameters.param) > 0 and self.i2c_test_parameters.param[0]) else 12.0
             self.i_max_2_A = float(self.i2c_test_parameters.param[1]) if (len(self.i2c_test_parameters.param) > 1 and self.i2c_test_parameters.param[1]) else 2.0
             self.fixed_aux_A = float(self.i2c_test_parameters.param[2]) if (len(self.i2c_test_parameters.param) > 2 and self.i2c_test_parameters.param[2]) else 0.0
+            cross_reg_raw = self.i2c_test_parameters.param[3] if len(self.i2c_test_parameters.param) > 3 else "100, 50, 0"
+            try:
+                self.cross_reg_pct2_list = [float(x.strip().rstrip('%')) for x in str(cross_reg_raw).split(',') if x.strip()]
+                if not self.cross_reg_pct2_list:
+                    self.cross_reg_pct2_list = [100.0, 50.0, 0.0]
+            except Exception:
+                self.cross_reg_pct2_list = [100.0, 50.0, 0.0]
             cbx_mode = str(self.i2c_test_parameters.cbx_param[0]) if len(self.i2c_test_parameters.cbx_param) > 0 else ""
             if "Option B" in cbx_mode:
                 self.dual_load_mode = "Option B: Cross-Reg Matrix"
@@ -622,6 +638,7 @@ class EfficiencyTest_2Port(BaseTestObject):
             self.vout_2_V = 12.0
             self.i_max_2_A = 2.0
             self.fixed_aux_A = 0.0
+            self.cross_reg_pct2_list = [100.0, 50.0, 0.0]
             self.dual_load_mode = "Option A: Proportional Sync"
         
         self.load_pct_list = test_conditions.load_range.check_load_direction(self.general_options.load_direction)
@@ -633,11 +650,11 @@ class EfficiencyTest_2Port(BaseTestObject):
                 i2 = (pct / 100.0) * self.i_max_2_A
                 self.load_pairs.append((i1, i2, f"{pct}%", f"{pct}%"))
         elif "Option B" in self.dual_load_mode:
-            for pct2 in [100, 50, 0]:
+            for pct2 in self.cross_reg_pct2_list:
                 i2 = (pct2 / 100.0) * self.i_max_2_A
                 for pct1 in self.load_pct_list:
                     i1 = (pct1 / 100.0) * self.i_max_A
-                    self.load_pairs.append((i1, i2, f"{pct1}%", f"{pct2}%"))
+                    self.load_pairs.append((i1, i2, f"{pct1}%", f"{pct2:g}%"))
         elif "Option C" in self.dual_load_mode:
             for pct in self.load_pct_list:
                 i1 = (pct / 100.0) * self.i_max_A

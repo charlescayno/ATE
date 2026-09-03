@@ -1638,6 +1638,11 @@ class AddTestPageHandler(QObject):
             if hasattr(self.ui.cbx_add_tests_i2c_cbxparam_1, 'view') and self.ui.cbx_add_tests_i2c_cbxparam_1.view():
                 self.ui.cbx_add_tests_i2c_cbxparam_1.view().setMinimumWidth(450)
 
+            # Ensure lineedit 4 (Port 2 Loads (%)) is properly styled
+            self.ui.label_add_tests_i2c_param_4.setMinimumWidth(90)
+            self.ui.lineedit_add_tests_i2c_param_4.setMaximumSize(QSize(16777215, 30))
+            self.ui.lineedit_add_tests_i2c_param_4.setMinimumWidth(100)
+
             if not hasattr(self, 'label_dual_load_mode_desc'):
                 self.label_dual_load_mode_desc = QLabel()
                 self.label_dual_load_mode_desc.setStyleSheet("color: rgb(0, 190, 255); font-size: 11px; padding-left: 5px;")
@@ -1648,13 +1653,16 @@ class AddTestPageHandler(QObject):
             def on_dual_mode_change(index):
                 desc_map = {
                     0: "Option A (Proportional Sync): Sweeps Port 1 and Port 2 synchronously across 100%, 75%, 50%, 25%, and 10% rated load.",
-                    1: "Option B (Cross-Reg Matrix): Sweeps Port 1 across load while holding Port 2 at 100%, 50%, and 0% load to evaluate cross-regulation.",
+                    1: "Option B (Cross-Reg Matrix): Sweeps Port 1 across load range for each Port 2 load percentage specified in 'Port 2 Loads (%)'.",
                     2: "Option C (Fixed Aux / Swept Main): Holds Port 2 at a constant current ('Fixed Aux Load') while sweeping Port 1 across its load range."
                 }
                 self.label_dual_load_mode_desc.setText(desc_map.get(index, ""))
+                is_opt_b = (index == 1)
                 is_opt_c = (index == 2)
                 self.ui.lineedit_add_tests_i2c_param_3.setEnabled(is_opt_c)
                 self.ui.label_add_tests_i2c_param_3.setEnabled(is_opt_c)
+                self.ui.lineedit_add_tests_i2c_param_4.setEnabled(is_opt_b)
+                self.ui.label_add_tests_i2c_param_4.setEnabled(is_opt_b)
 
             try:
                 self.ui.cbx_add_tests_i2c_cbxparam_1.currentIndexChanged.disconnect()
@@ -1674,6 +1682,10 @@ class AddTestPageHandler(QObject):
                 self.ui.cbx_add_tests_i2c_cbxparam_1.currentIndexChanged.disconnect()
             except:
                 pass
+            self.ui.lineedit_add_tests_i2c_param_3.setEnabled(True)
+            self.ui.label_add_tests_i2c_param_3.setEnabled(True)
+            self.ui.lineedit_add_tests_i2c_param_4.setEnabled(True)
+            self.ui.label_add_tests_i2c_param_4.setEnabled(True)
 
     def set_ui_states(self):
         """Change the state of the UI depending on 
@@ -1731,10 +1743,52 @@ class AddTestPageHandler(QObject):
             ui.label_add_tests_nominal_output_voltage.setText("Nominal Vout 1 (V)")
             ui.label_add_tests_nominal_output_current.setText("Nominal Iout 1 (A)")
             ui.label_add_tests_i2c_settings.setText("Dual Output Settings (Port 2 & Mode)")
+
+            # Reparent Port 1 nominal frame into page_add_tests_sp3_i2c so it is visible and editable
+            if not hasattr(self, 'label_port1_header'):
+                self.label_port1_header = QLabel("Primary Output Settings (Port 1)")
+                self.label_port1_header.setFont(ui.label_add_tests_i2c_settings.font())
+                self.label_port1_header.setMaximumSize(QSize(16777215, 20))
+                ui.verticalLayout_94.insertWidget(0, self.label_port1_header)
+            self.label_port1_header.setVisible(True)
+
+            if ui.frame_add_tests_nominal_output_parameters.parent() != ui.frame_add_tests_i2c:
+                ui.verticalLayout_94.insertWidget(1, ui.frame_add_tests_nominal_output_parameters)
+
+            ui.label_add_tests_nominal_output_voltage.setMinimumWidth(110)
+            ui.label_add_tests_nominal_output_current.setMinimumWidth(110)
+            ui.lineedit_add_tests_nominal_output_voltage.setFixedSize(100, 30)
+            ui.lineedit_add_tests_nominal_output_current.setFixedSize(100, 30)
+            ui.frame_add_tests_nominal_output_voltage.setMaximumHeight(40)
+            ui.frame_add_tests_nominal_output_current.setMaximumHeight(40)
+            ui.frame_add_tests_nominal_output_parameters.setMaximumHeight(50)
+            ui.frame_add_tests_nominal_output_parameters.setVisible(True)
+            ui.frame_add_tests_nominal_output_voltage.setVisible(True)
+            ui.frame_add_tests_nominal_output_current.setVisible(True)
+            ui.frame_add_tests_nominal_output_voltage.setEnabled(True)
+            ui.frame_add_tests_nominal_output_current.setEnabled(True)
+
+            if not ui.lineedit_add_tests_nominal_output_voltage.text():
+                ui.lineedit_add_tests_nominal_output_voltage.setText(f"{test_class.tc_default.nominal_output_voltage_V:g}")
+            if not ui.lineedit_add_tests_nominal_output_current.text():
+                ui.lineedit_add_tests_nominal_output_current.setText(f"{test_class.tc_default.nominal_load_current_A:g}")
         else:
             ui.label_add_tests_nominal_output_voltage.setText("Nominal Vout (V)")
             ui.label_add_tests_nominal_output_current.setText("Nominal Iout (A)")
             ui.label_add_tests_i2c_settings.setText("I2C Options")
+            if hasattr(self, 'label_port1_header'):
+                self.label_port1_header.setVisible(False)
+            if ui.frame_add_tests_nominal_output_parameters.parent() != ui.frame_add_tests_nominal_output_setting:
+                ui.verticalLayout_92.insertWidget(2, ui.frame_add_tests_nominal_output_parameters)
+                ui.label_add_tests_nominal_output_voltage.setMinimumWidth(0)
+                ui.label_add_tests_nominal_output_current.setMinimumWidth(0)
+                ui.lineedit_add_tests_nominal_output_voltage.setMinimumSize(QSize(0, 30))
+                ui.lineedit_add_tests_nominal_output_voltage.setMaximumSize(QSize(16777215, 16777215))
+                ui.lineedit_add_tests_nominal_output_current.setMinimumSize(QSize(0, 30))
+                ui.lineedit_add_tests_nominal_output_current.setMaximumSize(QSize(16777215, 16777215))
+                ui.frame_add_tests_nominal_output_voltage.setMaximumHeight(16777215)
+                ui.frame_add_tests_nominal_output_current.setMaximumHeight(16777215)
+                ui.frame_add_tests_nominal_output_parameters.setMaximumHeight(16777215)
         # Source caps table and button toggle
         ui.table_add_tests_source_caps.setVisible(ui_def.usbpd_sourcecaps_table_visible)
         ui.btn_add_tests_usbpd_get_source_caps.setVisible(ui_def.usbpd_getsourcecaps_btn_visible)  
@@ -2224,15 +2278,23 @@ class AddTestPageHandler(QObject):
             self.ui.lineedit_add_tests_cvcc_min_current.setText('1')
             self.ui.lineedit_add_tests_cvcc_step_size.setText('0.5')
             
-            self.ui.lineedit_add_tests_nominal_output_voltage.setText('')
-            self.ui.lineedit_add_tests_nominal_output_current.setText('')
+            if self.selected_test_class.title == "Efficiency 2 Port":
+                self.ui.lineedit_add_tests_nominal_output_voltage.setText(f"{self.selected_test_class.tc_default.nominal_output_voltage_V:g}")
+                self.ui.lineedit_add_tests_nominal_output_current.setText(f"{self.selected_test_class.tc_default.nominal_load_current_A:g}")
+            else:
+                self.ui.lineedit_add_tests_nominal_output_voltage.setText('')
+                self.ui.lineedit_add_tests_nominal_output_current.setText('')
             
             if hasattr(self.selected_test_class, 'i2c_ui_definitions'):
                 default_i2c = getattr(self.selected_test_class.tc_default, 'i2c_test_parameters', None)
                 if default_i2c:
                     for idx, line in enumerate(self.i2c_ui_lineedits):
-                        if idx < len(default_i2c.param) and default_i2c.param[idx] != 0:
-                            line.setText(f"{default_i2c.param[idx]:g}")
+                        if idx < len(default_i2c.param) and default_i2c.param[idx] != 0 and default_i2c.param[idx] != '':
+                            val = default_i2c.param[idx]
+                            if isinstance(val, (int, float)):
+                                line.setText(f"{val:g}")
+                            else:
+                                line.setText(str(val))
                         else:
                             line.setText('')
                     for idx, cbx in enumerate(self.i2c_ui_combo_boxes):
