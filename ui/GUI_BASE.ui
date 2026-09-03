@@ -15944,7 +15944,7 @@ QLineEdit:disabled{
                                             </property>
                                             <property name="maximumSize">
                                              <size>
-                                              <width>100</width>
+                                              <width>16777215</width>
                                               <height>35</height>
                                              </size>
                                             </property>

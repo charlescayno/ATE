@@ -7659,7 +7659,7 @@ class Ui_MainWindow(object):
         sizePolicy31.setHeightForWidth(self.cbx_add_tests_i2c_cbxparam_1.sizePolicy().hasHeightForWidth())
         self.cbx_add_tests_i2c_cbxparam_1.setSizePolicy(sizePolicy31)
         self.cbx_add_tests_i2c_cbxparam_1.setMinimumSize(QSize(0, 35))
-        self.cbx_add_tests_i2c_cbxparam_1.setMaximumSize(QSize(100, 35))
+        self.cbx_add_tests_i2c_cbxparam_1.setMaximumSize(QSize(16777215, 35))
         self.cbx_add_tests_i2c_cbxparam_1.setFont(font10)
         self.cbx_add_tests_i2c_cbxparam_1.setStyleSheet(u"QComboBox:disabled{\n"
 "	color: rgb(71, 71, 71);\n"

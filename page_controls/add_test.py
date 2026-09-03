@@ -1623,14 +1623,20 @@ class AddTestPageHandler(QObject):
                 cbx.addItems(content)
 
         if self.selected_test_class.title == "Efficiency 2 Port":
-            self.ui.gridLayout_12.removeWidget(self.frame_add_tests_i2c_cbxparam_1)
-            self.ui.gridLayout_12.addWidget(self.frame_add_tests_i2c_cbxparam_1, 5, 0, 1, 2)
-            self.label_add_tests_i2c_cbxparam_1.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
-            self.cbx_add_tests_i2c_cbxparam_1.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
-            self.cbx_add_tests_i2c_cbxparam_1.setMaximumWidth(16777215)
-            self.cbx_add_tests_i2c_cbxparam_1.setMinimumWidth(320)
-            if hasattr(self.cbx_add_tests_i2c_cbxparam_1, 'view') and self.cbx_add_tests_i2c_cbxparam_1.view():
-                self.cbx_add_tests_i2c_cbxparam_1.view().setMinimumWidth(450)
+            self.ui.gridLayout_12.removeWidget(self.ui.frame_add_tests_i2c_cbxparam_1)
+            self.ui.gridLayout_12.addWidget(self.ui.frame_add_tests_i2c_cbxparam_1, 5, 0, 1, 2)
+            self.ui.horizontalLayout_81.setStretch(0, 0)
+            self.ui.horizontalLayout_81.setStretch(1, 1)
+            self.ui.label_add_tests_i2c_cbxparam_1.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Preferred)
+            self.ui.label_add_tests_i2c_cbxparam_1.setMinimumWidth(110)
+            self.ui.label_add_tests_i2c_cbxparam_1.setMaximumWidth(125)
+            self.ui.cbx_add_tests_i2c_cbxparam_1.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+            self.ui.cbx_add_tests_i2c_cbxparam_1.setMaximumSize(QSize(16777215, 35))
+            self.ui.cbx_add_tests_i2c_cbxparam_1.setMaximumWidth(16777215)
+            self.ui.cbx_add_tests_i2c_cbxparam_1.setMinimumWidth(320)
+            self.ui.cbx_add_tests_i2c_cbxparam_1.setSizeAdjustPolicy(QComboBox.AdjustToContents)
+            if hasattr(self.ui.cbx_add_tests_i2c_cbxparam_1, 'view') and self.ui.cbx_add_tests_i2c_cbxparam_1.view():
+                self.ui.cbx_add_tests_i2c_cbxparam_1.view().setMinimumWidth(450)
 
             if not hasattr(self, 'label_dual_load_mode_desc'):
                 self.label_dual_load_mode_desc = QLabel()
@@ -1651,18 +1657,21 @@ class AddTestPageHandler(QObject):
                 self.ui.label_add_tests_i2c_param_3.setEnabled(is_opt_c)
 
             try:
-                self.cbx_add_tests_i2c_cbxparam_1.currentIndexChanged.disconnect()
+                self.ui.cbx_add_tests_i2c_cbxparam_1.currentIndexChanged.disconnect()
             except:
                 pass
-            self.cbx_add_tests_i2c_cbxparam_1.currentIndexChanged.connect(on_dual_mode_change)
-            on_dual_mode_change(self.cbx_add_tests_i2c_cbxparam_1.currentIndex())
+            self.ui.cbx_add_tests_i2c_cbxparam_1.currentIndexChanged.connect(on_dual_mode_change)
+            on_dual_mode_change(self.ui.cbx_add_tests_i2c_cbxparam_1.currentIndex())
         else:
-            self.ui.gridLayout_12.removeWidget(self.frame_add_tests_i2c_cbxparam_1)
-            self.ui.gridLayout_12.addWidget(self.frame_add_tests_i2c_cbxparam_1, 5, 0, 1, 1)
+            self.ui.gridLayout_12.removeWidget(self.ui.frame_add_tests_i2c_cbxparam_1)
+            self.ui.gridLayout_12.addWidget(self.ui.frame_add_tests_i2c_cbxparam_1, 5, 0, 1, 1)
+            self.ui.label_add_tests_i2c_cbxparam_1.setMaximumWidth(16777215)
+            self.ui.label_add_tests_i2c_cbxparam_1.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Preferred)
+            self.ui.cbx_add_tests_i2c_cbxparam_1.setMinimumWidth(0)
             if hasattr(self, 'label_dual_load_mode_desc'):
                 self.label_dual_load_mode_desc.setVisible(False)
             try:
-                self.cbx_add_tests_i2c_cbxparam_1.currentIndexChanged.disconnect()
+                self.ui.cbx_add_tests_i2c_cbxparam_1.currentIndexChanged.disconnect()
             except:
                 pass
 
