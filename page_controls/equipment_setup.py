@@ -6,7 +6,11 @@ from sink_controllers.pat_tool import SMBUS_STATE
 import sink_controllers.pi_epr_sink as PI_EPR_SINK
 from sink_controllers.definitions import SINK_STATE
 
-from user_settings.save_load import (write_to_default_config, read_from_default_config) 
+from PySide2.QtWidgets import QMessageBox, QPushButton
+from PySide2.QtCore import QSize
+
+from user_settings.save_load import (write_to_default_config, read_from_default_config,
+                                     save_equipment_setup, load_equipment_setup) 
 from user_settings.keys import *
 
 if TYPE_CHECKING:
@@ -28,9 +32,11 @@ class EquipmentSetupPageHandler():
         self.equipment:EquipmentHandler = self.parent.equipment
         # User Interface Lists
         self.ui_usbpd_sink_list = []
-        self.ongoing_sink_update =False
+        self.ongoing_sink_update = False
         self.ongoing_ac_source_update = False
         self.ongoing_dc_source_update = False
+        self.ongoing_power_meter_update = False
+        self.ongoing_eload_update = False
 
         self.bind_ui_elements()
 
@@ -56,6 +62,23 @@ class EquipmentSetupPageHandler():
         # Check USB PD Sink availability
         self.ui.btn_equip_setup_sinkcontroller_check_availability.clicked.connect(
             self.check_usbpd_sink_availability)
+
+        # Default Setup Buttons
+        self.btn_equip_setup_save_default = QPushButton("Save as Default Setup", self.ui.frame_equip_setup_settings_contents)
+        self.btn_equip_setup_save_default.setMinimumSize(QSize(0, 40))
+        self.btn_equip_setup_save_default.setFont(self.ui.btn_equip_setup_previous_pag.font())
+        self.btn_equip_setup_save_default.setStyleSheet(self.ui.btn_equip_setup_previous_pag.styleSheet())
+        self.btn_equip_setup_save_default.clicked.connect(self.save_default_equipment_setup)
+
+        self.btn_equip_setup_reload_default = QPushButton("Reload Default Setup", self.ui.frame_equip_setup_settings_contents)
+        self.btn_equip_setup_reload_default.setMinimumSize(QSize(0, 40))
+        self.btn_equip_setup_reload_default.setFont(self.ui.btn_equip_setup_previous_pag.font())
+        self.btn_equip_setup_reload_default.setStyleSheet(self.ui.btn_equip_setup_previous_pag.styleSheet())
+        self.btn_equip_setup_reload_default.clicked.connect(self.load_default_equipment_setup)
+
+        self.ui.verticalLayout_64.insertWidget(0, self.btn_equip_setup_save_default)
+        self.ui.verticalLayout_64.insertWidget(1, self.btn_equip_setup_reload_default)
+        self.ui.label_equip_setup_settings_contents.setText("Default Setup & Navigation")
     
     def bind_ui_change_events(self):
         
@@ -117,6 +140,78 @@ class EquipmentSetupPageHandler():
         if not oscilloscope_addr == "":
             self.ui.lineedit_equip_setup_oscilloscope.setText(oscilloscope_addr)
 
+    def get_current_equipment_setup_dict(self) -> dict:
+        """Collect current selections from the UI into a dictionary."""
+        config = {
+            "ac_source": self.ui.cbx_equip_setup_sources_acsource.currentText(),
+            "dc_source": self.ui.cbx_equip_setup_sources_dcsource.currentText(),
+            "oscilloscope_address": self.ui.lineedit_equip_setup_oscilloscope.text().strip(),
+            "power_meters": {
+                "source": self.ui.cbx_equip_setup_power_meter_source.currentText(),
+                "load_1": self.ui.cbx_equip_setup_power_meter_load_1.currentText(),
+                "load_2": self.ui.cbx_equip_setup_power_meter_load_2.currentText(),
+                "load_3": self.ui.cbx_equip_setup_power_meter_load_3.currentText(),
+                "load_4": self.ui.cbx_equip_setup_power_meter_load_4.currentText(),
+                "load_5": self.ui.cbx_equip_setup_power_meter_load_5.currentText(),
+            },
+            "electronic_loads": {
+                "load_1": self.ui.cbx_equip_setup_eloads_load_1.currentText(),
+                "load_2": self.ui.cbx_equip_setup_eloads_load_2.currentText(),
+                "load_3": self.ui.cbx_equip_setup_eloads_load_3.currentText(),
+                "load_4": self.ui.cbx_equip_setup_eloads_load_4.currentText(),
+                "load_5": self.ui.cbx_equip_setup_eloads_load_5.currentText(),
+                "load_6": self.ui.cbx_equip_setup_eloads_load_6.currentText(),
+            },
+            "sink_controller": self.ui.cbx_equip_setup_sinkcontroller.currentText(),
+            "i2c_controller": self.ui.cbx_equip_setup_i2ccontroller.currentText(),
+        }
+        return config
+
+    def save_default_equipment_setup(self):
+        """Save the current equipment setup as the persistent default."""
+        config = self.get_current_equipment_setup_dict()
+
+        # Save oscilloscope address if present
+        if config["oscilloscope_address"]:
+            write_to_default_config(
+                key=SaveFileKeys.OSCILLOSCOPE_ADDRESS,
+                value=config["oscilloscope_address"]
+            )
+
+        # Save full setup to shelve and JSON
+        save_equipment_setup(config)
+
+        # Update roles in equipment handler
+        self.equipment.apply_saved_equipment_roles(config)
+
+        # Provide feedback to user
+        msg = QMessageBox(self.parent)
+        msg.setWindowTitle("Equipment Setup")
+        msg.setText("Default equipment setup has been saved successfully.\nThese settings will be automatically restored on startup.")
+        msg.setIcon(QMessageBox.Information)
+        msg.exec_()
+
+    def load_default_equipment_setup(self):
+        """Load and apply the saved default equipment setup."""
+        saved_config = load_equipment_setup()
+        if saved_config:
+            self.equipment.apply_saved_equipment_roles(saved_config)
+            self.ui_update_equipment_combo_boxes()
+            if "oscilloscope_address" in saved_config and saved_config["oscilloscope_address"]:
+                self.ui.lineedit_equip_setup_oscilloscope.setText(saved_config["oscilloscope_address"])
+                self.check_oscilloscope_availability()
+            msg = QMessageBox(self.parent)
+            msg.setWindowTitle("Equipment Setup")
+            msg.setText("Default equipment setup has been loaded and applied.")
+            msg.setIcon(QMessageBox.Information)
+            msg.exec_()
+        else:
+            msg = QMessageBox(self.parent)
+            msg.setWindowTitle("Equipment Setup")
+            msg.setText("No saved default equipment setup was found.")
+            msg.setIcon(QMessageBox.Warning)
+            msg.exec_()
+
     def detect_equipment(self):
         """ Check all equipment in all interfaces
 
@@ -134,9 +229,14 @@ class EquipmentSetupPageHandler():
         self.check_oscilloscope_availability()
         
         self.check_usbpd_sink_availability()
-        # Update the user interface according to the assignment
-        # NOTE: For now use auto detection
-        self.equipment.auto_set_equipment_roles()
+
+        saved_config = load_equipment_setup()
+        if saved_config:
+            applied = self.equipment.apply_saved_equipment_roles(saved_config)
+            if not applied:
+                self.equipment.auto_set_equipment_roles()
+        else:
+            self.equipment.auto_set_equipment_roles()
 
         # Update the combo boxes according to the equipment roles
         self.ui_update_equipment_combo_boxes()
@@ -227,6 +327,7 @@ class EquipmentSetupPageHandler():
         
     def ui_update_power_meters_combo_boxes(self):
         """Populate the power meter combo boxes."""
+        self.ongoing_power_meter_update = True
         # Group the UI elements
         power_meters_combo_boxes = [
             self.ui.cbx_equip_setup_power_meter_source,
@@ -245,41 +346,38 @@ class EquipmentSetupPageHandler():
             self.ui.frame_equip_setup_power_meter_load_5
         ]
         
-        # Create a list of the descriptions of power meters avalable
-        cbx_items = []
-        for power_meter in self.equipment.power_meter_roles:
-            if power_meter is not None:
-                cbx_items.append(power_meter.description)
+        # Create a list of the descriptions of all detected power meters
+        cbx_items = [pm.description for pm in self.equipment.power_meters if pm is not None]
 
-        # # Make the first element of each combo box a '-'
-        # # To be used for unassigning
-        # for combo_box in power_meters_combo_boxes:
-        #     combo_box.clear()
-            
-        #     combo_box.addItem('-')
-
-        num_power_meters = len(self.equipment.power_meters)
+        current_assigned = [
+            self.equipment.power_meter_source,
+            self.equipment.power_meter_load_1,
+            self.equipment.power_meter_load_2,
+            self.equipment.power_meter_load_3,
+            self.equipment.power_meter_load_4,
+            self.equipment.power_meter_load_5,
+        ]
         
-        # Populate the combo boxes using the power meter descriptions
-        # Change the color of the surrounding frame depending on equipment availability
-        for i , (combo_box, frame) in enumerate(zip(power_meters_combo_boxes, power_meters_frames)):
-            if i < num_power_meters:
-                combo_box.clear()
-                combo_box.addItem('-')
-                combo_box.addItems(cbx_items)
-                combo_box.setCurrentIndex(i+1)
+        # Populate the combo boxes and select assigned item
+        for i, (combo_box, frame) in enumerate(zip(power_meters_combo_boxes, power_meters_frames)):
+            combo_box.clear()
+            combo_box.addItem('-')
+            combo_box.addItems(cbx_items)
+
+            assigned = current_assigned[i]
+            if assigned is not None and assigned.description in cbx_items:
+                target_idx = cbx_items.index(assigned.description) + 1
+                combo_box.setCurrentIndex(target_idx)
                 frame.setStyleSheet(green_frame)
             else:
-                combo_box.clear()
-                # combo_box.addItem('-')
+                combo_box.setCurrentIndex(0)
                 frame.setStyleSheet(red_frame)
 
-        # TODO: Change the logic such that changing the combo box contents
-        # will change the assignment
-        # TODO: Add buttons for identifying equipment
+        self.ongoing_power_meter_update = False
 
     def ui_update_eloads_combo_boxes(self):
         """Populate the Eload combo boxes."""
+        self.ongoing_eload_update = True
         # Group the UI elements
         e_loads_combo_boxes = [
             self.ui.cbx_equip_setup_eloads_load_1,
@@ -298,26 +396,33 @@ class EquipmentSetupPageHandler():
             self.ui.frame_equip_setup_eloads_load_6
         ]
 
-        cbx_items = []
-        num_eloads = len(self.equipment.e_loads)
+        cbx_items = [el.description for el in self.equipment.e_loads if el is not None]
 
-        # Create a list of the Eload descriptions available
-        for eload in self.equipment.electronic_load_roles:
-            if eload is not None:
-                cbx_items.append(eload.description)
+        current_assigned = [
+            self.equipment.electronic_load_1,
+            self.equipment.electronic_load_2,
+            self.equipment.electronic_load_3,
+            self.equipment.electronic_load_4,
+            self.equipment.electronic_load_5,
+            self.equipment.electronic_load_6,
+        ]
                 
-        # Populate the combo boxes using the eload descriptions
-        # Change the color of the surrounding frame depending on equipment availability
-        for i , (combo_box, frame) in enumerate(zip(e_loads_combo_boxes, e_loads_frames)):
-            if i < num_eloads:
-                combo_box.clear()
-                combo_box.addItem('-')
-                combo_box.addItems(cbx_items)
-                combo_box.setCurrentIndex(i+1)
+        # Populate the combo boxes and select assigned item
+        for i, (combo_box, frame) in enumerate(zip(e_loads_combo_boxes, e_loads_frames)):
+            combo_box.clear()
+            combo_box.addItem('-')
+            combo_box.addItems(cbx_items)
+
+            assigned = current_assigned[i]
+            if assigned is not None and assigned.description in cbx_items:
+                target_idx = cbx_items.index(assigned.description) + 1
+                combo_box.setCurrentIndex(target_idx)
                 frame.setStyleSheet(green_frame)
             else:
-                combo_box.clear()
+                combo_box.setCurrentIndex(0)
                 frame.setStyleSheet(red_frame)
+
+        self.ongoing_eload_update = False
 
 
     
@@ -399,6 +504,10 @@ class EquipmentSetupPageHandler():
             for sink_controller in self.equipment.sink_controllers:
                 self.sink_controller_details.append(sink_controller.details)
                 sink_cbx.addItem(sink_controller.description)
+            if self.equipment.usbpd_sink is not None:
+                idx = sink_cbx.findText(self.equipment.usbpd_sink.description)
+                if idx >= 0:
+                    sink_cbx.setCurrentIndex(idx)
             
         self.i2c_controller_details = []
         i2c_cbx.clear()
@@ -410,6 +519,10 @@ class EquipmentSetupPageHandler():
                 if i2c_controller.connection_status == SMBUS_STATE.CONNECTED:
                     self.i2c_controller_details.append(i2c_controller.details)
                     i2c_cbx.addItem(i2c_controller.description)
+            if self.equipment.i2c_controller is not None:
+                idx = i2c_cbx.findText(self.equipment.i2c_controller.description)
+                if idx >= 0:
+                    i2c_cbx.setCurrentIndex(idx)
 
         # Update the UI frame depending on availability
         if sink_controller_available:
@@ -523,7 +636,9 @@ class EquipmentSetupPageHandler():
             label_details.setText(self.i2c_controller_details[0])
         
     def update_power_meter_roles(self):
-        # Group the UI elements
+        if self.ongoing_power_meter_update:
+            return
+
         power_meters_combo_boxes = [
             self.ui.cbx_equip_setup_power_meter_source,
             self.ui.cbx_equip_setup_power_meter_load_1,
@@ -532,31 +647,45 @@ class EquipmentSetupPageHandler():
             self.ui.cbx_equip_setup_power_meter_load_4,
             self.ui.cbx_equip_setup_power_meter_load_5,
         ]
-        self.equipment.reset_power_meter_roles()
-
-        # Loop through the available power meters and set the roles
-        # according to the order in self.power_meter_roles
-        self.power_meter_roles = [
-            self.equipment.power_meter_source,
-            self.equipment.power_meter_load_1,
-            self.equipment.power_meter_load_2,
-            self.equipment.power_meter_load_3,
-            self.equipment.power_meter_load_4,
-            self.equipment.power_meter_load_5
+        power_meters_frames = [
+            self.ui.frame_equip_setup_power_meter_source,
+            self.ui.frame_equip_setup_power_meter_load_1,
+            self.ui.frame_equip_setup_power_meter_load_2,
+            self.ui.frame_equip_setup_power_meter_load_3,
+            self.ui.frame_equip_setup_power_meter_load_4,
+            self.ui.frame_equip_setup_power_meter_load_5
         ]
-        for i, power_meter_role in enumerate(power_meters_combo_boxes):
-            for power_meter in self.equipment.power_meters:
-                if power_meter.description == power_meter_role.currentText():
-                    self.power_meter_roles[i] = power_meter
+
+        self.equipment.reset_power_meter_roles()
+        self.power_meter_roles = [None] * 6
+
+        for i, (combo_box, frame) in enumerate(zip(power_meters_combo_boxes, power_meters_frames)):
+            text = combo_box.currentText()
+            assigned_pm = None
+            if text and text != '-':
+                for pm in self.equipment.power_meters:
+                    if pm is not None and pm.description == text:
+                        assigned_pm = pm
+                        break
+
+            self.power_meter_roles[i] = assigned_pm
+            if assigned_pm is not None:
+                frame.setStyleSheet(green_frame)
+            else:
+                frame.setStyleSheet(red_frame)
+
         self.equipment.power_meter_source = self.power_meter_roles[0]
         self.equipment.power_meter_load_1 = self.power_meter_roles[1]
         self.equipment.power_meter_load_2 = self.power_meter_roles[2]
         self.equipment.power_meter_load_3 = self.power_meter_roles[3]
         self.equipment.power_meter_load_4 = self.power_meter_roles[4]
         self.equipment.power_meter_load_5 = self.power_meter_roles[5]
+        self.equipment.power_meter_roles = self.power_meter_roles
         
     def update_eload_roles(self):
-        # Group the UI elements
+        if self.ongoing_eload_update:
+            return
+
         e_loads_combo_boxes = [
             self.ui.cbx_equip_setup_eloads_load_1,
             self.ui.cbx_equip_setup_eloads_load_2,
@@ -565,27 +694,39 @@ class EquipmentSetupPageHandler():
             self.ui.cbx_equip_setup_eloads_load_5,
             self.ui.cbx_equip_setup_eloads_load_6,
         ]
-        self.equipment.reset_electronic_load_roles()
-
-        # Loop through the available power meters and set the roles
-        # according to the order in self.power_meter_roles
-        self.eload_roles = [
-            self.equipment.electronic_load_1,
-            self.equipment.electronic_load_2,
-            self.equipment.electronic_load_3,
-            self.equipment.electronic_load_4,
-            self.equipment.electronic_load_5,
-            self.equipment.electronic_load_6
+        e_loads_frames = [
+            self.ui.frame_equip_setup_eloads_load_1,
+            self.ui.frame_equip_setup_eloads_load_2,
+            self.ui.frame_equip_setup_eloads_load_3,
+            self.ui.frame_equip_setup_eloads_load_4,
+            self.ui.frame_equip_setup_eloads_load_5,
+            self.ui.frame_equip_setup_eloads_load_6
         ]
-        for i, eload_role in enumerate(e_loads_combo_boxes):
-            for eload in self.equipment.e_loads:
-                if eload.description == eload_role.currentText():
-                    self.eload_roles[i] = eload
+
+        self.equipment.reset_electronic_load_roles()
+        self.eload_roles = [None] * 6
+
+        for i, (combo_box, frame) in enumerate(zip(e_loads_combo_boxes, e_loads_frames)):
+            text = combo_box.currentText()
+            assigned_el = None
+            if text and text != '-':
+                for el in self.equipment.e_loads:
+                    if el is not None and el.description == text:
+                        assigned_el = el
+                        break
+
+            self.eload_roles[i] = assigned_el
+            if assigned_el is not None:
+                frame.setStyleSheet(green_frame)
+            else:
+                frame.setStyleSheet(red_frame)
+
         self.equipment.electronic_load_1 = self.eload_roles[0]
         self.equipment.electronic_load_2 = self.eload_roles[1]
         self.equipment.electronic_load_3 = self.eload_roles[2]
         self.equipment.electronic_load_4 = self.eload_roles[3]
         self.equipment.electronic_load_5 = self.eload_roles[4]
         self.equipment.electronic_load_6 = self.eload_roles[5]
+        self.equipment.electronic_load_roles = self.eload_roles
         
         

@@ -6,6 +6,7 @@ class SaveFileKeys:
 
     # Equipment Settings
     OSCILLOSCOPE_ADDRESS = 'OSC_ADDR'
+    DEFAULT_EQUIPMENT_SETUP = 'DEFAULT_EQUIP_SETUP'
 
 
     # Test Settings

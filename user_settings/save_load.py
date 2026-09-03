@@ -1,5 +1,6 @@
 import shelve
 import os
+import json
 
 from user_settings.keys import *
 
@@ -66,9 +67,43 @@ line_ramp_settings_filepath = f"{user_settings_path}\\line_ramp_settings.json"
 soak_settings_filepath = f"{user_settings_path}\\soak_settings.json"
 test_items_filepath = f"{user_settings_path}\\test_items.json"
 i2c_command_list_filepath = f"{user_settings_path}\\i2c_command_list.json"
+equipment_setup_filepath = f"{user_settings_path}\\equipment_setup.json"
 
 if not os.path.exists(user_settings_path):
     os.mkdir(user_settings_path)
+
+def save_equipment_setup(config_dict: dict):
+    """Save equipment setup to both AppData shelve and user Documents JSON."""
+    try:
+        write_to_default_config(SaveFileKeys.DEFAULT_EQUIPMENT_SETUP, config_dict)
+    except Exception as e:
+        print(f"Error saving equipment setup to default config shelve: {e}")
+        
+    try:
+        if not os.path.exists(user_settings_path):
+            os.makedirs(user_settings_path, exist_ok=True)
+        with open(equipment_setup_filepath, "w") as f:
+            json.dump(config_dict, f, indent=4)
+    except Exception as e:
+        print(f"Error saving equipment setup to JSON: {e}")
+
+def load_equipment_setup():
+    """Load equipment setup from JSON file, falling back to AppData shelve."""
+    if os.path.exists(equipment_setup_filepath):
+        try:
+            with open(equipment_setup_filepath, "r") as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"Error reading equipment setup JSON: {e}")
+            
+    try:
+        config = read_from_default_config(SaveFileKeys.DEFAULT_EQUIPMENT_SETUP, default_value=None)
+        if config:
+            return config
+    except Exception as e:
+        print(f"Error reading equipment setup from shelve: {e}")
+        
+    return None
 
 # TODO: rename
 default_config_folder_exists()
