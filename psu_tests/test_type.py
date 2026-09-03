@@ -1,6 +1,7 @@
 from psu_tests.test_load_reg import LoadRegulationTest
 from psu_tests.test_line_reg import LineRegulationTest
-from psu_tests.test_efficiency import EfficiencyTest\nfrom psu_tests.test_efficiency_2port import EfficiencyTest_2Port
+from psu_tests.test_efficiency import EfficiencyTest
+from psu_tests.test_efficiency_2port import EfficiencyTest_2Port
 from psu_tests.test_efficiency_3port import EfficiencyTest_3Port
 from psu_tests.test_no_load import NoLoadPowerTest
 from psu_tests.test_cvcc import CVCCTest
@@ -46,6 +47,7 @@ TestTypes = [
     LoadRegulationTest,
     LineRegulationTest,
     EfficiencyTest,
+    EfficiencyTest_2Port,
     EfficiencyTest_3Port,
     NoLoadPowerTest,
     CVCCTest,
