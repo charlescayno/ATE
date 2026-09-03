@@ -15,8 +15,9 @@ A Python-based automated testing and validation suite designed for Power Integra
 4. [Quick Start](#quick-start)
 5. [Installation & Setup](#installation--setup)
 6. [VS Code Configuration](#vs-code-configuration)
-7. [Project Structure](#project-structure)
-8. [Troubleshooting](#troubleshooting)
+7. [Architecture & System Design](architecture.md)
+8. [Project Structure](#project-structure)
+9. [Troubleshooting](#troubleshooting)
 
 ---
 
