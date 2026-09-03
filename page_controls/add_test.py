@@ -1558,8 +1558,8 @@ class AddTestPageHandler(QObject):
         self.ui.stackedwidget_add_tests_middle.setCurrentIndex(
             ui_def.stack_page_3)
 
-        # If test is an i2c test, change the i2c page stuff
-        if test_class.title in self.i2c_tests_names:
+        # If test is an i2c test or has i2c_ui_definitions, change the i2c page stuff
+        if (test_class.title in self.i2c_tests_names) or hasattr(test_class, 'i2c_ui_definitions'):
             self.set_i2c_page_ui_settings()
     
     def update_i2c_ui_on_inno_family_change(self):
@@ -1617,6 +1617,7 @@ class AddTestPageHandler(QObject):
             zip(cbx_frames, cbx_labels, cbx_texts, cbx_list, cbx_vis_flags, cbx_contents):
             frame.setVisible(flag)
             label.setText(text)
+            cbx.setMaximumWidth(16777215)
             cbx.clear()
             if not content is None:
                 cbx.addItems(content)
@@ -1946,15 +1947,20 @@ class AddTestPageHandler(QObject):
                     cbx_option_index = test_type.i2c_ui_definitions.cbx_contents[3].index(inno_pro_family)
                     inno_pro_cbx.setCurrentIndex(cbx_option_index)
                     
-                for line_index, line in enumerate(self.i2c_ui_lineedits):
-                    line.setText(f'{selected_test_conditions.i2c_test_parameters.param[line_index]:g}')
+                if hasattr(selected_test_conditions, 'i2c_test_parameters') and selected_test_conditions.i2c_test_parameters:
+                    for line_index, line in enumerate(self.i2c_ui_lineedits):
+                        if line_index < len(selected_test_conditions.i2c_test_parameters.param):
+                            val = selected_test_conditions.i2c_test_parameters.param[line_index]
+                            line.setText(f'{val:g}' if (val != 0 and val != '') else '')
 
-                for cbx_index, cbx in enumerate(self.i2c_ui_combo_boxes):
-                    if selected_test_conditions.i2c_test_parameters.cbx_param[cbx_index] == '':
-                        continue
-                    cbx_names =  [cbx.itemText(i) for i in range(cbx.count())]
-                    cbx_option_index = cbx_names.index(selected_test_conditions.i2c_test_parameters.cbx_param[cbx_index])
-                    cbx.setCurrentIndex(cbx_option_index)
+                    for cbx_index, cbx in enumerate(self.i2c_ui_combo_boxes):
+                        if cbx_index < len(selected_test_conditions.i2c_test_parameters.cbx_param):
+                            val = str(selected_test_conditions.i2c_test_parameters.cbx_param[cbx_index])
+                            if val == '' or val == '0':
+                                continue
+                            cbx_names = [cbx.itemText(i) for i in range(cbx.count())]
+                            if val in cbx_names:
+                                cbx.setCurrentIndex(cbx_names.index(val))
                     
                     
             if nominal_output_settings_update:
@@ -2153,8 +2159,26 @@ class AddTestPageHandler(QObject):
             self.ui.lineedit_add_tests_nominal_output_voltage.setText('')
             self.ui.lineedit_add_tests_nominal_output_current.setText('')
             
-            for line in self.i2c_ui_lineedits:
-                line.setText('')
+            if hasattr(self.selected_test_class, 'i2c_ui_definitions'):
+                default_i2c = getattr(self.selected_test_class.tc_default, 'i2c_test_parameters', None)
+                if default_i2c:
+                    for idx, line in enumerate(self.i2c_ui_lineedits):
+                        if idx < len(default_i2c.param) and default_i2c.param[idx] != 0:
+                            line.setText(f"{default_i2c.param[idx]:g}")
+                        else:
+                            line.setText('')
+                    for idx, cbx in enumerate(self.i2c_ui_combo_boxes):
+                        if idx < len(default_i2c.cbx_param) and default_i2c.cbx_param[idx] != 0 and default_i2c.cbx_param[idx] != '':
+                            cbx_item = str(default_i2c.cbx_param[idx])
+                            cbx_names = [cbx.itemText(i) for i in range(cbx.count())]
+                            if cbx_item in cbx_names:
+                                cbx.setCurrentIndex(cbx_names.index(cbx_item))
+                else:
+                    for line in self.i2c_ui_lineedits:
+                        line.setText('')
+            else:
+                for line in self.i2c_ui_lineedits:
+                    line.setText('')
 
     
     def usbpd_dev_toggle_changed(self):
@@ -3074,6 +3098,7 @@ class AddTestPageHandler(QObject):
             )
             
         else:
+            i2c_test_parameters = self.get_i2c_parameters_from_ui() if hasattr(TestTypes[test_type_index], 'i2c_ui_definitions') else I2CTestParameters()
             test_conditions = TestConditions(
                 nominal_output_voltage_V = nominal_output_voltage_V,
                 nominal_load_current_A = nominal_load_current_A,
@@ -3083,6 +3108,7 @@ class AddTestPageHandler(QObject):
                 soak_time = soak_time,
                 general_options = general_options,
                 usbpd_options = usbpd_options,
+                i2c_test_parameters = i2c_test_parameters,
                 name=TestTypes[test_type_index].title
             )
         
@@ -3202,6 +3228,7 @@ class AddTestPageHandler(QObject):
                 )
         
             case _:
+                i2c_test_parameters = self.get_i2c_parameters_from_ui() if hasattr(TestTypes[test_type_index], 'i2c_ui_definitions') else I2CTestParameters()
                 test_conditions = TestConditions(
                     nominal_output_voltage_V = nominal_output_voltage_V,
                     nominal_load_current_A = nominal_load_current_A,
@@ -3210,6 +3237,7 @@ class AddTestPageHandler(QObject):
                     load_range = load_range_pct,
                     soak_time = soak_time,
                     general_options = general_options,
+                    i2c_test_parameters = i2c_test_parameters,
                     name=TestTypes[test_type_index].title
                 )
         
