@@ -1622,6 +1622,50 @@ class AddTestPageHandler(QObject):
             if not content is None:
                 cbx.addItems(content)
 
+        if self.selected_test_class.title == "Efficiency 2 Port":
+            self.ui.gridLayout_12.removeWidget(self.frame_add_tests_i2c_cbxparam_1)
+            self.ui.gridLayout_12.addWidget(self.frame_add_tests_i2c_cbxparam_1, 5, 0, 1, 2)
+            self.label_add_tests_i2c_cbxparam_1.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+            self.cbx_add_tests_i2c_cbxparam_1.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+            self.cbx_add_tests_i2c_cbxparam_1.setMaximumWidth(16777215)
+            self.cbx_add_tests_i2c_cbxparam_1.setMinimumWidth(320)
+            if hasattr(self.cbx_add_tests_i2c_cbxparam_1, 'view') and self.cbx_add_tests_i2c_cbxparam_1.view():
+                self.cbx_add_tests_i2c_cbxparam_1.view().setMinimumWidth(450)
+
+            if not hasattr(self, 'label_dual_load_mode_desc'):
+                self.label_dual_load_mode_desc = QLabel()
+                self.label_dual_load_mode_desc.setStyleSheet("color: rgb(0, 190, 255); font-size: 11px; padding-left: 5px;")
+                self.label_dual_load_mode_desc.setWordWrap(True)
+                self.ui.gridLayout_12.addWidget(self.label_dual_load_mode_desc, 6, 0, 1, 2)
+            self.label_dual_load_mode_desc.setVisible(True)
+
+            def on_dual_mode_change(index):
+                desc_map = {
+                    0: "Option A (Proportional Sync): Sweeps Port 1 and Port 2 synchronously across 100%, 75%, 50%, 25%, and 10% rated load.",
+                    1: "Option B (Cross-Reg Matrix): Sweeps Port 1 across load while holding Port 2 at 100%, 50%, and 0% load to evaluate cross-regulation.",
+                    2: "Option C (Fixed Aux / Swept Main): Holds Port 2 at a constant current ('Fixed Aux Load') while sweeping Port 1 across its load range."
+                }
+                self.label_dual_load_mode_desc.setText(desc_map.get(index, ""))
+                is_opt_c = (index == 2)
+                self.ui.lineedit_add_tests_i2c_param_3.setEnabled(is_opt_c)
+                self.ui.label_add_tests_i2c_param_3.setEnabled(is_opt_c)
+
+            try:
+                self.cbx_add_tests_i2c_cbxparam_1.currentIndexChanged.disconnect()
+            except:
+                pass
+            self.cbx_add_tests_i2c_cbxparam_1.currentIndexChanged.connect(on_dual_mode_change)
+            on_dual_mode_change(self.cbx_add_tests_i2c_cbxparam_1.currentIndex())
+        else:
+            self.ui.gridLayout_12.removeWidget(self.frame_add_tests_i2c_cbxparam_1)
+            self.ui.gridLayout_12.addWidget(self.frame_add_tests_i2c_cbxparam_1, 5, 0, 1, 1)
+            if hasattr(self, 'label_dual_load_mode_desc'):
+                self.label_dual_load_mode_desc.setVisible(False)
+            try:
+                self.cbx_add_tests_i2c_cbxparam_1.currentIndexChanged.disconnect()
+            except:
+                pass
+
     def set_ui_states(self):
         """Change the state of the UI depending on 
         the selected test type"""
@@ -1673,6 +1717,15 @@ class AddTestPageHandler(QObject):
         ui.frame_add_tests_nominal_output_current.setVisible(ui_def.nominal_iout_visible)
         ui.frame_add_tests_nominal_output_voltage.setVisible(ui_def.nominal_vout_visible)
         ui.frame_add_tests_nominal_output_voltage.setEnabled(ui_def.nominal_vout_enable)
+
+        if test_class.title == "Efficiency 2 Port":
+            ui.label_add_tests_nominal_output_voltage.setText("Nominal Vout 1 (V)")
+            ui.label_add_tests_nominal_output_current.setText("Nominal Iout 1 (A)")
+            ui.label_add_tests_i2c_settings.setText("Dual Output Settings (Port 2 & Mode)")
+        else:
+            ui.label_add_tests_nominal_output_voltage.setText("Nominal Vout (V)")
+            ui.label_add_tests_nominal_output_current.setText("Nominal Iout (A)")
+            ui.label_add_tests_i2c_settings.setText("I2C Options")
         # Source caps table and button toggle
         ui.table_add_tests_source_caps.setVisible(ui_def.usbpd_sourcecaps_table_visible)
         ui.btn_add_tests_usbpd_get_source_caps.setVisible(ui_def.usbpd_getsourcecaps_btn_visible)  
@@ -1959,7 +2012,13 @@ class AddTestPageHandler(QObject):
                             if val == '' or val == '0':
                                 continue
                             cbx_names = [cbx.itemText(i) for i in range(cbx.count())]
-                            if val in cbx_names:
+                            matched = False
+                            for i, name in enumerate(cbx_names):
+                                if val in name or name in val:
+                                    cbx.setCurrentIndex(i)
+                                    matched = True
+                                    break
+                            if not matched and val in cbx_names:
                                 cbx.setCurrentIndex(cbx_names.index(val))
                     
                     
@@ -2171,7 +2230,13 @@ class AddTestPageHandler(QObject):
                         if idx < len(default_i2c.cbx_param) and default_i2c.cbx_param[idx] != 0 and default_i2c.cbx_param[idx] != '':
                             cbx_item = str(default_i2c.cbx_param[idx])
                             cbx_names = [cbx.itemText(i) for i in range(cbx.count())]
-                            if cbx_item in cbx_names:
+                            matched = False
+                            for i, name in enumerate(cbx_names):
+                                if cbx_item in name or name in cbx_item:
+                                    cbx.setCurrentIndex(i)
+                                    matched = True
+                                    break
+                            if not matched and cbx_item in cbx_names:
                                 cbx.setCurrentIndex(cbx_names.index(cbx_item))
                 else:
                     for line in self.i2c_ui_lineedits:

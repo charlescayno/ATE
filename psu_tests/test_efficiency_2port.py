@@ -44,7 +44,11 @@ class EfficiencyTest_2Port(BaseTestObject):
     i2c_ui_definitions.add_lineedit("Nominal Vout 2 (V)", 1)
     i2c_ui_definitions.add_lineedit("Nominal Iout 2 (A)", 2)
     i2c_ui_definitions.add_lineedit("Fixed Aux Load (A)", 3)
-    i2c_ui_definitions.add_cbx("Dual Load Mode", ["Option A: Proportional Sync", "Option B: Cross-Reg Matrix", "Option C: Fixed Aux/Swept Main"], 1)
+    i2c_ui_definitions.add_cbx("Dual Load Mode", [
+        "Option A: Proportional Sync (Both Ports 100% -> 10%)",
+        "Option B: Cross-Reg Matrix (Port 2 at 100%, 50%, 0%)",
+        "Option C: Fixed Aux / Swept Main (Port 2 Fixed Load)"
+    ], 1)
 
     @classmethod
     def get_ui_definitions(self, flags:UIChangeFlags = UIChangeFlags()):
@@ -79,7 +83,7 @@ class EfficiencyTest_2Port(BaseTestObject):
         general_options = GeneralOptions(),
         usbpd_options = USBPDOptions(),
         line_ramp_settings = LineRamp(),
-        i2c_test_parameters = I2CTestParameters(params=[12.0, 2.0, 0.0], cbx_params=["Option A: Proportional Sync"]))
+        i2c_test_parameters = I2CTestParameters(params=[12.0, 2.0, 0.0], cbx_params=["Option A: Proportional Sync (Both Ports 100% -> 10%)"]))
 
     def __init__(self, test_item):
         super().__init__()
