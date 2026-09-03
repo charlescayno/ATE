@@ -12430,7 +12430,7 @@ class Ui_MainWindow(object):
         ___qtablewidgetitem47.setText(QCoreApplication.translate("MainWindow", u"Line", None));
         self.tableWidget.setSortingEnabled(__sortingEnabled6)
 
-        self.label_credits.setText(QCoreApplication.translate("MainWindow", u"\u00a9 RN, RRI", None))
+        self.label_credits.setText(QCoreApplication.translate("MainWindow", u"\u00a9 RN, RRI, CMC", None))
         self.label_version.setText(QCoreApplication.translate("MainWindow", u"v1.0.0", None))
     # retranslateUi
 

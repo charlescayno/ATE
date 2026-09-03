@@ -24159,7 +24159,7 @@ QHeaderView::section:vertical
                       <string notr="true">color: rgb(98, 103, 111);</string>
                      </property>
                      <property name="text">
-                      <string>© RN, RRI</string>
+                      <string>© RN, RRI, CMC</string>
                      </property>
                     </widget>
                    </item>

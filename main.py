@@ -79,7 +79,7 @@ from ui.ui_main import Ui_MainWindow
 from ui.splash_screen import Ui_SplashScreen
 from ui.ui_styles import *
 
-SOFTWARE_VERSION =  'DIG-236 C314 December 3, 2025'
+SOFTWARE_VERSION =  'DIG-236 C314 September 3, 2026'
 
 run_settings = {'debug': False}
 
@@ -178,7 +178,9 @@ class MainWindow(QMainWindow):
         # Print the system and version
         print('System: ' + platform.system())
         print('Version: ' + platform.release())
+        self.ui.label_version.setMaximumSize(QSize(250, 16777215))
         self.ui.label_version.setText(SOFTWARE_VERSION)
+        self.ui.label_credits.setText("© RN, RRI, CMC")
 
         # Remove the standard title bar
         UIFunctions.removeTitleBar(True)
