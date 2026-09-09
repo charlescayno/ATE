@@ -412,37 +412,34 @@ class SimulatedOscilloscope:
         ]
 
     def get_screenshot(self, filename='default.png', path='.'):
-        """Generates a realistic oscilloscope graticule display."""
-        img = Image.new('RGB', (800, 480), color=(12, 18, 24))
-        draw = ImageDraw.Draw(img)
-
-        # Draw grid
-        for x in range(0, 800, 80):
-            draw.line([(x, 0), (x, 480)], fill=(32, 44, 56), width=1)
-        for y in range(0, 480, 48):
-            draw.line([(0, y), (800, y)], fill=(32, 44, 56), width=1)
-
-        # Generate synthetic ringing waveform
-        t = np.linspace(0, 10, 800)
-        v_peak_px = 140
-        decay = np.exp(-0.4 * (t % 2.5))
-        oscillation = np.cos(2 * np.pi * 3.5 * t)
-        y_drain = 240 - v_peak_px * decay * oscillation
-        pts_drain = list(zip(range(800), y_drain.astype(int)))
-        draw.line(pts_drain, fill=(255, 215, 0), width=2)
-
-        # Current waveform
-        y_curr = 360 - 50 * (1 - np.exp(-0.8 * (t % 2.5)))
-        pts_curr = list(zip(range(800), y_curr.astype(int)))
-        draw.line(pts_curr, fill=(0, 255, 200), width=2)
-
+        """Returns a realistic oscilloscope graticule display."""
+        try:
+            # Try to load the realistic dummy waveform from project root
+            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            dummy_img_path = os.path.join(base_dir, 'dummy_waveform.png')
+            img = Image.open(dummy_img_path).convert('RGBA')
+        except Exception:
+            # Fallback if image is missing
+            img = Image.new('RGBA', (800, 480), color=(12, 18, 24, 255))
+            
         # Draw on-screen telemetry
-        draw.text((20, 15), 'R&S RTM3004 [SIMULATED VIRTUAL SCOPE]', fill=(220, 220, 220))
-        draw.text((20, 35), f'CH1 (Vds): 50V/div  Peak={round((self.state.vin*1.414)+115.0, 1)}V', fill=(255, 215, 0))
-        draw.text((20, 55), f'CH2 (Ids): 1A/div   Peak={round(self.state.iout*1.4+0.15, 2)}A', fill=(0, 255, 200))
-        draw.text((620, 15), f'Vin: {self.state.vin}VAC', fill=(180, 180, 180))
-        draw.text((620, 35), f'Iout: {self.state.iout}A', fill=(180, 180, 180))
-        draw.text((620, 55), 'Trig: AUTO (Locked)', fill=(50, 255, 50))
+        # Draw a semi-transparent black rectangle for text background to ensure readability
+        txt_layer = Image.new('RGBA', img.size, (255, 255, 255, 0))
+        draw = ImageDraw.Draw(txt_layer)
+        
+        draw.rectangle([(10, 10), (320, 80)], fill=(0, 0, 0, 160))
+        draw.rectangle([(610, 10), (790, 80)], fill=(0, 0, 0, 160))
+        
+        draw.text((20, 15), 'R&S RTM3004 [SIMULATED VIRTUAL SCOPE]', fill=(220, 220, 220, 255))
+        draw.text((20, 35), f'CH1 (Vds): 50V/div  Peak={round((self.state.vin*1.414)+115.0, 1)}V', fill=(255, 215, 0, 255))
+        draw.text((20, 55), f'CH2 (Ids): 1A/div   Peak={round(self.state.iout*1.4+0.15, 2)}A', fill=(0, 255, 200, 255))
+        
+        draw.text((620, 15), f'Vin: {self.state.vin}VAC', fill=(220, 220, 220, 255))
+        draw.text((620, 35), f'Iout: {self.state.iout}A', fill=(220, 220, 220, 255))
+        draw.text((620, 55), 'Trig: AUTO (Locked)', fill=(50, 255, 50, 255))
+
+        # Composite text layer over the image
+        img = Image.alpha_composite(img, txt_layer).convert('RGB')
 
         full_path = os.path.join(path, filename)
         os.makedirs(os.path.dirname(full_path), exist_ok=True)
@@ -460,6 +457,7 @@ class SimulatedSinkController:
         self.description = 'Virtual USB-PD Sink Controller (Simulated)'
         self.device_id = 'PISinkController,SIM-001,1.0'
         self.details = self.description
+        self.open_status = False
         self.source_cap_count = 4
         self.source_capabilities = [
             {'pdo_index': 1, 'type': 'FIXED', 'voltage': 5.0, 'max_current': 3.0},
@@ -468,14 +466,17 @@ class SimulatedSinkController:
             {'pdo_index': 4, 'type': 'FIXED', 'voltage': 20.0, 'max_current': 3.25},
         ]
 
-    def usb_pd_initialize(self): return True
+    def usb_pd_initialize(self):
+        self.open_status = True
+        return True
     def get_status(self, serial_number=None): return True
     def get_source_capabilities(self): return self.source_capabilities
     def request_pdo(self, pdo_index, current_A=None): return True
     def request_pps(self, voltage_V, current_A): return True
     def pps_thread_cleanup(self): pass
     def cleanup(self): pass
-    def close(self): pass
+    def close(self):
+        self.open_status = False
 
 
 class SimulatedEquipmentHandler(EquipmentHandler):
