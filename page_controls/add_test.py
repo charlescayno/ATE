@@ -1690,6 +1690,18 @@ class AddTestPageHandler(QObject):
             self.ui.lineedit_add_tests_i2c_param_4.setEnabled(True)
             self.ui.label_add_tests_i2c_param_4.setEnabled(True)
 
+
+    def show_scope_faq(self):
+        msg = QMessageBox(self.ui.frame_add_tests)
+        msg.setWindowTitle("Scope & Trigger Terminology FAQ")
+        msg.setText("<b>Scope & Trigger Terminology</b><br><br>"
+                    "<b>Trigger Delta:</b> The change in voltage or current required to trigger the oscilloscope capture.<br>"
+                    "<b>Discharge Pulses:</b> The number of discharge pulses before the capture is taken.<br>"
+                    "<b>Post-Capture Delay:</b> Time to wait after the capture is complete before continuing.<br>"
+                    "<b>Settle Time:</b> The time allowed for the unit to reach a steady state before triggering.<br>"
+                    "<b>Ambient Temp:</b> The ambient temperature during the test.")
+        msg.setIcon(QMessageBox.Information)
+        msg.exec_()
     def set_ui_states(self):
         """Change the state of the UI depending on 
         the selected test type"""
@@ -1748,8 +1760,6 @@ class AddTestPageHandler(QObject):
             ui.label_add_tests_i2c_settings.setText("Output 2 Settings")
             if hasattr(self, 'label_nominal_ratings_header'):
                 self.label_nominal_ratings_header.setVisible(False)
-            if hasattr(self, 'frame_unit_test_info'):
-                self.frame_unit_test_info.setVisible(False)
             if hasattr(self, 'frame_add_tests_max_output_current'):
                 self.frame_add_tests_max_output_current.setVisible(False)
 
@@ -1801,6 +1811,32 @@ class AddTestPageHandler(QObject):
                 self.label_port1_header.setVisible(False)
 
             # Header for Nominal Output Ratings
+
+            # Add FAQ Button next to Scope & Trigger Settings
+            if not hasattr(self, 'btn_scope_faq'):
+                # Create a horizontal frame to hold the label and button
+                self.frame_scope_header = QFrame(ui.frame_add_tests_i2c)
+                h_layout = QHBoxLayout(self.frame_scope_header)
+                h_layout.setContentsMargins(0, 0, 0, 0)
+                h_layout.setSpacing(10)
+                
+                # Move the label into this frame
+                ui.verticalLayout_94.removeWidget(ui.label_add_tests_i2c_settings)
+                h_layout.addWidget(ui.label_add_tests_i2c_settings)
+                
+                # Create the FAQ button
+                self.btn_scope_faq = QPushButton("i", self.frame_scope_header)
+                self.btn_scope_faq.setFixedSize(20, 20)
+                self.btn_scope_faq.setStyleSheet("QPushButton { border-radius: 10px; background-color: #3B4252; color: #ABB2BF; font-weight: bold; border: 1px solid #5C6370; } QPushButton:hover { background-color: #4C566A; color: white; }")
+                self.btn_scope_faq.setToolTip("Click for Terminology FAQ")
+                self.btn_scope_faq.clicked.connect(self.show_scope_faq)
+                
+                h_layout.addWidget(self.btn_scope_faq)
+                h_layout.addStretch()
+                
+                # Insert the frame where the label used to be (index 2)
+                ui.verticalLayout_94.insertWidget(2, self.frame_scope_header)
+            
             if not hasattr(self, 'label_nominal_ratings_header'):
                 self.label_nominal_ratings_header = QLabel("Nominal Output Ratings")
                 self.label_nominal_ratings_header.setFont(ui.label_add_tests_i2c_settings.font())
@@ -1813,45 +1849,17 @@ class AddTestPageHandler(QObject):
             if ui.frame_add_tests_nominal_output_parameters.parent() != ui.frame_add_tests_i2c:
                 ui.verticalLayout_94.insertWidget(1, ui.frame_add_tests_nominal_output_parameters)
 
-            # Adjust nominal voltage and current controls to fit with Max Current
             ui.label_add_tests_nominal_output_voltage.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
             ui.label_add_tests_nominal_output_current.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
             ui.lineedit_add_tests_nominal_output_voltage.setFixedSize(46, 30)
             ui.lineedit_add_tests_nominal_output_current.setFixedSize(46, 30)
             ui.gridLayout_15.setContentsMargins(0, 0, 0, 0)
-            ui.gridLayout_15.setHorizontalSpacing(2)
+            ui.gridLayout_15.setHorizontalSpacing(15)  # INCREASED SPACING
             ui.horizontalLayout_88.setContentsMargins(0, 0, 0, 0)
-            ui.horizontalLayout_88.setSpacing(2)
-            ui.horizontalLayout_87.setContentsMargins(2, 0, 0, 0)
-            ui.horizontalLayout_87.setSpacing(2)
+            ui.horizontalLayout_88.setSpacing(8)       # INCREASED SPACING
+            ui.horizontalLayout_87.setContentsMargins(15, 0, 0, 0) # ADDED MARGIN
+            ui.horizontalLayout_87.setSpacing(8)       # INCREASED SPACING
 
-            # Max Current frame inside gridLayout_15 at (0, 2)
-            if not hasattr(self, 'frame_add_tests_max_output_current'):
-                self.frame_add_tests_max_output_current = QFrame(ui.frame_add_tests_nominal_output_parameters)
-                self.frame_add_tests_max_output_current.setObjectName("frame_add_tests_max_output_current")
-                h_layout_max = QHBoxLayout(self.frame_add_tests_max_output_current)
-                h_layout_max.setObjectName("horizontalLayout_max_current")
-                h_layout_max.setContentsMargins(2, 0, 0, 0)
-                h_layout_max.setSpacing(2)
-                
-                self.label_add_tests_max_output_current = QLabel("Max Current (A)", self.frame_add_tests_max_output_current)
-                self.label_add_tests_max_output_current.setObjectName("label_add_tests_max_output_current")
-                self.label_add_tests_max_output_current.setFont(ui.label_add_tests_nominal_output_voltage.font())
-                self.label_add_tests_max_output_current.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
-                
-                self.lineedit_add_tests_max_output_current = QLineEdit(self.frame_add_tests_max_output_current)
-                self.lineedit_add_tests_max_output_current.setObjectName("lineedit_add_tests_max_output_current")
-                self.lineedit_add_tests_max_output_current.setFont(ui.lineedit_add_tests_nominal_output_voltage.font())
-                self.lineedit_add_tests_max_output_current.setStyleSheet(ui.lineedit_add_tests_nominal_output_voltage.styleSheet())
-                self.lineedit_add_tests_max_output_current.setValidator(self.validator)
-                self.lineedit_add_tests_max_output_current.setFixedSize(46, 30)
-
-                h_layout_max.addWidget(self.label_add_tests_max_output_current)
-                h_layout_max.addWidget(self.lineedit_add_tests_max_output_current)
-                ui.gridLayout_15.addWidget(self.frame_add_tests_max_output_current, 0, 2, 1, 1)
-
-            self.frame_add_tests_max_output_current.setVisible(True)
-            self.frame_add_tests_max_output_current.setMaximumHeight(35)
 
             # Allow Scope & Trigger combo boxes to display full text without clipping
             for cb in self.i2c_ui_combo_boxes:
@@ -1958,40 +1966,6 @@ class AddTestPageHandler(QObject):
             self.frame_scope_channels.setVisible(True)
             self.update_vds_ids_trigger_channels()
 
-            # Unit & Test Info frame inside verticalLayout_94 at index 2
-            if not hasattr(self, 'frame_unit_test_info'):
-                self.frame_unit_test_info = QFrame(ui.frame_add_tests_i2c)
-                self.frame_unit_test_info.setObjectName("frame_unit_test_info")
-                h_layout_info = QHBoxLayout(self.frame_unit_test_info)
-                h_layout_info.setContentsMargins(0, 0, 0, 5)
-                h_layout_info.setSpacing(8)
-
-                label_uid = QLabel("Unit ID:", self.frame_unit_test_info)
-                label_uid.setFont(ui.label_add_tests_nominal_output_voltage.font())
-                self.lineedit_unit_id = QLineEdit(self.frame_unit_test_info)
-                self.lineedit_unit_id.setFont(ui.lineedit_add_tests_nominal_output_voltage.font())
-                self.lineedit_unit_id.setStyleSheet(ui.lineedit_add_tests_nominal_output_voltage.styleSheet())
-                self.lineedit_unit_id.setFixedSize(90, 30)
-                self.lineedit_unit_id.setText("RE_05")
-
-                label_mode = QLabel("Test Mode:", self.frame_unit_test_info)
-                label_mode.setFont(ui.label_add_tests_nominal_output_voltage.font())
-                self.cbx_test_mode = QComboBox(self.frame_unit_test_info)
-                self.cbx_test_mode.setFont(ui.cbx_add_tests_testtype.font())
-                self.cbx_test_mode.setStyleSheet(ui.cbx_add_tests_testtype.styleSheet())
-                self.cbx_test_mode.addItems(["NORMAL", "BURST", "STANDBY", "EFFICIENCY", "FULL LOAD"])
-                self.cbx_test_mode.setEditable(True)
-                self.cbx_test_mode.setFixedSize(115, 30)
-
-                h_layout_info.addWidget(label_uid)
-                h_layout_info.addWidget(self.lineedit_unit_id)
-                h_layout_info.addWidget(label_mode)
-                h_layout_info.addWidget(self.cbx_test_mode)
-                h_layout_info.addStretch()
-
-                ui.verticalLayout_94.insertWidget(2, self.frame_unit_test_info)
-
-            self.frame_unit_test_info.setVisible(True)
 
             ui.frame_add_tests_nominal_output_voltage.setMaximumHeight(35)
             ui.frame_add_tests_nominal_output_current.setMaximumHeight(35)
@@ -2019,8 +1993,6 @@ class AddTestPageHandler(QObject):
                 self.label_port1_header.setVisible(False)
             if hasattr(self, 'label_nominal_ratings_header'):
                 self.label_nominal_ratings_header.setVisible(False)
-            if hasattr(self, 'frame_unit_test_info'):
-                self.frame_unit_test_info.setVisible(False)
             if hasattr(self, 'frame_add_tests_max_output_current'):
                 self.frame_add_tests_max_output_current.setVisible(False)
             if hasattr(self, 'frame_scope_channels'):
@@ -2554,8 +2526,6 @@ class AddTestPageHandler(QObject):
                 if hasattr(self, 'lineedit_add_tests_max_output_current'):
                     max_current = getattr(selected_test_conditions, 'max_load_current_A', nominal_output_current)
                     self.lineedit_add_tests_max_output_current.setText(f'{round(max_current,6):g}')
-                if hasattr(self, 'lineedit_unit_id'):
-                    self.lineedit_unit_id.setText(getattr(selected_test_conditions, 'unit_id', 'RE_05'))
                 if hasattr(self, 'cbx_test_mode'):
                     self.cbx_test_mode.setCurrentText(getattr(selected_test_conditions, 'test_mode', 'NORMAL'))
                 if hasattr(self, 'set_scope_channels_to_ui'):
@@ -2654,8 +2624,6 @@ class AddTestPageHandler(QObject):
                 self.ui.lineedit_add_tests_nominal_output_current.setText(f"{self.selected_test_class.tc_default.nominal_load_current_A:g}")
                 if hasattr(self, 'lineedit_add_tests_max_output_current'):
                     self.lineedit_add_tests_max_output_current.setText(f"{getattr(self.selected_test_class.tc_default, 'max_load_current_A', self.selected_test_class.tc_default.nominal_load_current_A):g}")
-                if hasattr(self, 'lineedit_unit_id'):
-                    self.lineedit_unit_id.setText(getattr(self.selected_test_class.tc_default, 'unit_id', 'RE_05'))
                 if hasattr(self, 'cbx_test_mode'):
                     self.cbx_test_mode.setCurrentText(getattr(self.selected_test_class.tc_default, 'test_mode', 'NORMAL'))
                 if hasattr(self, 'reset_scope_channels'):
@@ -4048,9 +4016,17 @@ class AddTestPageHandler(QObject):
             self.ui.table_add_tests_test_list.setItem(
                 test_item_index, 0, 
                 QtWidgets.QTableWidgetItem(str(test_item_index+1)))
-            self.ui.table_add_tests_test_list.setItem(
-                test_item_index, 1, 
-                QtWidgets.QTableWidgetItem(details_text))
+            label = QLabel()
+            label.setTextFormat(Qt.RichText)
+            label.setText('<html>' + details_text.replace(chr(10), '<br>') + '</html>')
+            label.setOpenExternalLinks(True)
+            label.setTextInteractionFlags(Qt.TextBrowserInteraction)
+            label.setStyleSheet("background: transparent; color: #D8DEE9; padding: 5px;")
+            
+            # Dummy item so sorting/resizing works
+            item = QtWidgets.QTableWidgetItem()
+            self.ui.table_add_tests_test_list.setItem(test_item_index, 1, item)
+            self.ui.table_add_tests_test_list.setCellWidget(test_item_index, 1, label)
         
         if self.ui.table_add_tests_test_list.rowCount() > len(test_plan.test_items):
             self.ui.table_add_tests_test_list.setRowCount(len(test_plan.test_items))
@@ -4165,10 +4141,13 @@ class AddTestPageHandler(QObject):
                 getattr(getattr(x, 'test_object', None), 'status', None) == TestStatus.FAILED
                 for x in test_plan.test_items
             )
+            import os
+            output_link = f"<a href='file:///{os.path.abspath(self.output_folder_path).replace(chr(92), '/')}'>Click here to view results folder</a>" if hasattr(self, 'output_folder_path') else ''
+            
             if has_failed:
-                self.parent.msg_box_info('Test Info', 'Test Run Finished with Errors (See Log)', MessageType.WARNING)
+                print('Test Plan Finished with Errors')
             else:
-                self.parent.msg_box_info('Test Info', 'Test Complete', MessageType.INFO)
+                print('Test Plan Complete')
             
 
         for test_item in test_plan.test_items:

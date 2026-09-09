@@ -380,6 +380,9 @@ class SimulatedOscilloscope:
     def edge_trigger(self, channel=1, level=0.0, slope='POS'):
         pass
 
+    def trigger_level(self, channel=None, level=None):
+        return 0.0
+
     def display_channel(self, channel: int, enable: bool): pass
     def scale_channel(self, channel: int, scale: float): pass
     def position_channel(self, channel: int, pos: float): pass

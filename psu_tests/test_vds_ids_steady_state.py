@@ -75,8 +75,8 @@ class VdsIdsSteadyStateTest(BaseTestObject):
     i2c_ui_definitions.add_cbx(label="Auto Find Trigger", contents=['Yes', 'No'], param_index=4)
 
     # LineEdits:
-    # 1. Trigger Delta (V)
-    i2c_ui_definitions.add_lineedit(label="Trigger Delta (V)", param_index=1)
+    # 1. Trigger Delta
+    i2c_ui_definitions.add_lineedit(label="Trigger Delta", param_index=1)
     # 2. Settle Time (s)
     i2c_ui_definitions.add_lineedit(label="Settle Time (s)", param_index=2)
     # 3. Discharge Pulses
@@ -123,7 +123,7 @@ class VdsIdsSteadyStateTest(BaseTestObject):
         general_options=GeneralOptions(eload_type='CC', coupling='AC'),
         i2c_test_parameters=I2CTestParameters(
             params=[3.0, 1.0, 2.0, 25.0, 1.0, 0, 0, 0, 0, 0],
-            cbx_params=['CH1', 'Yes', 'Pre-Test Only', 'Yes']
+            cbx_params=['CH1', 'Yes', 'None (Fully Automated)', 'No']
         ),
         unit_id="RE_05",
         test_mode="NORMAL",
@@ -219,8 +219,8 @@ class VdsIdsSteadyStateTest(BaseTestObject):
 
         # Embed Images in Excel, User Prompts Mode, & Auto Find Trigger
         self.embed_images = True
-        self.user_prompts = 'Pre-Test Only'
-        self.auto_find_trigger = True
+        self.user_prompts = 'None (Fully Automated)'
+        self.auto_find_trigger = False
 
         if i2c_params and len(i2c_params.cbx_param) >= 4 and i2c_params.cbx_param[1] not in ['Yes', 'No']:
             # Legacy 4-combobox layout: [Trigger, Probe, Embed, Prompts]
@@ -530,8 +530,8 @@ class VdsIdsSteadyStateTest(BaseTestObject):
     def define_data_header(self):
         """Defines the data header for the Excel table and UI table"""
         header_list = [
-            'Vin Set (V)', 'Freq (Hz)', 'Vin Meas (V)', 'Iin (mA)', 'Pin (W)', 'PF',
-            'Vo Set (V)', 'Vo Meas (V)', 'Io (A)', 'Po (W)',
+            'Vin Set (V)', 'Freq (Hz)', 'Vin Meas (V)', 'Iin (mA)', 'Pin (W)', 'PF', '%THD',
+            'Vo Set (V)', 'Vo Meas (V)', 'Io (A)', 'Po (W)', 'Efficiency',
             'Trig Ch', 'Trig Level (V)'
         ]
         added_meas = False
@@ -844,12 +844,14 @@ class VdsIdsSteadyStateTest(BaseTestObject):
                     iin_mA = 0.0
                     pin_W = 0.0
                     pf = 1.0
+                    thd_pct = 0.0
                     if self.power_meter_source is not None:
                         try:
                             vin_meas = self.power_meter_source.voltage or vin_set
                             iin_mA = (self.power_meter_source.current or 0.0) * 1000
                             pin_W = self.power_meter_source.power or 0.0
                             pf = self.power_meter_source.power_factor or 1.0
+                            thd_pct = getattr(self.power_meter_source, 'thd', getattr(self.power_meter_source, 'thd_pct', 0.0))
                         except Exception:
                             pass
 
@@ -861,6 +863,8 @@ class VdsIdsSteadyStateTest(BaseTestObject):
                             po_W = self.power_meter_load.power or (vo_meas * iout_A)
                         except Exception:
                             pass
+                            
+                    efficiency = (po_W / pin_W * 100.0) if pin_W > 0 else 0.0
 
                     # Save Screenshot: {unit_id}_{vin}VAC_{test_mode}_Io_{iout}A.png
                     prefix = f"{self.unit_id}_" if self.unit_id else ""
@@ -881,13 +885,13 @@ class VdsIdsSteadyStateTest(BaseTestObject):
                     # Prepare row data
                     row_data = [
                         vin_set, freq_set, round(vin_meas, 2), round(iin_mA, 2),
-                        round(pin_W, 3), round(pf, 3),
-                        self.vout_V, round(vo_meas, 3), iout_A, round(po_W, 3),
+                        round(pin_W, 3), round(pf, 3), round(thd_pct, 2),
+                        self.vout_V, round(vo_meas, 3), iout_A, round(po_W, 3), round(efficiency, 2),
                         f"CH{self.trigger_channel}", round(actual_trig_level, 2)
                     ]
 
                     # Append measurement values matching headers
-                    for h in self.header_list[12:-1]:
+                    for h in self.header_list[14:-1]:
                         val = scope_measurements.get(h)
                         if val is None:
                             # Try prefix or channel match
@@ -996,6 +1000,11 @@ class VdsIdsSteadyStateTest(BaseTestObject):
         text += f"Trigger: CH{self.trigger_channel} (Delta: {self.trigger_delta:g}V)\n"
         if getattr(self, 'current_status_log', None):
             text += f"Status: {self.current_status_log}\n"
+            
+        if self.status in [TestStatus.COMPLETE, TestStatus.FAILED] and getattr(self, 'output_folder_path', None):
+            import os
+            output_link = f"<a href='file:///{os.path.abspath(self.output_folder_path).replace(chr(92), '/')}'>Click here to view results folder</a>"
+            text += f"{output_link}\n"
         text += f"Estimated Time: {self.estimated_time_txt}  {self.progress_txt}"
         self.test_list_text = text
         return text
