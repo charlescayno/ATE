@@ -1742,26 +1742,44 @@ class AddTestPageHandler(QObject):
         if test_class.title == "Efficiency 2 Port":
             ui.label_add_tests_nominal_output_voltage.setText("Nominal Vout 1 (V)")
             ui.label_add_tests_nominal_output_current.setText("Nominal Iout 1 (A)")
-            ui.label_add_tests_i2c_settings.setText("Dual Output Settings (Port 2 & Mode)")
+            ui.label_add_tests_i2c_settings.setText("Output 2 Settings")
+            if hasattr(self, 'label_nominal_ratings_header'):
+                self.label_nominal_ratings_header.setVisible(False)
+            if hasattr(self, 'frame_unit_test_info'):
+                self.frame_unit_test_info.setVisible(False)
+            if hasattr(self, 'frame_add_tests_max_output_current'):
+                self.frame_add_tests_max_output_current.setVisible(False)
 
             # Reparent Port 1 nominal frame into page_add_tests_sp3_i2c so it is visible and editable
             if not hasattr(self, 'label_port1_header'):
-                self.label_port1_header = QLabel("Primary Output Settings (Port 1)")
+                self.label_port1_header = QLabel("Output 1 Settings")
                 self.label_port1_header.setFont(ui.label_add_tests_i2c_settings.font())
                 self.label_port1_header.setMaximumSize(QSize(16777215, 20))
                 ui.verticalLayout_94.insertWidget(0, self.label_port1_header)
+            self.label_port1_header.setText("Output 1 Settings")
             self.label_port1_header.setVisible(True)
 
             if ui.frame_add_tests_nominal_output_parameters.parent() != ui.frame_add_tests_i2c:
                 ui.verticalLayout_94.insertWidget(1, ui.frame_add_tests_nominal_output_parameters)
 
-            ui.label_add_tests_nominal_output_voltage.setMinimumWidth(110)
-            ui.label_add_tests_nominal_output_current.setMinimumWidth(110)
+            sizePolicyExp = QSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Preferred)
+            ui.label_add_tests_nominal_output_voltage.setSizePolicy(sizePolicyExp)
+            ui.label_add_tests_nominal_output_current.setSizePolicy(sizePolicyExp)
+            ui.label_add_tests_nominal_output_voltage.setMinimumWidth(0)
+            ui.label_add_tests_nominal_output_current.setMinimumWidth(0)
             ui.lineedit_add_tests_nominal_output_voltage.setFixedSize(100, 30)
             ui.lineedit_add_tests_nominal_output_current.setFixedSize(100, 30)
-            ui.frame_add_tests_nominal_output_voltage.setMaximumHeight(40)
-            ui.frame_add_tests_nominal_output_current.setMaximumHeight(40)
-            ui.frame_add_tests_nominal_output_parameters.setMaximumHeight(50)
+
+            ui.gridLayout_15.setContentsMargins(0, 0, 0, 0)
+            ui.gridLayout_15.setVerticalSpacing(0)
+            ui.horizontalLayout_88.setContentsMargins(0, 0, 0, 0)
+            ui.horizontalLayout_88.setSpacing(0)
+            ui.horizontalLayout_87.setContentsMargins(10, 0, 0, 0)
+            ui.horizontalLayout_87.setSpacing(0)
+
+            ui.frame_add_tests_nominal_output_voltage.setMaximumHeight(35)
+            ui.frame_add_tests_nominal_output_current.setMaximumHeight(35)
+            ui.frame_add_tests_nominal_output_parameters.setMaximumHeight(35)
             ui.frame_add_tests_nominal_output_parameters.setVisible(True)
             ui.frame_add_tests_nominal_output_voltage.setVisible(True)
             ui.frame_add_tests_nominal_output_current.setVisible(True)
@@ -1772,20 +1790,253 @@ class AddTestPageHandler(QObject):
                 ui.lineedit_add_tests_nominal_output_voltage.setText(f"{test_class.tc_default.nominal_output_voltage_V:g}")
             if not ui.lineedit_add_tests_nominal_output_current.text():
                 ui.lineedit_add_tests_nominal_output_current.setText(f"{test_class.tc_default.nominal_load_current_A:g}")
+        elif test_class.title in ["Steady-State Waveform Capture", "Primary Vds & Ids Steady-State"]:
+            ui.label_add_tests_nominal_output_voltage.setText("Nominal Vout (V)")
+            ui.label_add_tests_nominal_output_current.setText("Nominal Iout (A)")
+            ui.label_add_tests_i2c_settings.setText("Scope & Trigger Settings")
+            if hasattr(self, 'label_port1_header'):
+                self.label_port1_header.setVisible(False)
+
+            # Header for Nominal Output Ratings
+            if not hasattr(self, 'label_nominal_ratings_header'):
+                self.label_nominal_ratings_header = QLabel("Nominal Output Ratings")
+                self.label_nominal_ratings_header.setFont(ui.label_add_tests_i2c_settings.font())
+                self.label_nominal_ratings_header.setMaximumSize(QSize(16777215, 20))
+                ui.verticalLayout_94.insertWidget(0, self.label_nominal_ratings_header)
+            self.label_nominal_ratings_header.setText("Nominal Output Ratings")
+            self.label_nominal_ratings_header.setVisible(True)
+
+            # Reparent nominal output frame to verticalLayout_94 at index 1
+            if ui.frame_add_tests_nominal_output_parameters.parent() != ui.frame_add_tests_i2c:
+                ui.verticalLayout_94.insertWidget(1, ui.frame_add_tests_nominal_output_parameters)
+
+            # Adjust nominal voltage and current controls to fit with Max Current
+            ui.label_add_tests_nominal_output_voltage.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+            ui.label_add_tests_nominal_output_current.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+            ui.lineedit_add_tests_nominal_output_voltage.setFixedSize(46, 30)
+            ui.lineedit_add_tests_nominal_output_current.setFixedSize(46, 30)
+            ui.gridLayout_15.setContentsMargins(0, 0, 0, 0)
+            ui.gridLayout_15.setHorizontalSpacing(2)
+            ui.horizontalLayout_88.setContentsMargins(0, 0, 0, 0)
+            ui.horizontalLayout_88.setSpacing(2)
+            ui.horizontalLayout_87.setContentsMargins(2, 0, 0, 0)
+            ui.horizontalLayout_87.setSpacing(2)
+
+            # Max Current frame inside gridLayout_15 at (0, 2)
+            if not hasattr(self, 'frame_add_tests_max_output_current'):
+                self.frame_add_tests_max_output_current = QFrame(ui.frame_add_tests_nominal_output_parameters)
+                self.frame_add_tests_max_output_current.setObjectName("frame_add_tests_max_output_current")
+                h_layout_max = QHBoxLayout(self.frame_add_tests_max_output_current)
+                h_layout_max.setObjectName("horizontalLayout_max_current")
+                h_layout_max.setContentsMargins(2, 0, 0, 0)
+                h_layout_max.setSpacing(2)
+                
+                self.label_add_tests_max_output_current = QLabel("Max Current (A)", self.frame_add_tests_max_output_current)
+                self.label_add_tests_max_output_current.setObjectName("label_add_tests_max_output_current")
+                self.label_add_tests_max_output_current.setFont(ui.label_add_tests_nominal_output_voltage.font())
+                self.label_add_tests_max_output_current.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+                
+                self.lineedit_add_tests_max_output_current = QLineEdit(self.frame_add_tests_max_output_current)
+                self.lineedit_add_tests_max_output_current.setObjectName("lineedit_add_tests_max_output_current")
+                self.lineedit_add_tests_max_output_current.setFont(ui.lineedit_add_tests_nominal_output_voltage.font())
+                self.lineedit_add_tests_max_output_current.setStyleSheet(ui.lineedit_add_tests_nominal_output_voltage.styleSheet())
+                self.lineedit_add_tests_max_output_current.setValidator(self.validator)
+                self.lineedit_add_tests_max_output_current.setFixedSize(46, 30)
+
+                h_layout_max.addWidget(self.label_add_tests_max_output_current)
+                h_layout_max.addWidget(self.lineedit_add_tests_max_output_current)
+                ui.gridLayout_15.addWidget(self.frame_add_tests_max_output_current, 0, 2, 1, 1)
+
+            self.frame_add_tests_max_output_current.setVisible(True)
+            self.frame_add_tests_max_output_current.setMaximumHeight(35)
+
+            # Allow Scope & Trigger combo boxes to display full text without clipping
+            for cb in self.i2c_ui_combo_boxes:
+                cb.setMaximumSize(QSize(16777215, 35))
+                cb.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+            ui.gridLayout_12.setColumnStretch(0, 3)
+            ui.gridLayout_12.setColumnStretch(1, 4)
+
+            # 4-Channel Matrix inside gridLayout_12 at row 3 (spanning 2 columns)
+            if not hasattr(self, 'frame_scope_channels'):
+                self.frame_scope_channels = QFrame(ui.frame_28)
+                self.frame_scope_channels.setObjectName("frame_scope_channels")
+                grid_ch = QGridLayout(self.frame_scope_channels)
+                grid_ch.setObjectName("gridLayout_scope_channels")
+                grid_ch.setContentsMargins(0, 4, 0, 4)
+                grid_ch.setHorizontalSpacing(10)
+                grid_ch.setVerticalSpacing(4)
+
+                cb_style = "QCheckBox { color: rgb(210, 210, 210); font-weight: bold; } QCheckBox:disabled { color: rgb(71, 71, 71); }"
+
+                # CH1
+                f_ch1 = QFrame(self.frame_scope_channels)
+                h_ch1 = QHBoxLayout(f_ch1)
+                h_ch1.setContentsMargins(0, 0, 0, 0)
+                h_ch1.setSpacing(4)
+                self.ch1_checkbox = QCheckBox("CH1:", f_ch1)
+                self.ch1_checkbox.setFont(ui.label_add_tests_nominal_output_voltage.font())
+                self.ch1_checkbox.setStyleSheet(cb_style)
+                self.ch1_checkbox.setChecked(True)
+                self.ch1_lineedit = QLineEdit("Primary Vds", f_ch1)
+                self.ch1_lineedit.setFont(ui.lineedit_add_tests_nominal_output_voltage.font())
+                self.ch1_lineedit.setStyleSheet(ui.lineedit_add_tests_nominal_output_voltage.styleSheet())
+                self.ch1_lineedit.setFixedHeight(28)
+                h_ch1.addWidget(self.ch1_checkbox)
+                h_ch1.addWidget(self.ch1_lineedit)
+                grid_ch.addWidget(f_ch1, 0, 0)
+
+                # CH2
+                f_ch2 = QFrame(self.frame_scope_channels)
+                h_ch2 = QHBoxLayout(f_ch2)
+                h_ch2.setContentsMargins(0, 0, 0, 0)
+                h_ch2.setSpacing(4)
+                self.ch2_checkbox = QCheckBox("CH2:", f_ch2)
+                self.ch2_checkbox.setFont(ui.label_add_tests_nominal_output_voltage.font())
+                self.ch2_checkbox.setStyleSheet(cb_style)
+                self.ch2_checkbox.setChecked(True)
+                self.ch2_lineedit = QLineEdit("Ids", f_ch2)
+                self.ch2_lineedit.setFont(ui.lineedit_add_tests_nominal_output_voltage.font())
+                self.ch2_lineedit.setStyleSheet(ui.lineedit_add_tests_nominal_output_voltage.styleSheet())
+                self.ch2_lineedit.setFixedHeight(28)
+                h_ch2.addWidget(self.ch2_checkbox)
+                h_ch2.addWidget(self.ch2_lineedit)
+                grid_ch.addWidget(f_ch2, 0, 1)
+
+                # CH3
+                f_ch3 = QFrame(self.frame_scope_channels)
+                h_ch3 = QHBoxLayout(f_ch3)
+                h_ch3.setContentsMargins(0, 0, 0, 0)
+                h_ch3.setSpacing(4)
+                self.ch3_checkbox = QCheckBox("CH3:", f_ch3)
+                self.ch3_checkbox.setFont(ui.label_add_tests_nominal_output_voltage.font())
+                self.ch3_checkbox.setStyleSheet(cb_style)
+                self.ch3_checkbox.setChecked(False)
+                self.ch3_lineedit = QLineEdit("", f_ch3)
+                self.ch3_lineedit.setFont(ui.lineedit_add_tests_nominal_output_voltage.font())
+                self.ch3_lineedit.setStyleSheet(ui.lineedit_add_tests_nominal_output_voltage.styleSheet())
+                self.ch3_lineedit.setFixedHeight(28)
+                self.ch3_lineedit.setEnabled(False)
+                h_ch3.addWidget(self.ch3_checkbox)
+                h_ch3.addWidget(self.ch3_lineedit)
+                grid_ch.addWidget(f_ch3, 1, 0)
+
+                # CH4
+                f_ch4 = QFrame(self.frame_scope_channels)
+                h_ch4 = QHBoxLayout(f_ch4)
+                h_ch4.setContentsMargins(0, 0, 0, 0)
+                h_ch4.setSpacing(4)
+                self.ch4_checkbox = QCheckBox("CH4:", f_ch4)
+                self.ch4_checkbox.setFont(ui.label_add_tests_nominal_output_voltage.font())
+                self.ch4_checkbox.setStyleSheet(cb_style)
+                self.ch4_checkbox.setChecked(False)
+                self.ch4_lineedit = QLineEdit("", f_ch4)
+                self.ch4_lineedit.setFont(ui.lineedit_add_tests_nominal_output_voltage.font())
+                self.ch4_lineedit.setStyleSheet(ui.lineedit_add_tests_nominal_output_voltage.styleSheet())
+                self.ch4_lineedit.setFixedHeight(28)
+                self.ch4_lineedit.setEnabled(False)
+                h_ch4.addWidget(self.ch4_checkbox)
+                h_ch4.addWidget(self.ch4_lineedit)
+                grid_ch.addWidget(f_ch4, 1, 1)
+
+                # Signal connections
+                self.ch1_checkbox.stateChanged.connect(lambda s: (self.ch1_lineedit.setEnabled(s != 0), self.update_vds_ids_trigger_channels(), self.sync_scope_channels_to_selected_test_item()))
+                self.ch2_checkbox.stateChanged.connect(lambda s: (self.ch2_lineedit.setEnabled(s != 0), self.update_vds_ids_trigger_channels(), self.sync_scope_channels_to_selected_test_item()))
+                self.ch3_checkbox.stateChanged.connect(lambda s: (self.ch3_lineedit.setEnabled(s != 0), self.update_vds_ids_trigger_channels(), self.sync_scope_channels_to_selected_test_item()))
+                self.ch4_checkbox.stateChanged.connect(lambda s: (self.ch4_lineedit.setEnabled(s != 0), self.update_vds_ids_trigger_channels(), self.sync_scope_channels_to_selected_test_item()))
+
+                self.ch1_lineedit.textChanged.connect(lambda _: self.sync_scope_channels_to_selected_test_item())
+                self.ch2_lineedit.textChanged.connect(lambda _: self.sync_scope_channels_to_selected_test_item())
+                self.ch3_lineedit.textChanged.connect(lambda _: self.sync_scope_channels_to_selected_test_item())
+                self.ch4_lineedit.textChanged.connect(lambda _: self.sync_scope_channels_to_selected_test_item())
+
+                ui.gridLayout_12.addWidget(self.frame_scope_channels, 3, 0, 1, 2)
+
+            self.frame_scope_channels.setVisible(True)
+            self.update_vds_ids_trigger_channels()
+
+            # Unit & Test Info frame inside verticalLayout_94 at index 2
+            if not hasattr(self, 'frame_unit_test_info'):
+                self.frame_unit_test_info = QFrame(ui.frame_add_tests_i2c)
+                self.frame_unit_test_info.setObjectName("frame_unit_test_info")
+                h_layout_info = QHBoxLayout(self.frame_unit_test_info)
+                h_layout_info.setContentsMargins(0, 0, 0, 5)
+                h_layout_info.setSpacing(8)
+
+                label_uid = QLabel("Unit ID:", self.frame_unit_test_info)
+                label_uid.setFont(ui.label_add_tests_nominal_output_voltage.font())
+                self.lineedit_unit_id = QLineEdit(self.frame_unit_test_info)
+                self.lineedit_unit_id.setFont(ui.lineedit_add_tests_nominal_output_voltage.font())
+                self.lineedit_unit_id.setStyleSheet(ui.lineedit_add_tests_nominal_output_voltage.styleSheet())
+                self.lineedit_unit_id.setFixedSize(90, 30)
+                self.lineedit_unit_id.setText("RE_05")
+
+                label_mode = QLabel("Test Mode:", self.frame_unit_test_info)
+                label_mode.setFont(ui.label_add_tests_nominal_output_voltage.font())
+                self.cbx_test_mode = QComboBox(self.frame_unit_test_info)
+                self.cbx_test_mode.setFont(ui.cbx_add_tests_testtype.font())
+                self.cbx_test_mode.setStyleSheet(ui.cbx_add_tests_testtype.styleSheet())
+                self.cbx_test_mode.addItems(["NORMAL", "BURST", "STANDBY", "EFFICIENCY", "FULL LOAD"])
+                self.cbx_test_mode.setEditable(True)
+                self.cbx_test_mode.setFixedSize(115, 30)
+
+                h_layout_info.addWidget(label_uid)
+                h_layout_info.addWidget(self.lineedit_unit_id)
+                h_layout_info.addWidget(label_mode)
+                h_layout_info.addWidget(self.cbx_test_mode)
+                h_layout_info.addStretch()
+
+                ui.verticalLayout_94.insertWidget(2, self.frame_unit_test_info)
+
+            self.frame_unit_test_info.setVisible(True)
+
+            ui.frame_add_tests_nominal_output_voltage.setMaximumHeight(35)
+            ui.frame_add_tests_nominal_output_current.setMaximumHeight(35)
+            ui.frame_add_tests_nominal_output_parameters.setMaximumHeight(35)
+            ui.frame_add_tests_nominal_output_parameters.setVisible(True)
+            ui.frame_add_tests_nominal_output_voltage.setVisible(True)
+            ui.frame_add_tests_nominal_output_current.setVisible(True)
+            ui.frame_add_tests_nominal_output_voltage.setEnabled(True)
+            ui.frame_add_tests_nominal_output_current.setEnabled(True)
+
+            if not ui.lineedit_add_tests_nominal_output_voltage.text():
+                ui.lineedit_add_tests_nominal_output_voltage.setText(f"{test_class.tc_default.nominal_output_voltage_V:g}")
+            if not ui.lineedit_add_tests_nominal_output_current.text():
+                ui.lineedit_add_tests_nominal_output_current.setText(f"{test_class.tc_default.nominal_load_current_A:g}")
+            if hasattr(self, 'lineedit_add_tests_max_output_current') and not self.lineedit_add_tests_max_output_current.text():
+                self.lineedit_add_tests_max_output_current.setText(f"{test_class.tc_default.max_load_current_A:g}")
         else:
             ui.label_add_tests_nominal_output_voltage.setText("Nominal Vout (V)")
             ui.label_add_tests_nominal_output_current.setText("Nominal Iout (A)")
-            ui.label_add_tests_i2c_settings.setText("I2C Options")
+            if test_class.title in ["Steady-State Waveform Capture", "Primary Vds & Ids Steady-State"]:
+                ui.label_add_tests_i2c_settings.setText("Scope & Trigger Settings")
+            else:
+                ui.label_add_tests_i2c_settings.setText("I2C Options")
             if hasattr(self, 'label_port1_header'):
                 self.label_port1_header.setVisible(False)
+            if hasattr(self, 'label_nominal_ratings_header'):
+                self.label_nominal_ratings_header.setVisible(False)
+            if hasattr(self, 'frame_unit_test_info'):
+                self.frame_unit_test_info.setVisible(False)
+            if hasattr(self, 'frame_add_tests_max_output_current'):
+                self.frame_add_tests_max_output_current.setVisible(False)
+            if hasattr(self, 'frame_scope_channels'):
+                self.frame_scope_channels.setVisible(False)
+
             if ui.frame_add_tests_nominal_output_parameters.parent() != ui.frame_add_tests_nominal_output_setting:
                 ui.verticalLayout_92.insertWidget(2, ui.frame_add_tests_nominal_output_parameters)
+                sizePolicyFixed = QSizePolicy(QSizePolicy.Fixed, QSizePolicy.Preferred)
+                ui.label_add_tests_nominal_output_voltage.setSizePolicy(sizePolicyFixed)
+                ui.label_add_tests_nominal_output_current.setSizePolicy(sizePolicyFixed)
                 ui.label_add_tests_nominal_output_voltage.setMinimumWidth(0)
                 ui.label_add_tests_nominal_output_current.setMinimumWidth(0)
                 ui.lineedit_add_tests_nominal_output_voltage.setMinimumSize(QSize(0, 30))
                 ui.lineedit_add_tests_nominal_output_voltage.setMaximumSize(QSize(16777215, 16777215))
                 ui.lineedit_add_tests_nominal_output_current.setMinimumSize(QSize(0, 30))
                 ui.lineedit_add_tests_nominal_output_current.setMaximumSize(QSize(16777215, 16777215))
+                ui.gridLayout_15.setContentsMargins(9, 9, 9, 9)
+                ui.horizontalLayout_88.setContentsMargins(9, 9, 9, 9)
+                ui.horizontalLayout_87.setContentsMargins(9, 9, 9, 9)
                 ui.frame_add_tests_nominal_output_voltage.setMaximumHeight(16777215)
                 ui.frame_add_tests_nominal_output_current.setMaximumHeight(16777215)
                 ui.frame_add_tests_nominal_output_parameters.setMaximumHeight(16777215)
@@ -1820,6 +2071,110 @@ class AddTestPageHandler(QObject):
         
         # I2C parameters
         
+    def update_vds_ids_trigger_channels(self):
+        enabled = []
+        if hasattr(self, 'ch1_checkbox') and self.ch1_checkbox.isChecked():
+            enabled.append("CH1")
+        if hasattr(self, 'ch2_checkbox') and self.ch2_checkbox.isChecked():
+            enabled.append("CH2")
+        if hasattr(self, 'ch3_checkbox') and self.ch3_checkbox.isChecked():
+            enabled.append("CH3")
+        if hasattr(self, 'ch4_checkbox') and self.ch4_checkbox.isChecked():
+            enabled.append("CH4")
+        if not enabled:
+            enabled = ["CH1"]
+
+        cbx = self.ui.cbx_add_tests_i2c_cbxparam_1
+        cur_text = cbx.currentText()
+        cbx.blockSignals(True)
+        cbx.clear()
+        cbx.addItems(enabled)
+        if cur_text in enabled:
+            cbx.setCurrentText(cur_text)
+        else:
+            cbx.setCurrentIndex(0)
+        cbx.blockSignals(False)
+
+    def get_scope_channels_from_ui(self) -> dict:
+        return {
+            1: {'enabled': self.ch1_checkbox.isChecked() if hasattr(self, 'ch1_checkbox') else True,
+                'name': self.ch1_lineedit.text().strip() if hasattr(self, 'ch1_lineedit') else 'Primary Vds'},
+            2: {'enabled': self.ch2_checkbox.isChecked() if hasattr(self, 'ch2_checkbox') else True,
+                'name': self.ch2_lineedit.text().strip() if hasattr(self, 'ch2_lineedit') else 'Ids'},
+            3: {'enabled': self.ch3_checkbox.isChecked() if hasattr(self, 'ch3_checkbox') else False,
+                'name': self.ch3_lineedit.text().strip() if hasattr(self, 'ch3_lineedit') else ''},
+            4: {'enabled': self.ch4_checkbox.isChecked() if hasattr(self, 'ch4_checkbox') else False,
+                'name': self.ch4_lineedit.text().strip() if hasattr(self, 'ch4_lineedit') else ''}
+        }
+
+    def set_scope_channels_to_ui(self, scope_channels: dict):
+        if not scope_channels or not hasattr(self, 'ch1_checkbox'):
+            return
+        ch1 = scope_channels.get(1, scope_channels.get('1', {}))
+        ch2 = scope_channels.get(2, scope_channels.get('2', {}))
+        ch3 = scope_channels.get(3, scope_channels.get('3', {}))
+        ch4 = scope_channels.get(4, scope_channels.get('4', {}))
+
+        self.ch1_checkbox.blockSignals(True)
+        self.ch2_checkbox.blockSignals(True)
+        self.ch3_checkbox.blockSignals(True)
+        self.ch4_checkbox.blockSignals(True)
+
+        self.ch1_checkbox.setChecked(ch1.get('enabled', True))
+        self.ch1_lineedit.setText(ch1.get('name', 'Primary Vds'))
+        self.ch1_lineedit.setEnabled(self.ch1_checkbox.isChecked())
+
+        self.ch2_checkbox.setChecked(ch2.get('enabled', True))
+        self.ch2_lineedit.setText(ch2.get('name', 'Ids'))
+        self.ch2_lineedit.setEnabled(self.ch2_checkbox.isChecked())
+
+        self.ch3_checkbox.setChecked(ch3.get('enabled', False))
+        self.ch3_lineedit.setText(ch3.get('name', ''))
+        self.ch3_lineedit.setEnabled(self.ch3_checkbox.isChecked())
+
+        self.ch4_checkbox.setChecked(ch4.get('enabled', False))
+        self.ch4_lineedit.setText(ch4.get('name', ''))
+        self.ch4_lineedit.setEnabled(self.ch4_checkbox.isChecked())
+
+        self.ch1_checkbox.blockSignals(False)
+        self.ch2_checkbox.blockSignals(False)
+        self.ch3_checkbox.blockSignals(False)
+        self.ch4_checkbox.blockSignals(False)
+
+        self.update_vds_ids_trigger_channels()
+
+    def reset_scope_channels(self):
+        if hasattr(self, 'ch1_checkbox'):
+            self.ch1_checkbox.blockSignals(True)
+            self.ch2_checkbox.blockSignals(True)
+            self.ch3_checkbox.blockSignals(True)
+            self.ch4_checkbox.blockSignals(True)
+
+            self.ch1_checkbox.setChecked(True)
+            self.ch1_lineedit.setText("Primary Vds")
+            self.ch1_lineedit.setEnabled(True)
+            self.ch2_checkbox.setChecked(True)
+            self.ch2_lineedit.setText("Ids")
+            self.ch2_lineedit.setEnabled(True)
+            self.ch3_checkbox.setChecked(False)
+            self.ch3_lineedit.setText("")
+            self.ch3_lineedit.setEnabled(False)
+            self.ch4_checkbox.setChecked(False)
+            self.ch4_lineedit.setText("")
+            self.ch4_lineedit.setEnabled(False)
+
+            self.ch1_checkbox.blockSignals(False)
+            self.ch2_checkbox.blockSignals(False)
+            self.ch3_checkbox.blockSignals(False)
+            self.ch4_checkbox.blockSignals(False)
+
+            self.update_vds_ids_trigger_channels()
+
+    def sync_scope_channels_to_selected_test_item(self):
+        if hasattr(self, 'selected_test_item') and self.selected_test_item and hasattr(self, 'get_scope_channels_from_ui'):
+            if hasattr(self.selected_test_item, 'test_conditions'):
+                self.selected_test_item.test_conditions.scope_channels = self.get_scope_channels_from_ui()
+
     def update_test_list_control_buttons_state(self):
         """Update ui button status for test item control"""
         
@@ -2193,6 +2548,19 @@ class AddTestPageHandler(QObject):
                     
                 # Update nominal current field    
                 self.ui.lineedit_add_tests_nominal_output_current.setText(f'{round(nominal_output_current,6):g}')
+                if hasattr(self, 'lineedit_add_tests_max_output_current'):
+                    max_current = getattr(selected_test_conditions, 'max_load_current_A', nominal_output_current)
+                    self.lineedit_add_tests_max_output_current.setText(f'{round(max_current,6):g}')
+                if hasattr(self, 'lineedit_unit_id'):
+                    self.lineedit_unit_id.setText(getattr(selected_test_conditions, 'unit_id', 'RE_05'))
+                if hasattr(self, 'cbx_test_mode'):
+                    self.cbx_test_mode.setCurrentText(getattr(selected_test_conditions, 'test_mode', 'NORMAL'))
+                if hasattr(self, 'set_scope_channels_to_ui'):
+                    ch_data = getattr(selected_test_conditions, 'scope_channels', None)
+                    if ch_data:
+                        self.set_scope_channels_to_ui(ch_data)
+                    else:
+                        self.reset_scope_channels()
             
             
             # Update fields for nominal values for CVCC Test        
@@ -2278,9 +2646,17 @@ class AddTestPageHandler(QObject):
             self.ui.lineedit_add_tests_cvcc_min_current.setText('1')
             self.ui.lineedit_add_tests_cvcc_step_size.setText('0.5')
             
-            if self.selected_test_class.title == "Efficiency 2 Port":
+            if self.selected_test_class.title in ["Efficiency 2 Port", "Primary Vds & Ids Steady-State", "Steady-State Waveform Capture"]:
                 self.ui.lineedit_add_tests_nominal_output_voltage.setText(f"{self.selected_test_class.tc_default.nominal_output_voltage_V:g}")
                 self.ui.lineedit_add_tests_nominal_output_current.setText(f"{self.selected_test_class.tc_default.nominal_load_current_A:g}")
+                if hasattr(self, 'lineedit_add_tests_max_output_current'):
+                    self.lineedit_add_tests_max_output_current.setText(f"{getattr(self.selected_test_class.tc_default, 'max_load_current_A', self.selected_test_class.tc_default.nominal_load_current_A):g}")
+                if hasattr(self, 'lineedit_unit_id'):
+                    self.lineedit_unit_id.setText(getattr(self.selected_test_class.tc_default, 'unit_id', 'RE_05'))
+                if hasattr(self, 'cbx_test_mode'):
+                    self.cbx_test_mode.setCurrentText(getattr(self.selected_test_class.tc_default, 'test_mode', 'NORMAL'))
+                if hasattr(self, 'reset_scope_channels'):
+                    self.reset_scope_channels()
             else:
                 self.ui.lineedit_add_tests_nominal_output_voltage.setText('')
                 self.ui.lineedit_add_tests_nominal_output_current.setText('')
@@ -3301,6 +3677,15 @@ class AddTestPageHandler(QObject):
                 message_type = MessageType.INFO
             )
             return
+
+        if hasattr(self, 'lineedit_add_tests_max_output_current') and self.lineedit_add_tests_max_output_current.isVisible():
+            if not is_numeric(self.lineedit_add_tests_max_output_current.text()):
+                self.parent.msg_box_info(
+                    title = "Input Error!",
+                    message = "Please enter numeric input for Max Current.",
+                    message_type = MessageType.INFO
+                )
+                return
         
         # Test Type
 
@@ -3365,16 +3750,28 @@ class AddTestPageHandler(QObject):
         
             case _:
                 i2c_test_parameters = self.get_i2c_parameters_from_ui() if hasattr(TestTypes[test_type_index], 'i2c_ui_definitions') else I2CTestParameters()
+                if hasattr(self, 'lineedit_add_tests_max_output_current') and self.lineedit_add_tests_max_output_current.isVisible() and is_numeric(self.lineedit_add_tests_max_output_current.text()):
+                    max_load_current_A = rounded_float(self.lineedit_add_tests_max_output_current.text())
+                else:
+                    max_load_current_A = nominal_load_current_A
+
+                unit_id = self.lineedit_unit_id.text() if hasattr(self, 'lineedit_unit_id') and self.lineedit_unit_id.isVisible() and self.lineedit_unit_id.text() else 'RE_05'
+                test_mode = self.cbx_test_mode.currentText() if hasattr(self, 'cbx_test_mode') and self.cbx_test_mode.isVisible() and self.cbx_test_mode.currentText() else 'NORMAL'
+                scope_channels = self.get_scope_channels_from_ui() if hasattr(self, 'get_scope_channels_from_ui') and hasattr(self, 'frame_scope_channels') and self.frame_scope_channels.isVisible() else None
+
                 test_conditions = TestConditions(
                     nominal_output_voltage_V = nominal_output_voltage_V,
                     nominal_load_current_A = nominal_load_current_A,
-                    max_load_current_A = nominal_load_current_A,
+                    max_load_current_A = max_load_current_A,
                     line_range = line_range,
                     load_range = load_range_pct,
                     soak_time = soak_time,
                     general_options = general_options,
                     i2c_test_parameters = i2c_test_parameters,
-                    name=TestTypes[test_type_index].title
+                    name=TestTypes[test_type_index].title,
+                    unit_id = unit_id,
+                    test_mode = test_mode,
+                    scope_channels = scope_channels
                 )
         
         new_test_item = TestItem(parent = self.parent,
@@ -3760,7 +4157,15 @@ class AddTestPageHandler(QObject):
             self.parent.test_routine_thread = None
             self.test_plan_update_timer.stop()
             self.update_test_list_control_buttons_state()
-            self.parent.msg_box_info('Test Info','Test Complete',MessageType.INFO)
+            has_failed = any(
+                getattr(x, 'status', None) == TestStatus.FAILED or
+                getattr(getattr(x, 'test_object', None), 'status', None) == TestStatus.FAILED
+                for x in test_plan.test_items
+            )
+            if has_failed:
+                self.parent.msg_box_info('Test Info', 'Test Run Finished with Errors (See Log)', MessageType.WARNING)
+            else:
+                self.parent.msg_box_info('Test Info', 'Test Complete', MessageType.INFO)
             
 
         for test_item in test_plan.test_items:

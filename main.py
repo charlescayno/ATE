@@ -152,7 +152,40 @@ class MainWindow(QMainWindow):
         self.load_settings = LoadSettings()
         self.soaktime_settings = SoaktimeSettings()
         self.line_ramp_settings = LineRampSettings()
-        self.equipment = EquipmentHandler(self)
+        # Simulation Mode: Activated via CLI flag (--simulation / -s), env var (PI_ATE_SIMULATION=1), or fallback
+        is_simulation = (
+            "--simulation" in sys.argv
+            or "-s" in sys.argv
+            or os.environ.get("PI_ATE_SIMULATION") == "1"
+        )
+        if is_simulation:
+            print("[INFO] Starting PI ATE in Virtual Simulation Mode...")
+            from equipment.simulated_handler import SimulatedEquipmentHandler
+            self.equipment = SimulatedEquipmentHandler(self)
+            self.is_simulation_mode = True
+        else:
+            try:
+                self.equipment = EquipmentHandler(self)
+                has_hardware = (
+                    len(self.equipment.ac_sources) > 0
+                    or len(self.equipment.e_loads) > 0
+                    or len(self.equipment.power_meters) > 0
+                    or len(self.equipment.oscilloscopes) > 0
+                    or len(self.equipment.sink_controllers) > 0
+                )
+                if not has_hardware and "--hardware" not in sys.argv and "-hw" not in sys.argv:
+                    print("[INFO] No physical bench instruments detected. Auto-activating Virtual Simulation Mode...")
+                    from equipment.simulated_handler import SimulatedEquipmentHandler
+                    self.equipment = SimulatedEquipmentHandler(self)
+                    self.is_simulation_mode = True
+                else:
+                    self.is_simulation_mode = False
+            except Exception as e:
+                print(f"[Warning] Failed to initialize physical EquipmentHandler: {e}")
+                print("[INFO] Falling back to Virtual Simulation Mode...")
+                from equipment.simulated_handler import SimulatedEquipmentHandler
+                self.equipment = SimulatedEquipmentHandler(self)
+                self.is_simulation_mode = True
         self.test_condition_settings = TestConditionSettings()
 
         self.run_settings = run_settings
@@ -186,9 +219,14 @@ class MainWindow(QMainWindow):
         UIFunctions.removeTitleBar(True)
 
         # Set the window title
-        self.setWindowTitle('PI ATE & USB-PD Tester')
-        UIFunctions.labelTitle(self, 'PI ATE & USB-PD Tester')
-        UIFunctions.labelDescription(self, 'Power Integrations')
+        app_title = 'PI ATE & USB-PD Tester'
+        app_desc = 'Power Integrations'
+        if getattr(self, 'is_simulation_mode', False):
+            app_title += ' [SIMULATION MODE - VIRTUAL BENCH]'
+            app_desc += ' (Simulated HAL Backend)'
+        self.setWindowTitle(app_title)
+        UIFunctions.labelTitle(self, app_title)
+        UIFunctions.labelDescription(self, app_desc)
 
         # Set the size of the window at startup
         # Set close to 1080p
@@ -302,7 +340,9 @@ class MainWindow(QMainWindow):
             case MessageType.WARNING:
                 self.msg_box.setIcon(QMessageBox.Warning)
             case MessageType.ABORT:
-                self.msg_box.setIcon(QMessageBox.Abort)
+                self.msg_box.setIcon(QMessageBox.Critical)
+            case _:
+                self.msg_box.setIcon(QMessageBox.Information)
             
         
         self.msg_box.setText(message)
@@ -419,6 +459,15 @@ class MainWindow(QMainWindow):
     def mousePressEvent(self, event):
         """Handles updating the drag position"""
         self.dragPos = event.globalPos()
+
+    def closeEvent(self, event):
+        """Handle application close event to save settings."""
+        try:
+            if hasattr(self, 'equipment_setup_page_handler') and self.equipment_setup_page_handler:
+                self.equipment_setup_page_handler.save_default_equipment_setup(silent=True)
+        except Exception as e:
+            print(f"Error saving equipment setup on close: {e}")
+        event.accept()
 
 
 if __name__ == "__main__":

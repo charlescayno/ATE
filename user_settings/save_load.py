@@ -6,8 +6,7 @@ from user_settings.keys import *
 
 
 
-username = os.getlogin()
-userprofile_path = f"C:\\Users\\{username}"
+userprofile_path = os.environ.get("USERPROFILE") or f"C:\\Users\\{os.getlogin()}"
 
 # Hidden configs
 default_config_folder_path = f"{userprofile_path}\\AppData\\Local\\PI_ATE"

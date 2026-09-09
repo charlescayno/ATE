@@ -5,6 +5,9 @@ from plotter.format import *
 class PlotType:
     LINE = 0
     BAR = 1
+    LINE_PLOT = 0
+    BAR_PLOT = 1
+    TABLE = 2
 
 class PlotSeries():
     """Plot data for a single series"""

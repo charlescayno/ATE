@@ -506,10 +506,10 @@ class EquipmentHandler():
         self.ac_source = None
         if saved_ac and saved_ac != "-":
             for ac in self.ac_sources:
-                if ac is not None and (ac.description == saved_ac or saved_ac in ac.description):
+                if ac is not None and ac.description == saved_ac:
                     self.ac_source = ac
                     break
-        if self.ac_source is None and len(self.ac_sources) > 0:
+        if self.ac_source is None and len(self.ac_sources) > 0 and (not saved_ac or saved_ac != "-"):
             self.ac_source = self.ac_sources[0]
 
         # 2. DC Source
@@ -517,10 +517,10 @@ class EquipmentHandler():
         self.dc_source = None
         if saved_dc and saved_dc != "-":
             for dc in self.dc_sources:
-                if dc is not None and (dc.description == saved_dc or saved_dc in dc.description):
+                if dc is not None and dc.description == saved_dc:
                     self.dc_source = dc
                     break
-        if self.dc_source is None and len(self.dc_sources) > 0:
+        if self.dc_source is None and len(self.dc_sources) > 0 and (not saved_dc or saved_dc != "-"):
             self.dc_source = self.dc_sources[0]
 
         # 3. Power Meters
@@ -531,10 +531,26 @@ class EquipmentHandler():
         for i, key in enumerate(pm_keys):
             target_desc = saved_pms.get(key, "")
             if target_desc and target_desc != "-":
+                matched = None
+                # Exact match first
                 for pm in self.power_meters:
-                    if pm is not None and (pm.description == target_desc or target_desc in pm.description):
-                        self.power_meter_roles[i] = pm
+                    if pm is not None and pm.description == target_desc:
+                        matched = pm
                         break
+                # Fallback: match by exact address token (e.g. GPIB0::2)
+                if matched is None:
+                    tokens = target_desc.strip().split()
+                    if tokens:
+                        target_addr = tokens[-1]
+                        for pm in self.power_meters:
+                            if pm is not None:
+                                pm_tokens = pm.description.strip().split()
+                                if pm_tokens and pm_tokens[-1] == target_addr:
+                                    matched = pm
+                                    break
+                if matched is not None:
+                    self.power_meter_roles[i] = matched
+
         self.power_meter_source = self.power_meter_roles[0]
         self.power_meter_load_1 = self.power_meter_roles[1]
         self.power_meter_load_2 = self.power_meter_roles[2]
@@ -550,10 +566,29 @@ class EquipmentHandler():
         for i, key in enumerate(eload_keys):
             target_desc = saved_eloads.get(key, "")
             if target_desc and target_desc != "-":
+                matched = None
+                # Exact match first
                 for el in self.e_loads:
-                    if el is not None and (el.description == target_desc or target_desc in el.description):
-                        self.electronic_load_roles[i] = el
+                    if el is not None and el.description == target_desc:
+                        matched = el
                         break
+                # Fallback: match by channel and address tokens
+                if matched is None:
+                    tokens = target_desc.strip().split()
+                    target_ch = next((t for t in tokens if t.startswith('Ch')), None)
+                    target_addr = tokens[-1] if tokens else None
+                    if target_ch and target_addr:
+                        for el in self.e_loads:
+                            if el is not None:
+                                el_tokens = el.description.strip().split()
+                                el_ch = next((t for t in el_tokens if t.startswith('Ch')), None)
+                                el_addr = el_tokens[-1] if el_tokens else None
+                                if el_ch == target_ch and el_addr == target_addr:
+                                    matched = el
+                                    break
+                if matched is not None:
+                    self.electronic_load_roles[i] = matched
+
         self.electronic_load_1 = self.electronic_load_roles[0]
         self.electronic_load_2 = self.electronic_load_roles[1]
         self.electronic_load_3 = self.electronic_load_roles[2]
@@ -567,11 +602,11 @@ class EquipmentHandler():
         saved_sink = saved_config.get("sink_controller", "")
         if saved_sink and saved_sink != "-":
             for sc in self.sink_controllers:
-                if sc is not None and (sc.description == saved_sink or saved_sink in sc.description):
+                if sc is not None and sc.description == saved_sink:
                     self.sink_controller_1 = sc
                     self.sink_controller_roles[0] = sc
                     break
-        if self.sink_controller_1 is None and len(self.sink_controllers) > 0:
+        if self.sink_controller_1 is None and len(self.sink_controllers) > 0 and (not saved_sink or saved_sink != "-"):
             self.sink_controller_1 = self.sink_controllers[0]
             self.sink_controller_roles[0] = self.sink_controllers[0]
         self.usbpd_sink = self.sink_controller_1
@@ -582,11 +617,11 @@ class EquipmentHandler():
         saved_i2c = saved_config.get("i2c_controller", "")
         if saved_i2c and saved_i2c != "-":
             for ic in self.i2c_controllers:
-                if ic is not None and (ic.description == saved_i2c or saved_i2c in ic.description):
+                if ic is not None and ic.description == saved_i2c:
                     self.i2c_controller_1 = ic
                     self.i2c_controller_roles[0] = ic
                     break
-        if self.i2c_controller_1 is None and len(self.i2c_controllers) > 0:
+        if self.i2c_controller_1 is None and len(self.i2c_controllers) > 0 and (not saved_i2c or saved_i2c != "-"):
             self.i2c_controller_1 = self.i2c_controllers[0]
             self.i2c_controller_roles[0] = self.i2c_controllers[0]
         self.i2c_controller = self.i2c_controller_1

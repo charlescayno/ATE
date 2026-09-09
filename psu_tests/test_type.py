@@ -18,6 +18,8 @@ from psu_tests.test_i2c_line_sense import I2C_LineSenseTest
 from psu_tests.test_pfc_load_reg import PFC_LoadRegTest
 from psu_tests.test_load_reg_2port import LoadRegulationTest_2Port
 from psu_tests.test_light_load import LightLoad
+from psu_tests.test_vds_ids_steady_state import VdsIdsSteadyStateTest, SteadyStateWaveformCaptureTest
+from psu_tests.test_efficiency_modern import ModernEfficiencyTest
 
 ###############################################################################
 # Add each test to this list to include it in the setup
@@ -54,6 +56,8 @@ TestTypes = [
     # TransientsTest,
     InputHarmonicsTest,
     InputLineRampTest,
+    VdsIdsSteadyStateTest,
+    # ModernEfficiencyTest,
     # LoadRegulationTest_2Port,
     # LightLoad,
 ]

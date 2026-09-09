@@ -1215,6 +1215,8 @@ class TestConditions():
         self.cvcc_settings = cvcc_settings
         self.line_ramp_settings = line_ramp_settings
         self.i2c_test_parameters = i2c_test_parameters
+        for k, v in kwargs.items():
+            setattr(self, k, v)
     
 # TODO: Change implementation
 # One way is to define these defaults inside the tests such that this class
@@ -1233,7 +1235,9 @@ class TestConditionSettings():
         
         for test_type in TestTypes:
             # Add the predetermined test condition settings
-            self.add_test_condition(test_type.tc_default)
+            tc = getattr(test_type, 'tc_default', None)
+            if tc is not None:
+                self.add_test_condition(tc)
 
     def add_test_condition(self, test_condition:TestConditions):
         self.test_condition_list.append(test_condition)

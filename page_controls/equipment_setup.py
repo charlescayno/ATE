@@ -167,12 +167,25 @@ class EquipmentSetupPageHandler():
         }
         return config
 
-    def save_default_equipment_setup(self):
+    def save_default_equipment_setup(self, silent=False):
         """Save the current equipment setup as the persistent default."""
         config = self.get_current_equipment_setup_dict()
 
+        if silent:
+            # When auto-saving silently (e.g. on close), ensure we have valid selections
+            has_equipment = (
+                bool(config.get("ac_source")) or
+                bool(config.get("dc_source")) or
+                any(v and v != "-" for v in config.get("power_meters", {}).values()) or
+                any(v and v != "-" for v in config.get("electronic_loads", {}).values()) or
+                bool(config.get("sink_controller")) or
+                bool(config.get("i2c_controller"))
+            )
+            if not has_equipment:
+                return
+
         # Save oscilloscope address if present
-        if config["oscilloscope_address"]:
+        if config.get("oscilloscope_address"):
             write_to_default_config(
                 key=SaveFileKeys.OSCILLOSCOPE_ADDRESS,
                 value=config["oscilloscope_address"]
@@ -185,11 +198,12 @@ class EquipmentSetupPageHandler():
         self.equipment.apply_saved_equipment_roles(config)
 
         # Provide feedback to user
-        msg = QMessageBox(self.parent)
-        msg.setWindowTitle("Equipment Setup")
-        msg.setText("Default equipment setup has been saved successfully.\nThese settings will be automatically restored on startup.")
-        msg.setIcon(QMessageBox.Information)
-        msg.exec_()
+        if not silent:
+            msg = QMessageBox(self.parent)
+            msg.setWindowTitle("Equipment Setup")
+            msg.setText("Default equipment setup has been saved successfully.\nThese settings will be automatically restored on startup.")
+            msg.setIcon(QMessageBox.Information)
+            msg.exec_()
 
     def load_default_equipment_setup(self):
         """Load and apply the saved default equipment setup."""
@@ -228,7 +242,7 @@ class EquipmentSetupPageHandler():
        
         self.check_oscilloscope_availability()
         
-        self.check_usbpd_sink_availability()
+        self.equipment.update_accessible_sink_controllers()
 
         saved_config = load_equipment_setup()
         if saved_config:
@@ -252,6 +266,8 @@ class EquipmentSetupPageHandler():
         self.ui_update_ac_source_combo_box()
 
         self.ui_update_dc_source_combo_box()
+
+        self.ui_update_sink_and_i2c_combo_boxes()
         
         
     def ui_update_usbpd_sink_combo_box(self):
@@ -273,7 +289,7 @@ class EquipmentSetupPageHandler():
             if ac_source is not None:
                 frame.setStyleSheet(green_frame)
                 combo_box.addItem(ac_source.description)
-        if self.equipment.ac_source is not None:          
+        if self.equipment.ac_source is not None and self.equipment.ac_source in self.equipment.ac_sources:          
             combo_box.setCurrentIndex(self.equipment.ac_sources.index(self.equipment.ac_source))
         
         self.ongoing_ac_source_update = False
@@ -306,7 +322,7 @@ class EquipmentSetupPageHandler():
             if dc_source is not None:
                 frame.setStyleSheet(green_frame)
                 combo_box.addItem(dc_source.description)
-        if self.equipment.dc_source is not None:        
+        if self.equipment.dc_source is not None and self.equipment.dc_source in self.equipment.dc_sources:        
             combo_box.setCurrentIndex(self.equipment.dc_sources.index(self.equipment.dc_source))
         
         self.ongoing_dc_source_update = False
@@ -455,13 +471,6 @@ class EquipmentSetupPageHandler():
         self.update_sink_and_i2c_controller_roles()
     
     def update_sink_and_i2c_controller_roles(self):
-        # UI
-        self.ongoing_sink_update = True
-        sink_label_details = self.ui.label_equip_setup_sinkcontrollerdetails
-        sink_cbx = self.ui.cbx_equip_setup_sinkcontroller
-        i2c_controller_label_details = self.ui.label_equip_setup_i2ccontrollerdetails
-        i2c_cbx = self.ui.cbx_equip_setup_i2ccontroller
-        frame = self.ui.frame_equip_setup_sinkcontroller_contents
         self.equipment.reset_sink_controller_roles()
         # List of assigned roles
         self.equipment.sink_controller_roles = [
@@ -484,15 +493,15 @@ class EquipmentSetupPageHandler():
         ]
         self.equipment.auto_set_i2c_controller_roles()
         
-        # try:
-        #     i2c_controller = self.equipment.i2c_controller
-        #     if i2c_controller is not None:
-        #         i2c_controller.reset()
-        #         i2c_controller.close()
-            
-        # except Exception as e:
-        #     print(e)
-        #     pass
+        self.ui_update_sink_and_i2c_combo_boxes()
+
+    def ui_update_sink_and_i2c_combo_boxes(self):
+        self.ongoing_sink_update = True
+        sink_label_details = self.ui.label_equip_setup_sinkcontrollerdetails
+        sink_cbx = self.ui.cbx_equip_setup_sinkcontroller
+        i2c_controller_label_details = self.ui.label_equip_setup_i2ccontrollerdetails
+        i2c_cbx = self.ui.cbx_equip_setup_i2ccontroller
+        frame = self.ui.frame_equip_setup_sinkcontroller_contents
         
         sink_controller_available = False
         i2c_controller_available = False

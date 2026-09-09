@@ -271,6 +271,8 @@ class TestPlan():
         
         name=test_item_dict['NAME']
         test_names = get_test_title_list()
+        if name not in test_names and name == "Primary Vds & Ids Steady-State" and "Steady-State Waveform Capture" in test_names:
+            name = "Steady-State Waveform Capture"
         test_type:TemplateTest = TestTypes[test_names.index(name)]
         new_test_conditions:TestConditions = test_type.extract_test_condition(test_item_dict=test_item_dict)
         
