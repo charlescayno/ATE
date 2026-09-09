@@ -7282,8 +7282,8 @@ class Ui_MainWindow(object):
         self.cbx_add_tests_i2c_cbxparam_4.setEnabled(True)
         sizePolicy31.setHeightForWidth(self.cbx_add_tests_i2c_cbxparam_4.sizePolicy().hasHeightForWidth())
         self.cbx_add_tests_i2c_cbxparam_4.setSizePolicy(sizePolicy31)
-        self.cbx_add_tests_i2c_cbxparam_4.setMinimumSize(QSize(100, 35))
-        self.cbx_add_tests_i2c_cbxparam_4.setMaximumSize(QSize(100, 35))
+        self.cbx_add_tests_i2c_cbxparam_4.setMinimumSize(QSize(0, 35))
+        self.cbx_add_tests_i2c_cbxparam_4.setMaximumSize(QSize(16777215, 35))
         self.cbx_add_tests_i2c_cbxparam_4.setFont(font10)
         self.cbx_add_tests_i2c_cbxparam_4.setStyleSheet(u"QComboBox:disabled{\n"
 "	color: rgb(71, 71, 71);\n"
@@ -7479,7 +7479,7 @@ class Ui_MainWindow(object):
         sizePolicy31.setHeightForWidth(self.cbx_add_tests_i2c_cbxparam_3.sizePolicy().hasHeightForWidth())
         self.cbx_add_tests_i2c_cbxparam_3.setSizePolicy(sizePolicy31)
         self.cbx_add_tests_i2c_cbxparam_3.setMinimumSize(QSize(0, 35))
-        self.cbx_add_tests_i2c_cbxparam_3.setMaximumSize(QSize(100, 35))
+        self.cbx_add_tests_i2c_cbxparam_3.setMaximumSize(QSize(16777215, 35))
         self.cbx_add_tests_i2c_cbxparam_3.setFont(font10)
         self.cbx_add_tests_i2c_cbxparam_3.setStyleSheet(u"QComboBox:disabled{\n"
 "	color: rgb(71, 71, 71);\n"
@@ -7516,7 +7516,7 @@ class Ui_MainWindow(object):
         sizePolicy31.setHeightForWidth(self.cbx_add_tests_i2c_cbxparam_2.sizePolicy().hasHeightForWidth())
         self.cbx_add_tests_i2c_cbxparam_2.setSizePolicy(sizePolicy31)
         self.cbx_add_tests_i2c_cbxparam_2.setMinimumSize(QSize(0, 35))
-        self.cbx_add_tests_i2c_cbxparam_2.setMaximumSize(QSize(100, 35))
+        self.cbx_add_tests_i2c_cbxparam_2.setMaximumSize(QSize(16777215, 35))
         self.cbx_add_tests_i2c_cbxparam_2.setFont(font10)
         self.cbx_add_tests_i2c_cbxparam_2.setStyleSheet(u"QComboBox:disabled{\n"
 "	color: rgb(71, 71, 71);\n"

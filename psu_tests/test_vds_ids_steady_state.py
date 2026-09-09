@@ -71,6 +71,8 @@ class VdsIdsSteadyStateTest(BaseTestObject):
         'Per-Capture Only',
         'None (Fully Automated)'
     ], param_index=3)
+    # 4. Auto Find Trigger
+    i2c_ui_definitions.add_cbx(label="Auto Find Trigger", contents=['Yes', 'No'], param_index=4)
 
     # LineEdits:
     # 1. Trigger Delta (V)
@@ -121,7 +123,7 @@ class VdsIdsSteadyStateTest(BaseTestObject):
         general_options=GeneralOptions(eload_type='CC', coupling='AC'),
         i2c_test_parameters=I2CTestParameters(
             params=[3.0, 1.0, 2.0, 25.0, 1.0, 0, 0, 0, 0, 0],
-            cbx_params=['CH1', 'Yes', 'Pre-Test Only']
+            cbx_params=['CH1', 'Yes', 'Pre-Test Only', 'Yes']
         ),
         unit_id="RE_05",
         test_mode="NORMAL",
@@ -215,22 +217,25 @@ class VdsIdsSteadyStateTest(BaseTestObject):
                     self.trigger_channel = int(c)
                     break
 
-        # Embed Images in Excel & User Prompts Mode
+        # Embed Images in Excel, User Prompts Mode, & Auto Find Trigger
         self.embed_images = True
         self.user_prompts = 'Pre-Test Only'
+        self.auto_find_trigger = True
 
-        if i2c_params and len(i2c_params.cbx_param) >= 4:
+        if i2c_params and len(i2c_params.cbx_param) >= 4 and i2c_params.cbx_param[1] not in ['Yes', 'No']:
             # Legacy 4-combobox layout: [Trigger, Probe, Embed, Prompts]
             if i2c_params.cbx_param[2]:
                 self.embed_images = (str(i2c_params.cbx_param[2]).strip() == 'Yes')
             if i2c_params.cbx_param[3]:
                 self.user_prompts = str(i2c_params.cbx_param[3]).strip()
         elif i2c_params and len(i2c_params.cbx_param) >= 2:
-            # New 3-combobox layout: [Trigger, Embed, Prompts]
+            # New layout: [Trigger, Embed, Prompts, Auto Find Trigger]
             if str(i2c_params.cbx_param[1]).strip() in ['Yes', 'No']:
                 self.embed_images = (str(i2c_params.cbx_param[1]).strip() == 'Yes')
                 if len(i2c_params.cbx_param) > 2 and i2c_params.cbx_param[2]:
                     self.user_prompts = str(i2c_params.cbx_param[2]).strip()
+                if len(i2c_params.cbx_param) > 3 and i2c_params.cbx_param[3]:
+                    self.auto_find_trigger = (str(i2c_params.cbx_param[3]).strip() == 'Yes')
 
         self.prompt_before_start = ('Pre-Test' in self.user_prompts)
         self.prompt_before_capture = ('Per-Capture' in self.user_prompts)
@@ -368,6 +373,7 @@ class VdsIdsSteadyStateTest(BaseTestObject):
             trigger_level = max_value
             sc.edge_trigger(channel, trigger_level, 'POS')
 
+            # check if it triggered within 3 seconds
             sc.run_single()
             sleep(1)
             trigger_status = sc.trigger_status()
@@ -390,7 +396,7 @@ class VdsIdsSteadyStateTest(BaseTestObject):
             # Decrease trigger level below to get the maximum trigger possible
             trigger_level -= 1 * trigger_delta
             sc.edge_trigger(channel, trigger_level, 'POS')
-            sleep(1)
+            sleep(6)
             return trigger_level
         except (TestStopped, TestSkipped):
             raise
@@ -704,11 +710,20 @@ class VdsIdsSteadyStateTest(BaseTestObject):
             self.estimated_time_s = 0
             self.status_update.emit(TestStatus.COMPLETE)
 
-    def test_loop(self):
-        """Main testing loop sweeping AC Line and DC Load"""
-        soak = self.soak_time
-        self.captured_records = []
+    def update_status_log(self, msg):
+        self.current_status_log = msg
+        self.update_test_list_text()
+        self.progress.emit(self.progress_pct)
 
+    def test_loop(self):
+        """Execute the steady-state capture test"""
+        soak = self.soak_time
+        self.prepare_test_conditions()
+
+        # Excel Row Counter
+        current_excel_row = 6
+
+        # Pre-test Oscilloscope setup prompt
         if self.prompt_before_start:
             prompt_msg = (
                 "================== OSCILLOSCOPE SETUP REMINDER ==================\n"
@@ -725,11 +740,11 @@ class VdsIdsSteadyStateTest(BaseTestObject):
         self.total_time, self.total_steps = self.estimate_remaining(0, 0, vin_delays=True)
         self.status_report(0, 0, vin_delays=True)
 
-        current_excel_row = 6
-
         for self.vin_index, self.vin_freq in enumerate(self.vin_list):
             vin_set = self.vin_freq[0]
             freq_set = self.vin_freq[1]
+
+            self.update_status_log(f"Setting Input {vin_set} VAC")
 
             # Set AC Source
             self.input_supply.set_voltage_with_coupling(voltage=vin_set, coupling=self.coupling)
@@ -751,8 +766,10 @@ class VdsIdsSteadyStateTest(BaseTestObject):
 
             # Line Soak
             if self.vin_index == 0:
+                self.update_status_log("Initial Soak...")
                 soak.do_initial_soak()
             else:
+                self.update_status_log("Line Soak...")
                 soak.do_soak_per_line()
 
             for iout_index, iout_level in enumerate(self.iout_list_A):
@@ -764,26 +781,35 @@ class VdsIdsSteadyStateTest(BaseTestObject):
                 self.status_report(self.vin_index, iout_index, vin_delays=False)
                 iout_A = float(f"{round(iout_level, 6):g}")
 
+                self.update_status_log(f"Setting Load {iout_A} A")
+
                 # Set Electronic Load
                 self.electronic_load.set_load(self.vout_V, iout_A, self.eload_type)
                 self.electronic_load.turn_on()
                 if iout_A == 0:
                     self.electronic_load.turn_off()
 
+                self.update_status_log(f"Load Soak...")
                 soak.do_soak_per_load()
                 sleep(self.settle_time)
 
                 # Loop for on-the-fly recapture at this operating point
                 while True:
-                    # Find optimal scope trigger level
-                    actual_trig_level = self.find_trigger(channel=self.trigger_channel, trigger_delta=self.trigger_delta)
+                    # Find optimal scope trigger level if enabled
+                    if self.auto_find_trigger:
+                        self.update_status_log("Sweeping Trigger Level...")
+                        actual_trig_level = self.find_trigger(channel=self.trigger_channel, trigger_delta=self.trigger_delta)
+                    else:
+                        actual_trig_level = self.oscilloscope.trigger_level(self.trigger_channel) or 0.0
+
+                    self.update_status_log("Waiting for user prompt...")
 
                     if self.prompt_before_capture:
                         capture_prompt = (
                             f"Oscilloscope Waveform Confirmation:\n\n"
                             f"Operating Point: {vin_set:g} VAC, {iout_A:g} A\n"
                             f"Unit ID: {self.unit_id} | Mode: {self.test_mode}\n"
-                            f"Found Trigger Level: CH{self.trigger_channel} @ {actual_trig_level:.2f} V\n"
+                            f"Trigger Level: CH{self.trigger_channel} @ {actual_trig_level:.2f} V\n"
                             f"Active Channels: {self.probe_setup}\n\n"
                             "Review waveform on oscilloscope screen.\n"
                             "Choose an action:"
@@ -968,6 +994,8 @@ class VdsIdsSteadyStateTest(BaseTestObject):
 
         text = f"{self.title}: {round(self.vout_V, 3):g}V, {round(self.i_max_A, 3):g}A\n"
         text += f"Trigger: CH{self.trigger_channel} (Delta: {self.trigger_delta:g}V)\n"
+        if getattr(self, 'current_status_log', None):
+            text += f"Status: {self.current_status_log}\n"
         text += f"Estimated Time: {self.estimated_time_txt}  {self.progress_txt}"
         self.test_list_text = text
         return text

@@ -1617,7 +1617,10 @@ class AddTestPageHandler(QObject):
             zip(cbx_frames, cbx_labels, cbx_texts, cbx_list, cbx_vis_flags, cbx_contents):
             frame.setVisible(flag)
             label.setText(text)
+            cbx.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
             cbx.setMaximumWidth(16777215)
+            cbx.setMinimumWidth(120)
+            cbx.setSizeAdjustPolicy(QComboBox.AdjustToContents)
             cbx.clear()
             if not content is None:
                 cbx.addItems(content)
