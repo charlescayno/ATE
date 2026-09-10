@@ -126,7 +126,6 @@ class VdsIdsSteadyStateTest(BaseTestObject):
             cbx_params=['CH1', 'Yes', 'None (Fully Automated)', 'No']
         ),
         unit_id="RE_05",
-        test_mode="NORMAL",
         ambient_temp=25.0,
         scope_channels={
             1: {'enabled': True, 'name': 'Primary Vds'},
@@ -185,8 +184,7 @@ class VdsIdsSteadyStateTest(BaseTestObject):
         self.nominal_load_current_A = self.test_conditions.nominal_load_current_A
         self.max_load_current_A = getattr(self.test_conditions, 'max_load_current_A', self.nominal_load_current_A)
         self.unit_id = getattr(self.test_conditions, 'unit_id', 'RE_05')
-        self.test_mode = getattr(self.test_conditions, 'test_mode', 'NORMAL')
-
+        
         # Scope Channels (4-channel matrix)
         self.scope_channels = getattr(self.test_conditions, 'scope_channels', None)
         if not self.scope_channels:
@@ -415,7 +413,7 @@ class VdsIdsSteadyStateTest(BaseTestObject):
                 pass
         if self.electronic_load is not None:
             for _ in range(times):
-                if hasattr(self.electronic_load, 'channel'):
+                if hasattr(self.electronic_load, 'channel') and isinstance(self.electronic_load.channel, (dict, list)):
                     for ch in range(1, len(self.electronic_load.channel) + 1):
                         try:
                             self.electronic_load.channel[ch].short_on()
@@ -599,7 +597,7 @@ class VdsIdsSteadyStateTest(BaseTestObject):
         self.ws['B2'].font = CellFont(size=14, bold=True, color="1F497D")
 
         info_text = (
-            f"Unit ID: {self.unit_id} | Test Mode: {self.test_mode} | Ambient Temp: {self.ambient_temp:g}\u00b0C | "
+            f"Unit ID: {self.unit_id} | Ambient Temp: {self.ambient_temp:g}\u00b0C | "
             f"Nominal Vout: {self.vout_V:g}V | Nominal Iout: {self.nominal_load_current_A:g}A | Max Iout: {self.i_max_A:g}A | Probe Config: {self.probe_setup}"
         )
         self.ws['B3'] = info_text
@@ -727,7 +725,7 @@ class VdsIdsSteadyStateTest(BaseTestObject):
         if self.prompt_before_start:
             prompt_msg = (
                 "================== OSCILLOSCOPE SETUP REMINDER ==================\n"
-                f"Unit ID: {self.unit_id} | Test Mode: {self.test_mode} | Ambient Temp: {self.ambient_temp:g}\u00b0C\n"
+                f"Unit ID: {self.unit_id} | Ambient Temp: {self.ambient_temp:g}\u00b0C\n"
                 f"Nominal Ratings: {self.vout_V:g} V / {self.nominal_load_current_A:g} A (Max: {self.i_max_A:g} A)\n\n"
                 "1. Load the correct .DFL file into the oscilloscope.\n"
                 f"2. Probe Configuration: {self.probe_setup}\n"
@@ -800,7 +798,13 @@ class VdsIdsSteadyStateTest(BaseTestObject):
                         self.update_status_log("Sweeping Trigger Level...")
                         actual_trig_level = self.find_trigger(channel=self.trigger_channel, trigger_delta=self.trigger_delta)
                     else:
-                        actual_trig_level = self.oscilloscope.trigger_level(self.trigger_channel) or 0.0
+                        if hasattr(self.oscilloscope, 'trigger_level') and callable(getattr(self.oscilloscope, 'trigger_level')):
+                            try:
+                                actual_trig_level = self.oscilloscope.trigger_level(self.trigger_channel) or 0.0
+                            except TypeError:
+                                actual_trig_level = 0.0 # Some scope classes have a setter but no getter
+                        else:
+                            actual_trig_level = 0.0
 
                     self.update_status_log("Waiting for user prompt...")
 
@@ -808,7 +812,7 @@ class VdsIdsSteadyStateTest(BaseTestObject):
                         capture_prompt = (
                             f"Oscilloscope Waveform Confirmation:\n\n"
                             f"Operating Point: {vin_set:g} VAC, {iout_A:g} A\n"
-                            f"Unit ID: {self.unit_id} | Mode: {self.test_mode}\n"
+                            f"Unit ID: {self.unit_id}\n"
                             f"Trigger Level: CH{self.trigger_channel} @ {actual_trig_level:.2f} V\n"
                             f"Active Channels: {self.probe_setup}\n\n"
                             "Review waveform on oscilloscope screen.\n"
@@ -866,21 +870,15 @@ class VdsIdsSteadyStateTest(BaseTestObject):
                             
                     efficiency = (po_W / pin_W * 100.0) if pin_W > 0 else 0.0
 
-                    # Save Screenshot: {unit_id}_{vin}VAC_{test_mode}_Io_{iout}A.png
+                    # Save Screenshot: {unit_id}_{vin}VAC_Io_{iout}A.png
                     prefix = f"{self.unit_id}_" if self.unit_id else ""
-                    mode_str = f"_{self.test_mode}" if self.test_mode else ""
+                    mode_str = ""
                     img_filename = f"{prefix}{vin_set:g}VAC{mode_str}_Io_{iout_A:g}A.png"
                     img_path = os.path.join(self.waveform_filepath, img_filename)
                     try:
                         self.oscilloscope.get_screenshot(img_filename, self.waveform_filepath)
                     except Exception as e:
                         print(f"[Warning] Failed to capture oscilloscope screenshot {img_filename}: {e}")
-
-                    # Discharge Output if configured
-                    if self.discharge_pulses > 0:
-                        self.discharge_output(self.discharge_pulses)
-                        self.input_supply.turn_on()
-                        sleep(1)
 
                     # Prepare row data
                     row_data = [
@@ -1017,8 +1015,7 @@ class VdsIdsSteadyStateTest(BaseTestObject):
             'NOMINAL_LOAD_CURRENT_A': self.test_conditions.nominal_load_current_A,
             'MAX_LOAD_CURRENT_A': self.test_conditions.max_load_current_A,
             'UNIT_ID': getattr(self, 'unit_id', getattr(self.test_conditions, 'unit_id', 'RE_05')),
-            'TEST_MODE': getattr(self, 'test_mode', getattr(self.test_conditions, 'test_mode', 'NORMAL')),
-            'AMBIENT_TEMP': getattr(self, 'ambient_temp', getattr(self.test_conditions, 'ambient_temp', 25.0)),
+                        'AMBIENT_TEMP': getattr(self, 'ambient_temp', getattr(self.test_conditions, 'ambient_temp', 25.0)),
             'LINE_RANGE_name': self.test_conditions.line_range.name,
             'LINE_RANGE_vin_freq': self.test_conditions.line_range.vin_freq,
             'LINE_RANGE_custom': self.test_conditions.line_range.custom,
@@ -1080,8 +1077,7 @@ class VdsIdsSteadyStateTest(BaseTestObject):
                 cbx_params=i2c_cbx_params),
             name=test_item_dict['NAME'],
             unit_id=test_item_dict.get('UNIT_ID', 'RE_05'),
-            test_mode=test_item_dict.get('TEST_MODE', 'NORMAL'),
-            ambient_temp=test_item_dict.get('AMBIENT_TEMP', 25.0),
+                        ambient_temp=test_item_dict.get('AMBIENT_TEMP', 25.0),
             scope_channels={
                 ch: test_item_dict.get('SCOPE_CHANNELS', {}).get(ch, test_item_dict.get('SCOPE_CHANNELS', {}).get(str(ch), {
                     'enabled': (ch in [1, 2]),

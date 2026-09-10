@@ -110,6 +110,16 @@ class AddTestPageHandler(QObject):
         self.electronic_load = self.equipment.electronic_load_1
         
     def bind_ui_elements(self):
+        # Insert Unit ID input at the top of the test conditions frame
+        self.frame_unit_id = QFrame()
+        self.layout_unit_id = QHBoxLayout(self.frame_unit_id)
+        self.layout_unit_id.setContentsMargins(0, 0, 0, 0)
+        self.label_unit_id = QLabel("Unit ID:")
+        self.lineedit_unit_id = QLineEdit("RE_05")
+        self.layout_unit_id.addWidget(self.label_unit_id)
+        self.layout_unit_id.addWidget(self.lineedit_unit_id)
+        self.ui.verticalLayout_46.insertWidget(0, self.frame_unit_id)
+
         self.bind_page_buttons()
         self.bind_ui_change_events()
 
@@ -2526,8 +2536,6 @@ class AddTestPageHandler(QObject):
                 if hasattr(self, 'lineedit_add_tests_max_output_current'):
                     max_current = getattr(selected_test_conditions, 'max_load_current_A', nominal_output_current)
                     self.lineedit_add_tests_max_output_current.setText(f'{round(max_current,6):g}')
-                if hasattr(self, 'cbx_test_mode'):
-                    self.cbx_test_mode.setCurrentText(getattr(selected_test_conditions, 'test_mode', 'NORMAL'))
                 if hasattr(self, 'set_scope_channels_to_ui'):
                     ch_data = getattr(selected_test_conditions, 'scope_channels', None)
                     if ch_data:
@@ -2624,8 +2632,6 @@ class AddTestPageHandler(QObject):
                 self.ui.lineedit_add_tests_nominal_output_current.setText(f"{self.selected_test_class.tc_default.nominal_load_current_A:g}")
                 if hasattr(self, 'lineedit_add_tests_max_output_current'):
                     self.lineedit_add_tests_max_output_current.setText(f"{getattr(self.selected_test_class.tc_default, 'max_load_current_A', self.selected_test_class.tc_default.nominal_load_current_A):g}")
-                if hasattr(self, 'cbx_test_mode'):
-                    self.cbx_test_mode.setCurrentText(getattr(self.selected_test_class.tc_default, 'test_mode', 'NORMAL'))
                 if hasattr(self, 'reset_scope_channels'):
                     self.reset_scope_channels()
             else:
@@ -3727,7 +3733,6 @@ class AddTestPageHandler(QObject):
                     max_load_current_A = nominal_load_current_A
 
                 unit_id = self.lineedit_unit_id.text() if hasattr(self, 'lineedit_unit_id') and self.lineedit_unit_id.isVisible() and self.lineedit_unit_id.text() else 'RE_05'
-                test_mode = self.cbx_test_mode.currentText() if hasattr(self, 'cbx_test_mode') and self.cbx_test_mode.isVisible() and self.cbx_test_mode.currentText() else 'NORMAL'
                 scope_channels = self.get_scope_channels_from_ui() if hasattr(self, 'get_scope_channels_from_ui') and hasattr(self, 'frame_scope_channels') and self.frame_scope_channels.isVisible() else None
 
                 test_conditions = TestConditions(

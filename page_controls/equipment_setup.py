@@ -231,6 +231,29 @@ class EquipmentSetupPageHandler():
 
         Automatically populate the fields in the UI with the available equipment        
         """
+        # If we are currently in Simulation Mode, attempt to instantiate the real hardware handler
+        if type(self.equipment).__name__ == "SimulatedEquipmentHandler":
+            try:
+                from equipment.handler import EquipmentHandler
+                new_handler = EquipmentHandler(self.parent)
+                self.parent.equipment = new_handler
+                self.equipment = self.parent.equipment
+                self.parent.is_simulation_mode = False
+                
+                # Revert window title back to normal
+                app_title = 'PI ATE & USB-PD Tester'
+                app_desc = 'Power Integrations'
+                self.parent.setWindowTitle(app_title)
+                try:
+                    from ui.ui_functions import UIFunctions
+                    UIFunctions.labelTitle(self.parent, app_title)
+                    UIFunctions.labelDescription(self.parent, app_desc)
+                except Exception:
+                    pass
+                
+            except Exception as e:
+                print(f"[Warning] Could not initialize physical EquipmentHandler during detection: {e}")
+
         # Check all equipment in all interfaces
         # Automatically populate the AC source, Power Meters, Eloads 
         # with the available equipment

@@ -33,6 +33,20 @@ class OscilloscopeBaseClass(Equipment):
     def get_measure(self, param):
         pass
 
+    def get_measure_all(self):
+        result = []
+        for i in range(1, 9):
+            try:
+                labels, values = self.get_measure(i)
+                result.append({
+                    "channel": i,
+                    "labels": labels,
+                    "values": values
+                })
+            except Exception:
+                pass
+        return result
+
     # This ends the common methods
 
     def channel_settings(self):
