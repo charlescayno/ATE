@@ -735,6 +735,57 @@ class VdsIdsSteadyStateTest(BaseTestObject):
             )
             self.create_message_popup("Oscilloscope Setup Verification", prompt_msg, MessageType.INFO)
 
+        # Update headers based on actual scope measurements now that setup is complete
+        try:
+            configured_labels = []
+            all_meas = self.oscilloscope.get_measure_all()
+            if all_meas:
+                for item in all_meas:
+                    labels = item.get('labels')
+                    ch_idx = item.get('channel', 1)
+                    if labels and len(labels) > 0:
+                        for lbl in labels:
+                            ch_info = getattr(self, 'scope_channels', {}).get(ch_idx, {})
+                            ch_name = ch_info.get('name', f"CH{ch_idx}")
+                            col_label = f"{ch_name} {lbl}" if ch_name else f"CH{ch_idx} {lbl}"
+                            configured_labels.append(col_label)
+            
+            if not configured_labels and hasattr(self, 'scope_channels') and self.scope_channels:
+                for ch_num, ch_data in sorted(self.scope_channels.items()):
+                    if ch_data.get('enabled', False):
+                        ch_name = ch_data.get('name', f"CH{ch_num}")
+                        configured_labels.append(f"{ch_name} Max")
+            
+            if not configured_labels:
+                configured_labels.extend(['Vds Max (V)', 'Ids Max (A)'])
+            
+            # Rebuild headers
+            base_headers = [
+                'Vin Set (V)', 'Freq (Hz)', 'Vin Meas (V)', 'Iin (mA)', 'Pin (W)', 'PF', '%THD',
+                'Vo Set (V)', 'Vo Meas (V)', 'Io (A)', 'Po (W)', 'Efficiency',
+                'Trig Ch', 'Trig Level (V)'
+            ]
+            self.header_list = base_headers + configured_labels + ['Waveform File']
+            
+            # Re-write the header row in Excel
+            self.wb = openpyxl.load_workbook(self.data_file_path)
+            self.ws = self.wb[self.sheet_name]
+            for col_idx in range(2, 50): # Clear previous headers
+                self.ws.cell(row=5, column=col_idx, value="")
+            for col_idx, header in enumerate(self.header_list, start=2):
+                cell = self.ws.cell(row=5, column=col_idx, value=header)
+                cell.font = CellFont(bold=True, color="FFFFFF")
+                cell.fill = PatternFill(start_color="2952A3", end_color="2952A3", fill_type="solid")
+                cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+            self.wb.save(self.data_file_path)
+            self.wb.close()
+            
+            # Update UI table
+            self.test_data_table.header = self.header_list
+        except Exception as e:
+            print(f"[Warning] Failed to update headers from scope: {e}")
+
+
         self.total_time, self.total_steps = self.estimate_remaining(0, 0, vin_delays=True)
         self.status_report(0, 0, vin_delays=True)
 

@@ -1733,7 +1733,7 @@ class AddTestPageHandler(QObject):
         
         # Unit ID Visibility (only for Steady-State)
         if hasattr(self, 'frame_unit_id'):
-            self.frame_unit_id.setVisible(test_class.name == 'Steady-State Waveform Capture')
+            self.frame_unit_id.setVisible(test_class.__name__ == 'TestVdsIdsSteadyState')
 
         # Test Time Parameters
         ui.label_add_tests_testtime_param1.setText(ui_def.test_time_param1_label)
