@@ -131,12 +131,20 @@ class RohdeSchwarzOscilloscope(OscilloscopeBaseClass):
         values = []
         self.write(f'MEAS{channel}:ARN ON')
 
-        for item in self.write(f'MEAS{channel}:ARES?').split(','):
-            label, value = item.split(':')
-            labels.append(label.strip())
-            values.append(float(value.strip()))  
+        res = self.write(f'MEAS{channel}:ARES?')
+        if not res:
+            return None, None
+
+        for item in res.split(','):
+            if ':' in item:
+                label, value = item.split(':')
+                labels.append(label.strip())
+                try:
+                    values.append(float(value.strip()))
+                except ValueError:
+                    values.append(None)
         
-        return values[0]
+        return labels, values
 
     def get_screenshot(
             self, 
@@ -152,7 +160,11 @@ class RohdeSchwarzOscilloscope(OscilloscopeBaseClass):
         self.write("HCOP:DEV:LANG PNG")
         self.write("HCOP:DEV:INV ON")
         self.write("MMEM:NAME \'C:\\HCOPY.png\'")
-        self.write("HCOP:IMMediate; *OPC?")
+        self.write("HCOP:IMMediate")
+        try:
+            self.device.query("*OPC?")
+        except Exception:
+            pass
 
         self.device.write("MMEM:DATA? \'C:\\HCOPY.png\'")
         raw_image = self.device.read_raw()

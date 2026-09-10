@@ -851,9 +851,9 @@ class VdsIdsSteadyStateTest(BaseTestObject):
                     else:
                         if hasattr(self.oscilloscope, 'trigger_level') and callable(getattr(self.oscilloscope, 'trigger_level')):
                             try:
-                                actual_trig_level = self.oscilloscope.trigger_level(self.trigger_channel) or 0.0
-                            except TypeError:
-                                actual_trig_level = 0.0 # Some scope classes have a setter but no getter
+                                actual_trig_level = float(self.oscilloscope.device.query(f'TRIG1:LEV{self.trigger_channel}?'))
+                            except Exception:
+                                actual_trig_level = 0.0
                         else:
                             actual_trig_level = 0.0
 
@@ -905,7 +905,7 @@ class VdsIdsSteadyStateTest(BaseTestObject):
                             vin_meas = self.power_meter_source.voltage or vin_set
                             iin_mA = (self.power_meter_source.current or 0.0) * 1000
                             pin_W = self.power_meter_source.power or 0.0
-                            pf = self.power_meter_source.power_factor or 1.0
+                            pf = getattr(self.power_meter_source, 'pf', getattr(self.power_meter_source, 'power_factor', 1.0))
                             thd_pct = getattr(self.power_meter_source, 'thd', getattr(self.power_meter_source, 'thd_pct', 0.0))
                         except Exception:
                             pass
@@ -1026,8 +1026,8 @@ class VdsIdsSteadyStateTest(BaseTestObject):
 
             self.wb.save(self.data_file_path)
             self.wb.close()
-        except Exception:
-            print("Error embedding waveforms into Excel:")
+        except Exception as e:
+            print(f"Error embedding waveforms into Excel: {e}")
             print(traceback.format_exc())
 
     def with_waveform_capture(self):
