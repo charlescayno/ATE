@@ -3750,7 +3750,6 @@ class AddTestPageHandler(QObject):
                     i2c_test_parameters = i2c_test_parameters,
                     name=TestTypes[test_type_index].title,
                     unit_id = unit_id,
-                    test_mode = test_mode,
                     scope_channels = scope_channels
                 )
         
