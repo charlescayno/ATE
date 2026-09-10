@@ -110,15 +110,24 @@ class AddTestPageHandler(QObject):
         self.electronic_load = self.equipment.electronic_load_1
         
     def bind_ui_elements(self):
-        # Insert Unit ID input at the top of the test conditions frame
+        # Insert Unit ID input under Test Type
         self.frame_unit_id = QFrame()
+        self.frame_unit_id.setStyleSheet("QFrame { background-color: rgb(39, 44, 54); border-radius: 5px; }")
+        self.frame_unit_id.setMinimumSize(0, 55)
+        self.frame_unit_id.setMaximumSize(16777215, 55)
         self.layout_unit_id = QHBoxLayout(self.frame_unit_id)
-        self.layout_unit_id.setContentsMargins(0, 0, 0, 0)
+        self.layout_unit_id.setContentsMargins(15, 0, 15, 0)
         self.label_unit_id = QLabel("Unit ID:")
+        self.label_unit_id.setStyleSheet("background-color: transparent;")
         self.lineedit_unit_id = QLineEdit("00")
+        self.lineedit_unit_id.setMinimumSize(0, 40)
+        self.lineedit_unit_id.setMaximumSize(100, 40)
+        self.lineedit_unit_id.setStyleSheet("QLineEdit { background-color: rgb(27, 29, 35); border-radius: 5px; padding: 5px; }")
         self.layout_unit_id.addWidget(self.label_unit_id)
         self.layout_unit_id.addWidget(self.lineedit_unit_id)
-        self.ui.verticalLayout_78.insertWidget(0, self.frame_unit_id)
+        
+        # Insert below the Test Type dropdown (verticalLayout_47)
+        self.ui.verticalLayout_47.insertWidget(1, self.frame_unit_id)
 
         self.bind_page_buttons()
         self.bind_ui_change_events()
