@@ -351,7 +351,6 @@ class MainWindow(QMainWindow):
         self.msg_box.setText(message)
         self.msg_box.setWindowTitle(title)
         self.msg_box.setStandardButtons(QMessageBox.Ok)
-        from PySide2.QtCore import Qt
         self.msg_box.setWindowFlags(self.msg_box.windowFlags() | Qt.WindowStaysOnTopHint)
         self.msg_box.exec_()
 
