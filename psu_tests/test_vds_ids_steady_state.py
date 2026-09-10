@@ -388,9 +388,15 @@ class VdsIdsSteadyStateTest(BaseTestObject):
         """
         sc = self.oscilloscope
         sc.run_single()
-        sc.trigger_mode('AUTO')
+        if hasattr(sc, 'trigger_mode'):
+            sc.trigger_mode('AUTO')
+        elif hasattr(sc, 'set_trigger_mode'):
+            sc.set_trigger_mode('AUTO')
         sleep(1)
-        sc.trigger_mode('NORM')
+        if hasattr(sc, 'trigger_mode'):
+            sc.trigger_mode('NORM')
+        elif hasattr(sc, 'set_trigger_mode'):
+            sc.set_trigger_mode('NORM')
 
         try:
             # Get initial peak-to-peak measurement value
