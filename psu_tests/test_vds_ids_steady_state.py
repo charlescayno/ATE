@@ -25,6 +25,44 @@ from equipment.handler import AC_SOURCE_COUPLING
 # Re-alias Font after test_object_imports wildcard import (data_process shadows Font with openpyxl.drawing.text.Font)
 Font = CellFont
 
+
+class CapturePromptHelper(QObject):
+    show_prompt_sig = Signal(str, str)
+    def __init__(self):
+        super().__init__()
+        self.result = "CAPTURE"
+        from PySide2.QtCore import Qt
+        self.show_prompt_sig.connect(self.show_dialog, Qt.BlockingQueuedConnection)
+
+    @Slot(str, str)
+    def show_dialog(self, title, message):
+        from PySide2.QtWidgets import QMessageBox
+        from PySide2.QtCore import Qt
+        msg_box = QMessageBox()
+        msg_box.setWindowFlags(msg_box.windowFlags() | Qt.WindowStaysOnTopHint)
+        msg_box.setWindowTitle(title)
+        msg_box.setText(message)
+        msg_box.setIcon(QMessageBox.Question)
+
+        btn_capture = msg_box.addButton("Capture & Proceed", QMessageBox.AcceptRole)
+        btn_recapture = msg_box.addButton("Recapture / Retrigger", QMessageBox.ActionRole)
+        btn_skip = msg_box.addButton("Skip Point", QMessageBox.DestructiveRole)
+        btn_stop = msg_box.addButton("Stop Test", QMessageBox.RejectRole)
+        msg_box.setDefaultButton(btn_capture)
+
+        msg_box.exec_()
+        clicked = msg_box.clickedButton()
+        if clicked == btn_capture:
+            self.result = "CAPTURE"
+        elif clicked == btn_recapture:
+            self.result = "RECAPTURE"
+        elif clicked == btn_skip:
+            self.result = "SKIP"
+        elif clicked == btn_stop:
+            self.result = "STOP"
+        else:
+            self.result = "CAPTURE"
+
 class VdsIdsSteadyStateTest(BaseTestObject):
     """
     Steady-State Waveform Capture Test.
@@ -123,7 +161,7 @@ class VdsIdsSteadyStateTest(BaseTestObject):
         general_options=GeneralOptions(eload_type='CC', coupling='AC'),
         i2c_test_parameters=I2CTestParameters(
             params=[3.0, 1.0, 2.0, 25.0, 1.0, 0, 0, 0, 0, 0],
-            cbx_params=['CH1', 'Yes', 'None (Fully Automated)', 'No']
+            cbx_params=['CH1', 'Yes', 'Pre-Test & Per-Capture', 'No']
         ),
         unit_id="00",
         ambient_temp=25.0,
@@ -217,7 +255,7 @@ class VdsIdsSteadyStateTest(BaseTestObject):
 
         # Embed Images in Excel, User Prompts Mode, & Auto Find Trigger
         self.embed_images = True
-        self.user_prompts = 'None (Fully Automated)'
+        self.user_prompts = 'Pre-Test & Per-Capture'
         self.auto_find_trigger = False
 
         if i2c_params and len(i2c_params.cbx_param) >= 4 and i2c_params.cbx_param[1] not in ['Yes', 'No']:
@@ -456,34 +494,17 @@ class VdsIdsSteadyStateTest(BaseTestObject):
             return "CAPTURE"
 
         try:
-            from PySide2.QtWidgets import QMessageBox, QApplication
+            from PySide2.QtWidgets import QApplication
             app = QApplication.instance()
             if app:
-                msg_box = QMessageBox()
-                msg_box.setWindowTitle(title)
-                msg_box.setText(message)
-                msg_box.setIcon(QMessageBox.Question)
-
-                btn_capture = msg_box.addButton("Capture & Proceed", QMessageBox.AcceptRole)
-                btn_recapture = msg_box.addButton("Recapture / Retrigger", QMessageBox.ActionRole)
-                btn_skip = msg_box.addButton("Skip Point", QMessageBox.DestructiveRole)
-                btn_stop = msg_box.addButton("Stop Test", QMessageBox.RejectRole)
-                msg_box.setDefaultButton(btn_capture)
-
-                msg_box.exec_()
-                clicked = msg_box.clickedButton()
-                if clicked == btn_capture:
-                    return "CAPTURE"
-                elif clicked == btn_recapture:
-                    return "RECAPTURE"
-                elif clicked == btn_skip:
-                    return "SKIP"
-                elif clicked == btn_stop:
-                    return "STOP"
+                helper = CapturePromptHelper()
+                helper.moveToThread(app.thread())
+                helper.show_prompt_sig.emit(title, message)
+                return helper.result
+            return "CAPTURE"
         except Exception as e:
-            print(f"[Warning] Failed to show capture dialog: {e}")
-
-        return "CAPTURE"
+            print(f"Error displaying capture prompt: {e}")
+            return "CAPTURE"
 
     def query_active_scope_measurements(self) -> dict:
         """
