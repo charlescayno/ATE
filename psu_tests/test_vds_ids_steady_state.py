@@ -729,6 +729,8 @@ class VdsIdsSteadyStateTest(BaseTestObject):
                 pass
             self.status_update.emit(TestStatus.FAILED)
         else:
+            if getattr(self, 'discharge_pulses', 0) > 0:
+                self.discharge_output(self.discharge_pulses)
             self.input_supply_eload_discharge_sequence()
             if self.embed_images:
                 self.embed_waveforms_in_excel()
@@ -905,10 +907,6 @@ class VdsIdsSteadyStateTest(BaseTestObject):
                             continue
                         elif action == "SKIP":
                             print(f"[SKIP] Operator skipped capture at {vin_set}VAC, {iout_A}A.")
-                            if self.discharge_pulses > 0:
-                                self.discharge_output(self.discharge_pulses)
-                                self.input_supply.turn_on()
-                                sleep(1)
                             break
                         elif action == "STOP":
                             raise TestStopped
