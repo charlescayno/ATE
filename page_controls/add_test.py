@@ -115,10 +115,10 @@ class AddTestPageHandler(QObject):
         self.layout_unit_id = QHBoxLayout(self.frame_unit_id)
         self.layout_unit_id.setContentsMargins(0, 0, 0, 0)
         self.label_unit_id = QLabel("Unit ID:")
-        self.lineedit_unit_id = QLineEdit("RE_05")
+        self.lineedit_unit_id = QLineEdit("00")
         self.layout_unit_id.addWidget(self.label_unit_id)
         self.layout_unit_id.addWidget(self.lineedit_unit_id)
-        self.ui.verticalLayout_46.insertWidget(0, self.frame_unit_id)
+        self.ui.verticalLayout_78.insertWidget(0, self.frame_unit_id)
 
         self.bind_page_buttons()
         self.bind_ui_change_events()
@@ -1730,6 +1730,10 @@ class AddTestPageHandler(QObject):
 
         # Frames Visibility
         ui.frame_add_tests_timing_params.setVisible(ui_def.test_time_params_frame_visible)
+        
+        # Unit ID Visibility (only for Steady-State)
+        if hasattr(self, 'frame_unit_id'):
+            self.frame_unit_id.setVisible(test_class.name == 'Steady-State Waveform Capture')
 
         # Test Time Parameters
         ui.label_add_tests_testtime_param1.setText(ui_def.test_time_param1_label)
@@ -3732,7 +3736,7 @@ class AddTestPageHandler(QObject):
                 else:
                     max_load_current_A = nominal_load_current_A
 
-                unit_id = self.lineedit_unit_id.text() if hasattr(self, 'lineedit_unit_id') and self.lineedit_unit_id.isVisible() and self.lineedit_unit_id.text() else 'RE_05'
+                unit_id = self.lineedit_unit_id.text() if hasattr(self, 'lineedit_unit_id') and self.lineedit_unit_id.isVisible() and self.lineedit_unit_id.text() else '00'
                 scope_channels = self.get_scope_channels_from_ui() if hasattr(self, 'get_scope_channels_from_ui') and hasattr(self, 'frame_scope_channels') and self.frame_scope_channels.isVisible() else None
 
                 test_conditions = TestConditions(

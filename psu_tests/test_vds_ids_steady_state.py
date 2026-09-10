@@ -125,7 +125,7 @@ class VdsIdsSteadyStateTest(BaseTestObject):
             params=[3.0, 1.0, 2.0, 25.0, 1.0, 0, 0, 0, 0, 0],
             cbx_params=['CH1', 'Yes', 'None (Fully Automated)', 'No']
         ),
-        unit_id="RE_05",
+        unit_id="00",
         ambient_temp=25.0,
         scope_channels={
             1: {'enabled': True, 'name': 'Primary Vds'},
