@@ -122,29 +122,44 @@ class RohdeSchwarzOscilloscope(OscilloscopeBaseClass):
 
         return state
 
+    def get_measure_all(self):
+        result_dict = {}
+        for slot in range(1, 9):
+            try:
+                enab = self.write(f"MEASurement{slot}:ENABle?")
+                if enab and enab.strip() == '1':
+                    source = self.write(f"MEASurement{slot}:SOURce?") # e.g. C1W1
+                    import re
+                    match = re.search(r'C(\d)', source)
+                    if match:
+                        ch = int(match.group(1))
+                        main_type = self.write(f"MEASurement{slot}:MAIN?")
+                        val = self.write(f"MEASurement{slot}:RESult:ACTual?")
+                        if ch not in result_dict:
+                            result_dict[ch] = {"labels": [], "values": []}
+                        result_dict[ch]["labels"].append(main_type)
+                        try:
+                            result_dict[ch]["values"].append(float(val))
+                        except Exception:
+                            result_dict[ch]["values"].append(None)
+            except Exception:
+                continue
+
+        result = []
+        for ch, data in result_dict.items():
+            result.append({
+                "channel": ch,
+                "labels": data["labels"],
+                "values": data["values"]
+            })
+        return result
+
     def get_measure(self, channel=1):
-        channel_state = self.write(f'MEAS{channel}:ENAB?')
-        if channel_state == '0':
-            return None, None
-        
-        labels = []
-        values = []
-        self.write(f'MEAS{channel}:ARN ON')
-
-        res = self.write(f'MEAS{channel}:ARES?')
-        if not res:
-            return None, None
-
-        for item in res.split(','):
-            if ':' in item:
-                label, value = item.split(':')
-                labels.append(label.strip())
-                try:
-                    values.append(float(value.strip()))
-                except ValueError:
-                    values.append(None)
-        
-        return labels, values
+        all_meas = self.get_measure_all()
+        for item in all_meas:
+            if item.get("channel") == channel:
+                return item.get("labels"), item.get("values")
+        return None, None
 
     def get_screenshot(
             self, 

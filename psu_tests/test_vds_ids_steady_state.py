@@ -773,8 +773,8 @@ class VdsIdsSteadyStateTest(BaseTestObject):
             if custom_meas:
                 try:
                     self.oscilloscope.set_channel_measurements(custom_meas)
-                    from time import sleep
-                    sleep(1)
+                    import time
+                    time.sleep(1)
                 except Exception as e:
                     print(f"[Warning] Failed to set custom measurements on scope: {e}")
 
