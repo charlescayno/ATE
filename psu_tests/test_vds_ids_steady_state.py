@@ -1103,12 +1103,6 @@ class VdsIdsSteadyStateTest(BaseTestObject):
                     # Append measurement values matching headers
                     for h in self.header_list[14:-1]:
                         val = scope_measurements.get(h)
-                        if val is None:
-                            # Try prefix or channel match
-                            for mk, mv in scope_measurements.items():
-                                if h.startswith(mk) or mk.startswith(h.split()[0]):
-                                    val = mv
-                                    break
                         row_data.append(val if val is not None else "N/A")
 
                     row_data.append(img_path)
