@@ -255,13 +255,7 @@ class RohdeSchwarzOscilloscope(OscilloscopeBaseClass):
         
     def measure(self, channel:int, measure:str):
         """
-        HIGH | LOW | AMPLitude | MAXimum | MINimum | PDELta |
-        MEAN | RMS | STDDev | POVershoot | NOVershoot | AREA |
-        RTIMe | FTIMe | PPULse | NPULse | PERiod | FREQuency |
-        PDCYcle | NDCYcle | CYCarea | CYCMean | CYCRms |
-        CYCStddev | PULCnt | DELay | PHASe | BWIDth | PSWitching |
-        NSWitching | PULSetrain | EDGecount | SHT | SHR | DTOTrigger |
-        PROBemeter | SLERising | SLEFalling
+        HIGH | LOW | AMPLitude | MAXimum | MINimum | PDELta | ...
         """
         self.measure_source(channel)
         self.measure_off(channel)
@@ -269,6 +263,28 @@ class RohdeSchwarzOscilloscope(OscilloscopeBaseClass):
         for meas_type in measure_list:
             self.write(f"MEASurement{channel}:MAIN {meas_type}")
             self.write(f"MEASurement{channel} ON")
+
+    def set_channel_measurements(self, channel_measurements: dict):
+        """
+        Configure up to 8 measurement slots for multiple channels.
+        channel_measurements format: {1: ['MAXimum', 'MINimum'], 2: ['RMS', 'PDELta']}
+        """
+        # Turn off all 8 measurement slots first
+        for i in range(1, 9):
+            self.write(f"MEASurement{i}:ENABle OFF")
+            
+        slot = 1
+        for channel, meas_list in channel_measurements.items():
+            if not meas_list:
+                continue
+            for meas_type in meas_list:
+                if slot > 8:
+                    break
+                self.write(f"MEASurement{slot}:SOURce C{channel}W1")
+                self.write(f"MEASurement{slot}:CATegory AMPTime")
+                self.write(f"MEASurement{slot}:MAIN {meas_type}")
+                self.write(f"MEASurement{slot}:ENABle ON")
+                slot += 1
     def measure_enable(self, channel, state='ON'):
         self.write(f"MEASurement{channel}:ENABle {state}")
 

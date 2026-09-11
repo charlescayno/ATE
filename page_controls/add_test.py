@@ -1916,8 +1916,13 @@ class AddTestPageHandler(QObject):
                 self.ch1_lineedit.setFont(ui.lineedit_add_tests_nominal_output_voltage.font())
                 self.ch1_lineedit.setStyleSheet(ui.lineedit_add_tests_nominal_output_voltage.styleSheet())
                 self.ch1_lineedit.setFixedHeight(28)
+                self.ch1_settings_btn = QToolButton(f_ch1)
+                self.ch1_settings_btn.setText("⚙")
+                self.ch1_settings_btn.setFixedSize(28, 28)
+                self.ch1_settings_btn.clicked.connect(lambda _, c=1: self.open_measurement_settings(c))
                 h_ch1.addWidget(self.ch1_checkbox)
                 h_ch1.addWidget(self.ch1_lineedit)
+                h_ch1.addWidget(self.ch1_settings_btn)
                 grid_ch.addWidget(f_ch1, 0, 0)
 
                 # CH2
@@ -1933,8 +1938,13 @@ class AddTestPageHandler(QObject):
                 self.ch2_lineedit.setFont(ui.lineedit_add_tests_nominal_output_voltage.font())
                 self.ch2_lineedit.setStyleSheet(ui.lineedit_add_tests_nominal_output_voltage.styleSheet())
                 self.ch2_lineedit.setFixedHeight(28)
+                self.ch2_settings_btn = QToolButton(f_ch2)
+                self.ch2_settings_btn.setText("⚙")
+                self.ch2_settings_btn.setFixedSize(28, 28)
+                self.ch2_settings_btn.clicked.connect(lambda _, c=2: self.open_measurement_settings(c))
                 h_ch2.addWidget(self.ch2_checkbox)
                 h_ch2.addWidget(self.ch2_lineedit)
+                h_ch2.addWidget(self.ch2_settings_btn)
                 grid_ch.addWidget(f_ch2, 0, 1)
 
                 # CH3
@@ -1951,8 +1961,13 @@ class AddTestPageHandler(QObject):
                 self.ch3_lineedit.setStyleSheet(ui.lineedit_add_tests_nominal_output_voltage.styleSheet())
                 self.ch3_lineedit.setFixedHeight(28)
                 self.ch3_lineedit.setEnabled(False)
+                self.ch3_settings_btn = QToolButton(f_ch3)
+                self.ch3_settings_btn.setText("⚙")
+                self.ch3_settings_btn.setFixedSize(28, 28)
+                self.ch3_settings_btn.clicked.connect(lambda _, c=3: self.open_measurement_settings(c))
                 h_ch3.addWidget(self.ch3_checkbox)
                 h_ch3.addWidget(self.ch3_lineedit)
+                h_ch3.addWidget(self.ch3_settings_btn)
                 grid_ch.addWidget(f_ch3, 1, 0)
 
                 # CH4
@@ -1969,8 +1984,13 @@ class AddTestPageHandler(QObject):
                 self.ch4_lineedit.setStyleSheet(ui.lineedit_add_tests_nominal_output_voltage.styleSheet())
                 self.ch4_lineedit.setFixedHeight(28)
                 self.ch4_lineedit.setEnabled(False)
+                self.ch4_settings_btn = QToolButton(f_ch4)
+                self.ch4_settings_btn.setText("⚙")
+                self.ch4_settings_btn.setFixedSize(28, 28)
+                self.ch4_settings_btn.clicked.connect(lambda _, c=4: self.open_measurement_settings(c))
                 h_ch4.addWidget(self.ch4_checkbox)
                 h_ch4.addWidget(self.ch4_lineedit)
+                h_ch4.addWidget(self.ch4_settings_btn)
                 grid_ch.addWidget(f_ch4, 1, 1)
 
                 # Signal connections
@@ -2093,16 +2113,52 @@ class AddTestPageHandler(QObject):
             cbx.setCurrentIndex(0)
         cbx.blockSignals(False)
 
+
+    def open_measurement_settings(self, channel):
+        if not hasattr(self, 'scope_measurements'):
+            self.scope_measurements = {1: [], 2: [], 3: [], 4: []}
+            
+        dialog = QDialog(self.parent)
+        dialog.setWindowTitle(f"CH{channel} Measurements")
+        dialog.setWindowFlags(dialog.windowFlags() & ~QtCore.Qt.WindowContextHelpButtonHint)
+        layout = QVBoxLayout(dialog)
+        
+        label = QLabel("Select measurements for R&&S Oscilloscope:")
+        layout.addWidget(label)
+        
+        meas_options = ["MAXimum", "MINimum", "MEAN", "RMS", "PDELta"]
+        checkboxes = {}
+        for opt in meas_options:
+            cb = QCheckBox(opt)
+            if opt in self.scope_measurements.get(channel, []):
+                cb.setChecked(True)
+            layout.addWidget(cb)
+            checkboxes[opt] = cb
+            
+        btn_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        btn_box.accepted.connect(dialog.accept)
+        btn_box.rejected.connect(dialog.reject)
+        layout.addWidget(btn_box)
+        
+        if dialog.exec_() == QDialog.Accepted:
+            selected = [opt for opt, cb in checkboxes.items() if cb.isChecked()]
+            self.scope_measurements[channel] = selected
+            self.sync_scope_channels_to_selected_test_item()
+
     def get_scope_channels_from_ui(self) -> dict:
         return {
             1: {'enabled': self.ch1_checkbox.isChecked() if hasattr(self, 'ch1_checkbox') else True,
-                'name': self.ch1_lineedit.text().strip() if hasattr(self, 'ch1_lineedit') else 'Primary Vds'},
+                'name': self.ch1_lineedit.text().strip() if hasattr(self, 'ch1_lineedit') else 'Primary Vds',
+                'measurements': self.scope_measurements.get(1, []) if hasattr(self, 'scope_measurements') else []},
             2: {'enabled': self.ch2_checkbox.isChecked() if hasattr(self, 'ch2_checkbox') else True,
-                'name': self.ch2_lineedit.text().strip() if hasattr(self, 'ch2_lineedit') else 'Ids'},
+                'name': self.ch2_lineedit.text().strip() if hasattr(self, 'ch2_lineedit') else 'Ids',
+                'measurements': self.scope_measurements.get(2, []) if hasattr(self, 'scope_measurements') else []},
             3: {'enabled': self.ch3_checkbox.isChecked() if hasattr(self, 'ch3_checkbox') else False,
-                'name': self.ch3_lineedit.text().strip() if hasattr(self, 'ch3_lineedit') else ''},
+                'name': self.ch3_lineedit.text().strip() if hasattr(self, 'ch3_lineedit') else '',
+                'measurements': self.scope_measurements.get(3, []) if hasattr(self, 'scope_measurements') else []},
             4: {'enabled': self.ch4_checkbox.isChecked() if hasattr(self, 'ch4_checkbox') else False,
-                'name': self.ch4_lineedit.text().strip() if hasattr(self, 'ch4_lineedit') else ''}
+                'name': self.ch4_lineedit.text().strip() if hasattr(self, 'ch4_lineedit') else '',
+                'measurements': self.scope_measurements.get(4, []) if hasattr(self, 'scope_measurements') else []}
         }
 
     def set_scope_channels_to_ui(self, scope_channels: dict):
@@ -2134,6 +2190,12 @@ class AddTestPageHandler(QObject):
         self.ch4_lineedit.setText(ch4.get('name', ''))
         self.ch4_lineedit.setEnabled(self.ch4_checkbox.isChecked())
 
+        if hasattr(self, 'scope_measurements'):
+            self.scope_measurements[1] = ch1.get('measurements', [])
+            self.scope_measurements[2] = ch2.get('measurements', [])
+            self.scope_measurements[3] = ch3.get('measurements', [])
+            self.scope_measurements[4] = ch4.get('measurements', [])
+
         self.ch1_checkbox.blockSignals(False)
         self.ch2_checkbox.blockSignals(False)
         self.ch3_checkbox.blockSignals(False)
@@ -2160,6 +2222,8 @@ class AddTestPageHandler(QObject):
             self.ch4_checkbox.setChecked(False)
             self.ch4_lineedit.setText("")
             self.ch4_lineedit.setEnabled(False)
+            if hasattr(self, 'scope_measurements'):
+                self.scope_measurements = {1: [], 2: [], 3: [], 4: []}
 
             self.ch1_checkbox.blockSignals(False)
             self.ch2_checkbox.blockSignals(False)

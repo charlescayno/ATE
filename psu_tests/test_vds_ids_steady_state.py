@@ -764,6 +764,20 @@ class VdsIdsSteadyStateTest(BaseTestObject):
             )
             self.create_message_popup("Oscilloscope Setup Verification", prompt_msg, MessageType.INFO)
 
+        # Apply custom scope measurements if supported
+        if hasattr(self.oscilloscope, 'set_channel_measurements') and hasattr(self, 'scope_channels') and self.scope_channels:
+            custom_meas = {}
+            for ch_num, ch_data in self.scope_channels.items():
+                if ch_data.get('enabled') and ch_data.get('measurements'):
+                    custom_meas[ch_num] = ch_data.get('measurements')
+            if custom_meas:
+                try:
+                    self.oscilloscope.set_channel_measurements(custom_meas)
+                    from time import sleep
+                    sleep(1)
+                except Exception as e:
+                    print(f"[Warning] Failed to set custom measurements on scope: {e}")
+
         # Update headers based on actual scope measurements now that setup is complete
         try:
             configured_labels = []
