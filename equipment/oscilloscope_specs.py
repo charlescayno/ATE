@@ -249,6 +249,22 @@ class RohdeSchwarzOscilloscope(OscilloscopeBaseClass):
     def set_trigger_mode(self, mode):
         self.write(f'TRIG:MODE {mode}') # AUTO | NORMal | FREerun
 
+    def trigger_status(self):
+        status = self.write('ACQ:CURR?')
+        try:
+            return int(status)
+        except Exception:
+            # Fallback if ACQ:CURR? isn't supported or returns non-int
+            return 1 if status == 'RUN' else 0
+
+    def edge_trigger(self, trigger_channel, trigger_level, trigger_edge):
+        channel = 'CHAN' + str(trigger_channel) # 1 | 2 | 3 | 4
+        self.set_trigger_mode(mode='NORM')
+        self.write(f'TRIG1:SOUR {channel}')
+        self.write('TRIG1:TYPE EDGE')
+        self.write(f'TRIG1:LEV{trigger_channel} {trigger_level}') # range: -10 to 10, increment: 1E-3
+        self.write(f'TRIG1:EDGE:SLOP {trigger_edge}') # POS | NEG | EITH
+
     def hide_measurements(self):
         for channel in [1,2,3,4]:
             self.write(f"MEASurement{channel}:ENABle OFF")
