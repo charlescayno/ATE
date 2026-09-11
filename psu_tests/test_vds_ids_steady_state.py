@@ -527,18 +527,27 @@ class VdsIdsSteadyStateTest(BaseTestObject):
                     values = item.get('values')
                     ch_idx = item.get('channel', 1)
                     if labels and values and len(labels) > 0 and len(values) > 0:
-                        for lbl, val in zip(labels, values):
+                        for lbl_raw, val in zip(labels, values):
                             if val is not None and not (isinstance(val, float) and math.isnan(val)):
                                 ch_info = getattr(self, 'scope_channels', {}).get(ch_idx, {})
                                 ch_name = ch_info.get('name', f"CH{ch_idx}")
-                                col_label = f"{ch_name} {lbl}" if ch_name else f"CH{ch_idx} {lbl}"
+                                
+                                lbl_upper = lbl_raw.upper()
+                                if "MAX" in lbl_upper: lbl = "Max"
+                                elif "MIN" in lbl_upper: lbl = "Min"
+                                elif "MEAN" in lbl_upper: lbl = "Mean"
+                                elif "RMS" in lbl_upper: lbl = "RMS"
+                                elif "PDEL" in lbl_upper or "PKPK" in lbl_upper: lbl = "Pk-Pk"
+                                else: lbl = lbl_raw.title()
+                                
+                                col_label = f"{ch_name} {lbl}"
                                 meas_val = round(float(val), 3)
                                 meas_dict[col_label] = meas_val
                                 
                                 # Derating Calculation
-                                if "MAX" in lbl.upper() and ch_info.get('derating') is not None:
+                                if lbl == "Max" and ch_info.get('derating') is not None:
                                     derating_limit = ch_info.get('derating')
-                                    derating_label = f"{ch_name} Derating (%)" if ch_name else f"CH{ch_idx} Derating (%)"
+                                    derating_label = f"{ch_name} Derating (%)"
                                     if derating_limit > 0:
                                         derating_val = (meas_val / derating_limit) * 100
                                         meas_dict[derating_label] = round(derating_val, 2)
@@ -615,19 +624,49 @@ class VdsIdsSteadyStateTest(BaseTestObject):
             'Vo Set (V)', 'Vo Meas (V)', 'Io (A)', 'Po (W)', 'Efficiency',
             'Trig Ch', 'Trig Level (V)'
         ]
-        added_meas = False
+        
+        configured_labels = []
         if hasattr(self, 'scope_channels') and self.scope_channels:
-            for ch_num, ch_data in sorted(self.scope_channels.items()):
+            for ch_idx, ch_data in sorted(self.scope_channels.items()):
                 if ch_data.get('enabled', False):
-                    ch_name = ch_data.get('name') or f"CH{ch_num}"
-                    header_list.append(f"{ch_name} Max")
+                    ch_name = ch_data.get('name', f"CH{ch_idx}")
+                    measurements = ch_data.get('measurements', [])
+                    if not measurements:
+                        measurements = ['MAXimum']
+                        
+                    for meas in measurements:
+                        lbl_upper = meas.upper()
+                        if "MAX" in lbl_upper: lbl = "Max"
+                        elif "MIN" in lbl_upper: lbl = "Min"
+                        elif "MEAN" in lbl_upper: lbl = "Mean"
+                        elif "RMS" in lbl_upper: lbl = "RMS"
+                        elif "PDEL" in lbl_upper or "PKPK" in lbl_upper: lbl = "Pk-Pk"
+                        else: lbl = meas.title()
+                            
+                        col_label = f"{ch_name} {lbl}"
+                        if col_label not in configured_labels:
+                            configured_labels.append(col_label)
+                        
+                        if lbl == "Max" and ch_data.get('derating') is not None:
+                            derating_label = f"{ch_name} Derating (%)"
+                            if derating_label not in configured_labels:
+                                configured_labels.append(derating_label)
+
                     if ch_data.get('cursor', {}).get('enabled'):
-                        header_list.append(f"{ch_name} dX")
-                        header_list.append(f"{ch_name} Fsw (kHz)")
-                        header_list.append(f"{ch_name} dY")
-                    added_meas = True
-        if not added_meas:
-            header_list.extend(['Vds Max (V)', 'Ids Max (A)'])
+                        dx_label = f"{ch_name} dX"
+                        fsw_label = f"{ch_name} Fsw (kHz)"
+                        dy_label = f"{ch_name} dY"
+                        if dx_label not in configured_labels:
+                            configured_labels.append(dx_label)
+                        if fsw_label not in configured_labels:
+                            configured_labels.append(fsw_label)
+                        if dy_label not in configured_labels:
+                            configured_labels.append(dy_label)
+                        
+        if not configured_labels:
+            configured_labels.extend(['Vds Max (V)', 'Ids Max (A)'])
+            
+        header_list.extend(configured_labels)
         header_list.append('Waveform File')
         return header_list
 
@@ -685,7 +724,7 @@ class VdsIdsSteadyStateTest(BaseTestObject):
 
         info_text = (
             f"Unit ID: {self.unit_id} | Ambient Temp: {self.ambient_temp:g}\u00b0C | "
-            f"Nominal Vout: {self.vout_V:g}V | Nominal Iout: {self.nominal_load_current_A:g}A | Max Iout: {self.i_max_A:g}A | Probe Config: {self.probe_setup}"
+            f"Nominal Vout: {self.vout_V:g}V | Nominal Iout: {self.nominal_load_current_A:g}A | Probe Config: {self.probe_setup}"
         )
         self.ws['B3'] = info_text
         self.ws['B3'].font = CellFont(size=10, italic=True)
@@ -900,82 +939,6 @@ class VdsIdsSteadyStateTest(BaseTestObject):
                 except Exception as e:
                     print(f"[Warning] Failed to set custom measurements on scope: {e}")
 
-        # Update headers based on actual scope measurements now that setup is complete
-        try:
-            configured_labels = []
-            all_meas = self.oscilloscope.get_measure_all()
-            if all_meas:
-                for item in all_meas:
-                    labels = item.get('labels')
-                    ch_idx = item.get('channel', 1)
-                    if labels and len(labels) > 0:
-                        for lbl in labels:
-                            ch_info = getattr(self, 'scope_channels', {}).get(ch_idx, {})
-                            ch_name = ch_info.get('name', f"CH{ch_idx}")
-                            col_label = f"{ch_name} {lbl}" if ch_name else f"CH{ch_idx} {lbl}"
-                            configured_labels.append(col_label)
-                            
-                            # Add derating column if MAXimum and derating is configured
-                            if "MAX" in lbl.upper() and ch_info.get('derating') is not None:
-                                derating_label = f"{ch_name} Derating (%)" if ch_name else f"CH{ch_idx} Derating (%)"
-                                configured_labels.append(derating_label)
-                                
-            # Always add cursor labels if configured
-            if hasattr(self, 'scope_channels') and self.scope_channels:
-                for ch_num, ch_data in sorted(self.scope_channels.items()):
-                    if ch_data.get('enabled', False) and ch_data.get('cursor', {}).get('enabled'):
-                        ch_name = ch_data.get('name', f"CH{ch_num}")
-                        dx_label = f"{ch_name} dX"
-                        fsw_label = f"{ch_name} Fsw (kHz)"
-                        dy_label = f"{ch_name} dY"
-                        if dx_label not in configured_labels:
-                            configured_labels.append(dx_label)
-                        if fsw_label not in configured_labels:
-                            configured_labels.append(fsw_label)
-                        if dy_label not in configured_labels:
-                            configured_labels.append(dy_label)
-            
-            if not configured_labels and hasattr(self, 'scope_channels') and self.scope_channels:
-                for ch_num, ch_data in sorted(self.scope_channels.items()):
-                    if ch_data.get('enabled', False):
-                        ch_name = ch_data.get('name', f"CH{ch_num}")
-                        configured_labels.append(f"{ch_name} Max")
-                        
-                        if ch_data.get('derating') is not None:
-                            configured_labels.append(f"{ch_name} Derating (%)")
-                            
-                        if ch_data.get('cursor', {}).get('enabled'):
-                            configured_labels.append(f"{ch_name} dX")
-                            configured_labels.append(f"{ch_name} dY")
-            
-            if not configured_labels:
-                configured_labels.extend(['Vds Max (V)', 'Ids Max (A)'])
-            
-            # Rebuild headers
-            base_headers = [
-                'Vin Set (V)', 'Freq (Hz)', 'Vin Meas (V)', 'Iin (mA)', 'Pin (W)', 'PF', '%THD',
-                'Vo Set (V)', 'Vo Meas (V)', 'Io (A)', 'Po (W)', 'Efficiency',
-                'Trig Ch', 'Trig Level (V)'
-            ]
-            self.header_list = base_headers + configured_labels + ['Waveform File']
-            
-            # Re-write the header row in Excel
-            self.wb = openpyxl.load_workbook(self.data_file_path)
-            self.ws = self.wb[self.sheet_name]
-            for col_idx in range(2, 50): # Clear previous headers
-                self.ws.cell(row=5, column=col_idx, value="")
-            for col_idx, header in enumerate(self.header_list, start=2):
-                cell = self.ws.cell(row=5, column=col_idx, value=header)
-                cell.font = CellFont(bold=True, color="FFFFFF")
-                cell.fill = PatternFill(start_color="2952A3", end_color="2952A3", fill_type="solid")
-                cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
-            self.wb.save(self.data_file_path)
-            self.wb.close()
-            
-            # Update UI table
-            self.test_data_table.header = self.header_list
-        except Exception as e:
-            print(f"[Warning] Failed to update headers from scope: {e}")
 
 
         self.total_time, self.total_steps = self.estimate_remaining(0, 0, vin_delays=True)
@@ -1148,7 +1111,7 @@ class VdsIdsSteadyStateTest(BaseTestObject):
                                     break
                         row_data.append(val if val is not None else "N/A")
 
-                    row_data.append(img_filename)
+                    row_data.append(img_path)
 
                     # Write row into Excel worksheet
                     self.wb = openpyxl.load_workbook(self.data_file_path)
