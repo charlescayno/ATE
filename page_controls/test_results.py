@@ -207,9 +207,18 @@ class TestResultsPageHandler():
             test_list_table.setItem(
                 test_list_available_index, 0, 
                 QtWidgets.QTableWidgetItem(str(test_item_index+1)))
-            test_list_table.setItem(
-                test_list_available_index, 1, 
-                QtWidgets.QTableWidgetItem(details_text))
+            
+            label = QtWidgets.QLabel()
+            label.setTextFormat(QtCore.Qt.RichText)
+            label.setText('<html>' + details_text.replace(chr(10), '<br>') + '</html>')
+            label.setOpenExternalLinks(True)
+            label.setTextInteractionFlags(QtCore.Qt.TextBrowserInteraction)
+            label.setStyleSheet("background: transparent; color: #D8DEE9; padding: 5px;")
+            
+            # Dummy item so sorting/resizing works
+            item = QtWidgets.QTableWidgetItem()
+            test_list_table.setItem(test_list_available_index, 1, item)
+            test_list_table.setCellWidget(test_list_available_index, 1, label)
             
             test_list_available_index += 1
         

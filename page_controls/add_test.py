@@ -1912,14 +1912,14 @@ class AddTestPageHandler(QObject):
                 self.ch1_checkbox.setFont(ui.label_add_tests_nominal_output_voltage.font())
                 self.ch1_checkbox.setStyleSheet(cb_style)
                 self.ch1_checkbox.setChecked(True)
-                self.ch1_lineedit = QLineEdit("Primary Vds", f_ch1)
+                self.ch1_lineedit = QLineEdit("Vds", f_ch1)
                 self.ch1_lineedit.setFont(ui.lineedit_add_tests_nominal_output_voltage.font())
                 self.ch1_lineedit.setStyleSheet(ui.lineedit_add_tests_nominal_output_voltage.styleSheet())
                 self.ch1_lineedit.setFixedHeight(28)
                 self.ch1_settings_btn = QToolButton(f_ch1)
                 self.ch1_settings_btn.setText("⚙")
                 self.ch1_settings_btn.setFixedSize(28, 28)
-                self.ch1_settings_btn.clicked.connect(lambda _, c=1: self.open_measurement_settings(c))
+                self.ch1_settings_btn.clicked.connect(lambda c=1: self.open_measurement_settings(1))
                 h_ch1.addWidget(self.ch1_checkbox)
                 h_ch1.addWidget(self.ch1_lineedit)
                 h_ch1.addWidget(self.ch1_settings_btn)
@@ -1941,7 +1941,7 @@ class AddTestPageHandler(QObject):
                 self.ch2_settings_btn = QToolButton(f_ch2)
                 self.ch2_settings_btn.setText("⚙")
                 self.ch2_settings_btn.setFixedSize(28, 28)
-                self.ch2_settings_btn.clicked.connect(lambda _, c=2: self.open_measurement_settings(c))
+                self.ch2_settings_btn.clicked.connect(lambda c=2: self.open_measurement_settings(2))
                 h_ch2.addWidget(self.ch2_checkbox)
                 h_ch2.addWidget(self.ch2_lineedit)
                 h_ch2.addWidget(self.ch2_settings_btn)
@@ -1964,7 +1964,7 @@ class AddTestPageHandler(QObject):
                 self.ch3_settings_btn = QToolButton(f_ch3)
                 self.ch3_settings_btn.setText("⚙")
                 self.ch3_settings_btn.setFixedSize(28, 28)
-                self.ch3_settings_btn.clicked.connect(lambda _, c=3: self.open_measurement_settings(c))
+                self.ch3_settings_btn.clicked.connect(lambda c=3: self.open_measurement_settings(3))
                 h_ch3.addWidget(self.ch3_checkbox)
                 h_ch3.addWidget(self.ch3_lineedit)
                 h_ch3.addWidget(self.ch3_settings_btn)
@@ -1987,7 +1987,7 @@ class AddTestPageHandler(QObject):
                 self.ch4_settings_btn = QToolButton(f_ch4)
                 self.ch4_settings_btn.setText("⚙")
                 self.ch4_settings_btn.setFixedSize(28, 28)
-                self.ch4_settings_btn.clicked.connect(lambda _, c=4: self.open_measurement_settings(c))
+                self.ch4_settings_btn.clicked.connect(lambda c=4: self.open_measurement_settings(4))
                 h_ch4.addWidget(self.ch4_checkbox)
                 h_ch4.addWidget(self.ch4_lineedit)
                 h_ch4.addWidget(self.ch4_settings_btn)
@@ -2117,12 +2117,47 @@ class AddTestPageHandler(QObject):
     def open_measurement_settings(self, channel):
         if not hasattr(self, 'scope_measurements'):
             self.scope_measurements = {1: [], 2: [], 3: [], 4: []}
+        if not hasattr(self, 'scope_deratings'):
+            self.scope_deratings = {1: None, 2: None, 3: None, 4: None}
+        if not hasattr(self, 'scope_cursors'):
+            self.scope_cursors = {1: {}, 2: {}, 3: {}, 4: {}}
             
         dialog = QDialog(self.parent)
         dialog.setWindowTitle(f"CH{channel} Measurements")
         dialog.setWindowFlags(dialog.windowFlags() & ~QtCore.Qt.WindowContextHelpButtonHint)
         layout = QVBoxLayout(dialog)
         
+        # Max derating input
+        derating_layout = QHBoxLayout()
+        derating_label = QLabel("Max Derating Limit (V/A, blank if none):")
+        derating_input = QLineEdit()
+        current_derating = self.scope_deratings.get(channel)
+        if current_derating is not None:
+            derating_input.setText(str(current_derating))
+        derating_layout.addWidget(derating_label)
+        derating_layout.addWidget(derating_input)
+        layout.addLayout(derating_layout)
+        
+        # Cursor setting
+        cursor_layout = QHBoxLayout()
+        cursor_cb = QCheckBox("Enable Cursor")
+        cursor_type_combo = QComboBox()
+        cursor_type_combo.addItems(["VERTical", "HORizontal", "PAIRed"])
+        cursor_type_combo.setEnabled(False)
+        
+        cursor_cb.toggled.connect(cursor_type_combo.setEnabled)
+        current_cursor = self.scope_cursors.get(channel, {})
+        if current_cursor and current_cursor.get('enabled'):
+            cursor_cb.setChecked(True)
+            cursor_type_combo.setEnabled(True)
+            idx = cursor_type_combo.findText(current_cursor.get('type', 'VERTical'))
+            if idx >= 0:
+                cursor_type_combo.setCurrentIndex(idx)
+                
+        cursor_layout.addWidget(cursor_cb)
+        cursor_layout.addWidget(cursor_type_combo)
+        layout.addLayout(cursor_layout)
+
         label = QLabel("Select measurements for R&&S Oscilloscope:")
         layout.addWidget(label)
         
@@ -2142,23 +2177,49 @@ class AddTestPageHandler(QObject):
         
         if dialog.exec_() == QDialog.Accepted:
             selected = [opt for opt, cb in checkboxes.items() if cb.isChecked()]
+            
+            derating_val_str = derating_input.text().strip()
+            if derating_val_str:
+                try:
+                    self.scope_deratings[channel] = float(derating_val_str)
+                    if "MAXimum" not in selected:
+                        selected.append("MAXimum")
+                except ValueError:
+                    self.scope_deratings[channel] = None
+            else:
+                self.scope_deratings[channel] = None
+                
             self.scope_measurements[channel] = selected
+            
+            if cursor_cb.isChecked():
+                self.scope_cursors[channel] = {'enabled': True, 'type': cursor_type_combo.currentText()}
+            else:
+                self.scope_cursors[channel] = {'enabled': False, 'type': 'VERTical'}
+                
             self.sync_scope_channels_to_selected_test_item()
 
     def get_scope_channels_from_ui(self) -> dict:
         return {
             1: {'enabled': self.ch1_checkbox.isChecked() if hasattr(self, 'ch1_checkbox') else True,
-                'name': self.ch1_lineedit.text().strip() if hasattr(self, 'ch1_lineedit') else 'Primary Vds',
-                'measurements': self.scope_measurements.get(1, []) if hasattr(self, 'scope_measurements') else []},
+                'name': self.ch1_lineedit.text().strip() if hasattr(self, 'ch1_lineedit') else 'Vds',
+                'measurements': self.scope_measurements.get(1, []) if hasattr(self, 'scope_measurements') else [],
+                'derating': self.scope_deratings.get(1, None) if hasattr(self, 'scope_deratings') else None,
+                'cursor': self.scope_cursors.get(1, {}) if hasattr(self, 'scope_cursors') else {}},
             2: {'enabled': self.ch2_checkbox.isChecked() if hasattr(self, 'ch2_checkbox') else True,
                 'name': self.ch2_lineedit.text().strip() if hasattr(self, 'ch2_lineedit') else 'Ids',
-                'measurements': self.scope_measurements.get(2, []) if hasattr(self, 'scope_measurements') else []},
+                'measurements': self.scope_measurements.get(2, []) if hasattr(self, 'scope_measurements') else [],
+                'derating': self.scope_deratings.get(2, None) if hasattr(self, 'scope_deratings') else None,
+                'cursor': self.scope_cursors.get(2, {}) if hasattr(self, 'scope_cursors') else {}},
             3: {'enabled': self.ch3_checkbox.isChecked() if hasattr(self, 'ch3_checkbox') else False,
                 'name': self.ch3_lineedit.text().strip() if hasattr(self, 'ch3_lineedit') else '',
-                'measurements': self.scope_measurements.get(3, []) if hasattr(self, 'scope_measurements') else []},
+                'measurements': self.scope_measurements.get(3, []) if hasattr(self, 'scope_measurements') else [],
+                'derating': self.scope_deratings.get(3, None) if hasattr(self, 'scope_deratings') else None,
+                'cursor': self.scope_cursors.get(3, {}) if hasattr(self, 'scope_cursors') else {}},
             4: {'enabled': self.ch4_checkbox.isChecked() if hasattr(self, 'ch4_checkbox') else False,
                 'name': self.ch4_lineedit.text().strip() if hasattr(self, 'ch4_lineedit') else '',
-                'measurements': self.scope_measurements.get(4, []) if hasattr(self, 'scope_measurements') else []}
+                'measurements': self.scope_measurements.get(4, []) if hasattr(self, 'scope_measurements') else [],
+                'derating': self.scope_deratings.get(4, None) if hasattr(self, 'scope_deratings') else None,
+                'cursor': self.scope_cursors.get(4, {}) if hasattr(self, 'scope_cursors') else {}}
         }
 
     def set_scope_channels_to_ui(self, scope_channels: dict):
@@ -2175,7 +2236,7 @@ class AddTestPageHandler(QObject):
         self.ch4_checkbox.blockSignals(True)
 
         self.ch1_checkbox.setChecked(ch1.get('enabled', True))
-        self.ch1_lineedit.setText(ch1.get('name', 'Primary Vds'))
+        self.ch1_lineedit.setText(ch1.get('name', 'Vds'))
         self.ch1_lineedit.setEnabled(self.ch1_checkbox.isChecked())
 
         self.ch2_checkbox.setChecked(ch2.get('enabled', True))
@@ -2211,7 +2272,7 @@ class AddTestPageHandler(QObject):
             self.ch4_checkbox.blockSignals(True)
 
             self.ch1_checkbox.setChecked(True)
-            self.ch1_lineedit.setText("Primary Vds")
+            self.ch1_lineedit.setText("Vds")
             self.ch1_lineedit.setEnabled(True)
             self.ch2_checkbox.setChecked(True)
             self.ch2_lineedit.setText("Ids")

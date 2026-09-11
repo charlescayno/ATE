@@ -124,6 +124,9 @@ class RohdeSchwarzOscilloscope(OscilloscopeBaseClass):
 
     def get_measure_all(self):
         result_dict = {}
+        if not hasattr(self, 'configured_measurements'):
+            self.configured_measurements = {}
+            
         for slot in range(1, 9):
             try:
                 enab = self.write(f"MEASurement{slot}:ENABle?")
@@ -133,15 +136,27 @@ class RohdeSchwarzOscilloscope(OscilloscopeBaseClass):
                     match = re.search(r'C(\d)', source)
                     if match:
                         ch = int(match.group(1))
-                        main_type = self.write(f"MEASurement{slot}:MAIN?")
-                        val = self.write(f"MEASurement{slot}:RESult:ACTual?")
-                        if ch not in result_dict:
-                            result_dict[ch] = {"labels": [], "values": []}
-                        result_dict[ch]["labels"].append(main_type)
-                        try:
-                            result_dict[ch]["values"].append(float(val))
-                        except Exception:
-                            result_dict[ch]["values"].append(None)
+                        expected_labels = self.configured_measurements.get(slot, [])
+                        
+                        aresult = self.write(f"MEASurement{slot}:RESult?")
+                        if aresult:
+                            vals_str = aresult.split(',')
+                            if ch not in result_dict:
+                                result_dict[ch] = {"labels": [], "values": []}
+                                
+                            for idx, val_str in enumerate(vals_str):
+                                try:
+                                    val = float(val_str.strip())
+                                except Exception:
+                                    val = None
+                                    
+                                if idx < len(expected_labels):
+                                    label = expected_labels[idx]
+                                else:
+                                    label = f"Meas{idx+1}"
+                                    
+                                result_dict[ch]["labels"].append(label)
+                                result_dict[ch]["values"].append(val)
             except Exception:
                 continue
 
@@ -160,6 +175,35 @@ class RohdeSchwarzOscilloscope(OscilloscopeBaseClass):
             if item.get("channel") == channel:
                 return item.get("labels"), item.get("values")
         return None, None
+
+    def cursor(self, channel=1, cursor_set=1, X1=1, X2=1, Y1=0, Y2=0, type='VERT'):
+        self.write(f"CURSor{cursor_set}:FUNCtion {type}")
+        self.write(f"CURS{cursor_set}:STAT ON")
+        self.write(f"CURS{cursor_set}:SOUR C{channel}W1")
+        self.write(f"CURS{cursor_set}:X1P {X1}")
+        self.write(f"CURS{cursor_set}:X2P {X2}")
+        self.write(f"CURS{cursor_set}:Y1P {Y1}")
+        self.write(f"CURS{cursor_set}:Y2P {Y2}")
+
+    def get_cursor(self, cursor=1):
+        try:
+            cursor_state = self.write(f'CURS{cursor}:STAT?')
+            if cursor_state == '0' or cursor_state.strip().upper() == 'OFF':
+                return None
+            
+            result = {
+                "x1 position": self.write(f'CURS{cursor}:X1P?'),
+                "x2 position": self.write(f'CURS{cursor}:X2P?'),
+                "y1 position": self.write(f'CURS{cursor}:Y1P?'),
+                "y2 position": self.write(f'CURS{cursor}:Y2P?'),
+                "delta x": self.write(f'CURS{cursor}:XDEL?'),
+                "delta y": self.write(f'CURS{cursor}:YDEL?'),
+                "source": self.write(f'CURS{cursor}:SOUR?')
+            }
+            return result
+        except Exception as e:
+            print(f"Failed to get cursor: {e}")
+            return None
 
     def get_screenshot(
             self, 
@@ -300,22 +344,31 @@ class RohdeSchwarzOscilloscope(OscilloscopeBaseClass):
         Configure up to 8 measurement slots for multiple channels.
         channel_measurements format: {1: ['MAXimum', 'MINimum'], 2: ['RMS', 'PDELta']}
         """
+        if not hasattr(self, 'configured_measurements'):
+            self.configured_measurements = {}
+        self.configured_measurements.clear()
+        
         # Turn off all 8 measurement slots first
         for i in range(1, 9):
             self.write(f"MEASurement{i}:ENABle OFF")
             
-        slot = 1
         for channel, meas_list in channel_measurements.items():
             if not meas_list:
                 continue
-            for meas_type in meas_list:
-                if slot > 8:
-                    break
-                self.write(f"MEASurement{slot}:SOURce C{channel}W1")
-                self.write(f"MEASurement{slot}:CATegory AMPTime")
-                self.write(f"MEASurement{slot}:MAIN {meas_type}")
-                self.write(f"MEASurement{slot}:ENABle ON")
-                slot += 1
+            slot = channel # Assign MG1 to CH1, MG2 to CH2, etc.
+            self.configured_measurements[slot] = meas_list
+            
+            self.write(f"MEASurement{slot}:SOURce C{channel}W1")
+            self.write(f"MEASurement{slot}:CATegory AMPTime")
+            
+            # Set the first measurement as the MAIN measurement
+            self.write(f"MEASurement{slot}:MAIN {meas_list[0]}")
+            
+            # Set any subsequent measurements as ADDitional measurements in the same group
+            for meas_type in meas_list[1:]:
+                self.write(f"MEASurement{slot}:ADDitional {meas_type}, ON")
+                
+            self.write(f"MEASurement{slot}:ENABle ON")
     def measure_enable(self, channel, state='ON'):
         self.write(f"MEASurement{channel}:ENABle {state}")
 

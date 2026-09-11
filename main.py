@@ -265,9 +265,9 @@ class MainWindow(QMainWindow):
         # UIFunctions.addNewMenu(
         #     self, "Save/Load Configuration", "btn_save_load_configs", 
         #     "url(:/20x20/icons/20x20/cil-save.png)", False)
-        # UIFunctions.addNewMenu(
-        #     self, "Settings", "btn_settings", 
-        #     "url(:/20x20/icons/20x20/cil-settings.png)", False)
+        UIFunctions.addNewMenu(
+            self, "Settings", "btn_settings", 
+            "url(:/20x20/icons/20x20/cil-settings.png)", False)
         
        
         ## ==> END ##
@@ -444,12 +444,12 @@ class MainWindow(QMainWindow):
         #         UIFunctions.selectMenu(btnWidget.styleSheet()))
 
         # PAGE SETTINGS
-        # elif btnWidget.objectName() == "btn_settings":
-        #     self.ui.stackedWidget.setCurrentWidget(self.ui.page_settings)
-        #     UIFunctions.resetStyle(self, "btn_settings")
-        #     UIFunctions.labelPage(self, "Settings")
-        #     btnWidget.setStyleSheet(
-        #         UIFunctions.selectMenu(btnWidget.styleSheet()))
+        elif btnWidget.objectName() == "btn_settings":
+            self.ui.stackedWidget.setCurrentWidget(self.ui.page_settings)
+            UIFunctions.resetStyle(self, "btn_settings")
+            UIFunctions.labelPage(self, "Settings")
+            btnWidget.setStyleSheet(
+                UIFunctions.selectMenu(btnWidget.styleSheet()))
 
         # PAGE WIDGETS
         elif btnWidget.objectName() == "btn_widgets":

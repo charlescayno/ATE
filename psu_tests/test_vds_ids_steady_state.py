@@ -277,7 +277,7 @@ class VdsIdsSteadyStateTest(BaseTestObject):
         self.prompt_before_capture = ('Per-Capture' in self.user_prompts)
 
         # Trigger Delta (LineEdit 1)
-        self.trigger_delta = 3.0
+        self.trigger_delta = 0.5
         try:
             if i2c_params and len(i2c_params.param) > 0 and str(i2c_params.param[0]).strip():
                 val = float(i2c_params.param[0])
@@ -381,7 +381,7 @@ class VdsIdsSteadyStateTest(BaseTestObject):
                 raise TestSkipped
         self.message_closed = False
 
-    def find_trigger(self, channel: int = 1, trigger_delta: float = 3.0) -> float:
+    def find_trigger(self, channel: int = 1, trigger_delta: float = 0.5) -> float:
         """
         Sweep trigger level to lock onto the highest steady-state peak waveform.
         Matches FIND_TRIGGER algorithm in equipment_settings.py.
@@ -529,10 +529,22 @@ class VdsIdsSteadyStateTest(BaseTestObject):
                     if labels and values and len(labels) > 0 and len(values) > 0:
                         for lbl, val in zip(labels, values):
                             if val is not None and not (isinstance(val, float) and math.isnan(val)):
-                                ch_info = self.scope_channels.get(ch_idx, {})
+                                ch_info = getattr(self, 'scope_channels', {}).get(ch_idx, {})
                                 ch_name = ch_info.get('name', f"CH{ch_idx}")
                                 col_label = f"{ch_name} {lbl}" if ch_name else f"CH{ch_idx} {lbl}"
-                                meas_dict[col_label] = round(float(val), 3)
+                                meas_val = round(float(val), 3)
+                                meas_dict[col_label] = meas_val
+                                
+                                # Derating Calculation
+                                if "MAX" in lbl.upper() and ch_info.get('derating') is not None:
+                                    derating_limit = ch_info.get('derating')
+                                    derating_label = f"{ch_name} Derating (%)" if ch_name else f"CH{ch_idx} Derating (%)"
+                                    if derating_limit > 0:
+                                        derating_val = (meas_val / derating_limit) * 100
+                                        meas_dict[derating_label] = round(derating_val, 2)
+                                    else:
+                                        meas_dict[derating_label] = 0.0
+                                        
         except Exception as e:
             print(f"[Warning] Oscilloscope get_measure_all query: {e}")
 
@@ -544,11 +556,55 @@ class VdsIdsSteadyStateTest(BaseTestObject):
                     try:
                         labels, values = self.oscilloscope.get_measure(ch_num)
                         if values and len(values) > 0 and values[0] is not None:
-                            meas_dict[f"{ch_name} Max"] = round(float(values[0]), 3)
+                            meas_val = round(float(values[0]), 3)
+                            meas_dict[f"{ch_name} Max"] = meas_val
                         else:
+                            meas_val = 0.0
                             meas_dict[f"{ch_name} Max"] = 0.0
+                            
+                        # Derating calculation for fallback
+                        if ch_data.get('derating') is not None:
+                            derating_limit = ch_data.get('derating')
+                            derating_label = f"{ch_name} Derating (%)"
+                            if derating_limit > 0:
+                                meas_dict[derating_label] = round((meas_val / derating_limit) * 100, 2)
+                            else:
+                                meas_dict[derating_label] = 0.0
+                                
                     except Exception:
                         meas_dict[f"{ch_name} Max"] = 0.0
+                        if ch_data.get('derating') is not None:
+                            meas_dict[f"{ch_name} Derating (%)"] = 0.0
+
+        # Cursor Measurements
+        if hasattr(self, 'scope_channels') and self.scope_channels:
+            for ch_num, ch_data in sorted(self.scope_channels.items()):
+                if ch_data.get('enabled', False) and ch_data.get('cursor', {}).get('enabled'):
+                    ch_name = ch_data.get('name', f"CH{ch_num}")
+                    try:
+                        cursor_vals = self.oscilloscope.get_cursor(cursor=ch_num)
+                        if cursor_vals:
+                            dx = cursor_vals.get('delta x', 0.0)
+                            dy = cursor_vals.get('delta y', 0.0)
+                            try: dx = round(float(dx), 6)
+                            except: dx = 0.0
+                            try: dy = round(float(dy), 3)
+                            except: dy = 0.0
+                            meas_dict[f"{ch_name} dX"] = dx
+                            
+                            if dx != 0:
+                                fsw_khz = round((1.0 / abs(dx)) / 1000.0, 2)
+                                meas_dict[f"{ch_name} Fsw (kHz)"] = fsw_khz
+                            else:
+                                meas_dict[f"{ch_name} Fsw (kHz)"] = 0.0
+                                
+                            meas_dict[f"{ch_name} dY"] = dy
+                        else:
+                            meas_dict[f"{ch_name} dX"] = 0.0
+                            meas_dict[f"{ch_name} Fsw (kHz)"] = 0.0
+                            meas_dict[f"{ch_name} dY"] = 0.0
+                    except Exception as e:
+                        print(f"[Warning] Cursor query error on CH{ch_num}: {e}")
 
         return meas_dict
 
@@ -565,6 +621,10 @@ class VdsIdsSteadyStateTest(BaseTestObject):
                 if ch_data.get('enabled', False):
                     ch_name = ch_data.get('name') or f"CH{ch_num}"
                     header_list.append(f"{ch_name} Max")
+                    if ch_data.get('cursor', {}).get('enabled'):
+                        header_list.append(f"{ch_name} dX")
+                        header_list.append(f"{ch_name} Fsw (kHz)")
+                        header_list.append(f"{ch_name} dY")
                     added_meas = True
         if not added_meas:
             header_list.extend(['Vds Max (V)', 'Ids Max (A)'])
@@ -641,7 +701,48 @@ class VdsIdsSteadyStateTest(BaseTestObject):
         self.wb.close()
 
     def define_output_data_objects(self):
-        """Define results page table for live UI monitoring"""
+        """Define results page table and plots for live UI monitoring"""
+        # Determine maximum X range for the plot
+        max_vin = max([v[0] for v in getattr(self, 'vin_list', [])]) if getattr(self, 'vin_list', []) else 265
+        
+        # Create Plot Object
+        self.vds_vs_vin_plot = PlottableObject(
+            title="Max Vds vs Input Voltage",
+            type=PlotType.LINE,
+            x_label="Input Voltage (VAC)",
+            y_label="Maximum Vds (V)",
+            x_range=(0, max_vin * 1.1),
+            y_range=(0, 800), # will auto-scale, starting with a reasonable range
+            plot_series_list=[]
+        )
+        
+        # Add a series for each load
+        for iout in getattr(self, 'iout_list_A', []):
+            self.vds_vs_vin_plot.add_plot_series(
+                name=f"Load {iout:g} A",
+                x_values=[],
+                y_values=[]
+            )
+            
+        # Check if Derating Limit is specified for Primary Vds or CH1
+        self.primary_vds_name = "Primary Vds"
+        self.derating_limit_v = None
+        if hasattr(self, 'scope_channels'):
+            for ch, ch_data in self.scope_channels.items():
+                if ch_data.get('name') == 'Primary Vds' or ch == 1:
+                    self.primary_vds_name = ch_data.get('name', f"CH{ch}")
+                    if ch_data.get('derating'):
+                        self.derating_limit_v = ch_data.get('derating')
+                        break
+        
+        # Add series for Derating Limit if exists
+        if self.derating_limit_v:
+            self.vds_vs_vin_plot.add_plot_series(
+                name=f"Derating Limit ({self.derating_limit_v} V)",
+                x_values=[],
+                y_values=[]
+            )
+
         self.test_data_table = DataTable(
             header=self.header_list, data=[]
         )
@@ -737,8 +838,9 @@ class VdsIdsSteadyStateTest(BaseTestObject):
             self.estimated_time_s = 0
             self.status_update.emit(TestStatus.COMPLETE)
 
-    def update_status_log(self, msg):
+    def update_status_log(self, msg, upcoming=None):
         self.current_status_log = msg
+        self.upcoming_event_log = upcoming
         self.update_test_list_text()
         self.progress.emit(self.progress_pct)
 
@@ -753,13 +855,13 @@ class VdsIdsSteadyStateTest(BaseTestObject):
         # Pre-test Oscilloscope setup prompt
         if self.prompt_before_start:
             prompt_msg = (
-                "================== OSCILLOSCOPE SETUP REMINDER ==================\n"
-                f"Unit ID: {self.unit_id} | Ambient Temp: {self.ambient_temp:g}\u00b0C\n"
-                f"Nominal Ratings: {self.vout_V:g} V / {self.nominal_load_current_A:g} A (Max: {self.i_max_A:g} A)\n\n"
-                "1. Load the correct .DFL file into the oscilloscope.\n"
-                f"2. Probe Configuration: {self.probe_setup}\n"
-                f"3. Trigger Channel: CH{self.trigger_channel} (Delta: {self.trigger_delta:g} V)\n"
-                "=================================================================\n\n"
+                "<b>================== OSCILLOSCOPE SETUP REMINDER ==================</b><br>"
+                f"Unit ID: {self.unit_id} | Ambient Temp: {self.ambient_temp:g}\u00b0C<br>"
+                f"Nominal Ratings: {self.vout_V:g} V / {self.nominal_load_current_A:g} A (Max: {self.i_max_A:g} A)<br><br>"
+                "1. Load the correct .DFL file into the oscilloscope.<br>"
+                f"2. Probe Configuration: {self.probe_setup}<br>"
+                f"3. Trigger Channel: CH{self.trigger_channel} (Delta: {self.trigger_delta:g} V)<br>"
+                "<b>=================================================================</b><br><br>"
                 "Click OK once setup is complete to proceed."
             )
             self.create_message_popup("Oscilloscope Setup Verification", prompt_msg, MessageType.INFO)
@@ -768,8 +870,28 @@ class VdsIdsSteadyStateTest(BaseTestObject):
         if hasattr(self.oscilloscope, 'set_channel_measurements') and hasattr(self, 'scope_channels') and self.scope_channels:
             custom_meas = {}
             for ch_num, ch_data in self.scope_channels.items():
-                if ch_data.get('enabled') and ch_data.get('measurements'):
-                    custom_meas[ch_num] = ch_data.get('measurements')
+                if ch_data.get('enabled'):
+                    # Set custom channel labels on oscilloscope screen if supported
+                    if hasattr(self.oscilloscope, 'channel_label'):
+                        ch_name = ch_data.get('name', f"CH{ch_num}")
+                        if ch_name:
+                            try:
+                                self.oscilloscope.channel_label(channel=ch_num, label=ch_name, rel_x_position=50, rel_y_position=50)
+                            except Exception as e:
+                                print(f"[Warning] Failed to set label '{ch_name}' for CH{ch_num}: {e}")
+                                
+                    if ch_data.get('measurements'):
+                        custom_meas[ch_num] = ch_data.get('measurements')
+                        
+                    if ch_data.get('cursor', {}).get('enabled'):
+                        try:
+                            ctype = ch_data['cursor'].get('type', 'VERTical')
+                            ctype_short = ctype[:4].upper() if len(ctype)>=4 else 'VERT'
+                            if ctype_short == 'HORI': ctype_short = 'HOR'
+                            self.oscilloscope.cursor(channel=ch_num, cursor_set=ch_num, type=ctype_short)
+                        except Exception as e:
+                            print(f"[Warning] Failed to set cursor on CH{ch_num}: {e}")
+                        
             if custom_meas:
                 try:
                     self.oscilloscope.set_channel_measurements(custom_meas)
@@ -792,12 +914,39 @@ class VdsIdsSteadyStateTest(BaseTestObject):
                             ch_name = ch_info.get('name', f"CH{ch_idx}")
                             col_label = f"{ch_name} {lbl}" if ch_name else f"CH{ch_idx} {lbl}"
                             configured_labels.append(col_label)
+                            
+                            # Add derating column if MAXimum and derating is configured
+                            if "MAX" in lbl.upper() and ch_info.get('derating') is not None:
+                                derating_label = f"{ch_name} Derating (%)" if ch_name else f"CH{ch_idx} Derating (%)"
+                                configured_labels.append(derating_label)
+                                
+            # Always add cursor labels if configured
+            if hasattr(self, 'scope_channels') and self.scope_channels:
+                for ch_num, ch_data in sorted(self.scope_channels.items()):
+                    if ch_data.get('enabled', False) and ch_data.get('cursor', {}).get('enabled'):
+                        ch_name = ch_data.get('name', f"CH{ch_num}")
+                        dx_label = f"{ch_name} dX"
+                        fsw_label = f"{ch_name} Fsw (kHz)"
+                        dy_label = f"{ch_name} dY"
+                        if dx_label not in configured_labels:
+                            configured_labels.append(dx_label)
+                        if fsw_label not in configured_labels:
+                            configured_labels.append(fsw_label)
+                        if dy_label not in configured_labels:
+                            configured_labels.append(dy_label)
             
             if not configured_labels and hasattr(self, 'scope_channels') and self.scope_channels:
                 for ch_num, ch_data in sorted(self.scope_channels.items()):
                     if ch_data.get('enabled', False):
                         ch_name = ch_data.get('name', f"CH{ch_num}")
                         configured_labels.append(f"{ch_name} Max")
+                        
+                        if ch_data.get('derating') is not None:
+                            configured_labels.append(f"{ch_name} Derating (%)")
+                            
+                        if ch_data.get('cursor', {}).get('enabled'):
+                            configured_labels.append(f"{ch_name} dX")
+                            configured_labels.append(f"{ch_name} dY")
             
             if not configured_labels:
                 configured_labels.extend(['Vds Max (V)', 'Ids Max (A)'])
@@ -836,7 +985,7 @@ class VdsIdsSteadyStateTest(BaseTestObject):
             vin_set = self.vin_freq[0]
             freq_set = self.vin_freq[1]
 
-            self.update_status_log(f"Setting Input {vin_set} VAC")
+            self.update_status_log(f"Setting Input {vin_set} VAC", upcoming="Initial/Line Soak")
 
             # Set AC Source
             self.input_supply.set_voltage_with_coupling(voltage=vin_set, coupling=self.coupling)
@@ -858,10 +1007,10 @@ class VdsIdsSteadyStateTest(BaseTestObject):
 
             # Line Soak
             if self.vin_index == 0:
-                self.update_status_log("Initial Soak...")
+                self.update_status_log("Initial Soak...", upcoming=f"Setting Load {self.iout_list_A[0]} A")
                 soak.do_initial_soak()
             else:
-                self.update_status_log("Line Soak...")
+                self.update_status_log("Line Soak...", upcoming=f"Setting Load {self.iout_list_A[0]} A")
                 soak.do_soak_per_line()
 
             for iout_index, iout_level in enumerate(self.iout_list_A):
@@ -873,7 +1022,7 @@ class VdsIdsSteadyStateTest(BaseTestObject):
                 self.status_report(self.vin_index, iout_index, vin_delays=False)
                 iout_A = float(f"{round(iout_level, 6):g}")
 
-                self.update_status_log(f"Setting Load {iout_A} A")
+                self.update_status_log(f"Setting Load {iout_A} A", upcoming="Load Soak")
 
                 # Set Electronic Load
                 self.electronic_load.set_load(self.vout_V, iout_A, self.eload_type)
@@ -881,7 +1030,7 @@ class VdsIdsSteadyStateTest(BaseTestObject):
                 if iout_A == 0:
                     self.electronic_load.turn_off()
 
-                self.update_status_log(f"Load Soak...")
+                self.update_status_log(f"Load Soak...", upcoming="Capture/Trigger Sweep")
                 soak.do_soak_per_load()
                 sleep(self.settle_time)
 
@@ -889,7 +1038,7 @@ class VdsIdsSteadyStateTest(BaseTestObject):
                 while True:
                     # Find optimal scope trigger level if enabled
                     if self.auto_find_trigger:
-                        self.update_status_log("Sweeping Trigger Level...")
+                        self.update_status_log("Sweeping Trigger Level...", upcoming="Capture Waveform")
                         actual_trig_level = self.find_trigger(channel=self.trigger_channel, trigger_delta=self.trigger_delta)
                     else:
                         if hasattr(self.oscilloscope, 'trigger_level') and callable(getattr(self.oscilloscope, 'trigger_level')):
@@ -900,16 +1049,34 @@ class VdsIdsSteadyStateTest(BaseTestObject):
                         else:
                             actual_trig_level = 0.0
 
-                    self.update_status_log("Waiting for user prompt...")
+                    self.update_status_log("Capturing waveform...", upcoming="Capture Waveform")
+                    
+                    # Capture waveform (RUN_SINGLE -> wait -> STOP)
+                    self.oscilloscope.run_single()
+                    sleep(1)
+                    self.oscilloscope.stop()
+
+                    # Query oscilloscope measurements to show in the prompt
+                    scope_measurements = self.query_active_scope_measurements()
+
+                    self.update_status_log("Waiting for user prompt...", upcoming="Capture Waveform")
 
                     if self.prompt_before_capture:
+                        # Format scope measurements for the prompt
+                        meas_str = ""
+                        for label, value in scope_measurements.items():
+                            meas_str += f"{label}: {value}<br>"
+                        if not meas_str:
+                            meas_str = "No active measurements found.<br>"
+
                         capture_prompt = (
-                            f"Oscilloscope Waveform Confirmation:\n\n"
-                            f"Operating Point: {vin_set:g} VAC, {iout_A:g} A\n"
-                            f"Unit ID: {self.unit_id}\n"
-                            f"Trigger Level: CH{self.trigger_channel} @ {actual_trig_level:.2f} V\n"
-                            f"Active Channels: {self.probe_setup}\n\n"
-                            "Review waveform on oscilloscope screen.\n"
+                            f"<b>Oscilloscope Waveform Confirmation:</b><br><br>"
+                            f"<b>Operating Point:</b> {vin_set:g} VAC, {iout_A:g} A<br>"
+                            f"<b>Unit ID:</b> {self.unit_id}<br>"
+                            f"<b>Trigger Level:</b> CH{self.trigger_channel} @ {actual_trig_level:.2f} V<br>"
+                            f"<b>Active Channels:</b> {self.probe_setup}<br><br>"
+                            f"<b>Live Measurements:</b><br>{meas_str}<br>"
+                            "Review waveform on oscilloscope screen.<br>"
                             "Choose an action:"
                         )
                         action = self.request_capture_action(
@@ -924,14 +1091,6 @@ class VdsIdsSteadyStateTest(BaseTestObject):
                             break
                         elif action == "STOP":
                             raise TestStopped
-
-                    # Capture waveform (RUN_SINGLE -> wait -> STOP)
-                    self.oscilloscope.run_single()
-                    sleep(1)
-                    self.oscilloscope.stop()
-
-                    # Query oscilloscope measurements
-                    scope_measurements = self.query_active_scope_measurements()
 
                     # Read input & output power/voltage measurements
                     vin_meas = vin_set
@@ -1003,7 +1162,28 @@ class VdsIdsSteadyStateTest(BaseTestObject):
 
                     # Update UI Results Table
                     self.test_data_table.add_data_row(row_data)
-                    self.test_data_update.emit([[], self.test_data_table])
+                    
+                    # Update Plot Data
+                    max_vds_col = f"{getattr(self, 'primary_vds_name', 'Primary Vds')} Max"
+                    if hasattr(self, 'vds_vs_vin_plot') and max_vds_col in row_data:
+                        try:
+                            vds_val = float(row_data[max_vds_col])
+                            self.vds_vs_vin_plot.append_plot_data(
+                                plot_index=iout_index,
+                                x=vin_set,
+                                y=vds_val
+                            )
+                            # Append derating limit for this Vin point (only once per Vin)
+                            if getattr(self, 'derating_limit_v', None) and iout_index == 0:
+                                self.vds_vs_vin_plot.append_plot_data(
+                                    plot_index=len(self.iout_list_A),
+                                    x=vin_set,
+                                    y=self.derating_limit_v
+                                )
+                        except Exception as e:
+                            print(f"[Warning] Failed to append plot data: {e}")
+
+                    self.test_data_update.emit([[self.vds_vs_vin_plot] if hasattr(self, 'vds_vs_vin_plot') else [], self.test_data_table])
 
                     # Record captured screenshot for embedding
                     self.captured_records.append({
@@ -1088,6 +1268,8 @@ class VdsIdsSteadyStateTest(BaseTestObject):
         text += f"Trigger: CH{self.trigger_channel} (Delta: {self.trigger_delta:g}V)\n"
         if getattr(self, 'current_status_log', None):
             text += f"Status: {self.current_status_log}\n"
+        if getattr(self, 'upcoming_event_log', None):
+            text += f"Upcoming: {self.upcoming_event_log}\n"
             
         if self.status in [TestStatus.COMPLETE, TestStatus.FAILED] and getattr(self, 'output_folder_path', None):
             import os
