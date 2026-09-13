@@ -202,8 +202,10 @@ class EfficiencyTest(BaseTestObject):
             # Turn on the AC source with the current parameters
             self.input_supply.turn_on()
 
-            self.power_meter_load.auto_range_enable()
-            self.power_meter_source.current_auto_range_enable()
+            if getattr(self, "power_meter_load", None):
+                self.power_meter_load.auto_range_enable()
+            if getattr(self, "power_meter_source", None):
+                self.power_meter_source.current_auto_range_enable()
 
             # Sleep for a short time to allow the power supply to stabilize 
             sleep(2)
