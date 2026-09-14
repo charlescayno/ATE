@@ -289,9 +289,10 @@ class EfficiencyTest(BaseTestObject):
                     # print("Off load")
                     self.electronic_load.turn_off()
                 
-                if iout_A < 0.05:
-                    self.power_meter_load.set_current_range(0.05)
-                else:
+                if getattr(self, 'power_meter_load', None):
+                    if iout_A < 0.05:
+                        self.power_meter_load.set_current_range(0.05)
+                    else:
                         self.power_meter_load.current_auto_range_enable()
                 
                 # Sleep for a short time to allow the power meters to select the appropriate range
@@ -466,6 +467,8 @@ class EfficiencyTest(BaseTestObject):
     
     def correct_source_output(self):
         """Remove the offset in the measured input by adjusting the source voltage"""
+        if not getattr(self, 'power_meter_source', None):
+            return
         # Read VIN until steady
         for i in range(10):
             vin = self.power_meter_source.voltage
