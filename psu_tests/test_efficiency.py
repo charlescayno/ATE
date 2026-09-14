@@ -504,20 +504,18 @@ class EfficiencyTest(BaseTestObject):
         text = f"{self.title}: {round(self.vout_V,3):g}V, {round(self.i_max_A,3):g}A\n" 
         
         if self.usbpd_test:
-            match self.usbpd_options.pdo_type:
-                case SUPPLY_TYPE.FIXED:
-                    if self.vout_V <= PD_SPECS.USBPD_MAX_SPR_FIXED_VOLTAGE_V:
-                        supply_type = 'Fixed PDO: SPR'
-                    else:
-                        supply_type = 'Fixed PDO: EPR'
-                case SUPPLY_TYPE.AUGMENTED:
-                    match self.usbpd_options.augmented_type:
-                        case AUGMENTED_TYPE.SPR_PPS:
-                            supply_type = 'Augmented PDO: SPR PPS'
-                        case AUGMENTED_TYPE.EPR_AVS:
-                            supply_type = 'Augmented PDO: EPR AVS'
-                        case AUGMENTED_TYPE.SPR_AVS:
-                            supply_type = 'Augmented PDO: SPR AVS'
+            if self.usbpd_options.pdo_type == SUPPLY_TYPE.FIXED:
+                if self.vout_V <= PD_SPECS.USBPD_MAX_SPR_FIXED_VOLTAGE_V:
+                    supply_type = 'Fixed PDO: SPR'
+                else:
+                    supply_type = 'Fixed PDO: EPR'
+            elif self.usbpd_options.pdo_type == SUPPLY_TYPE.AUGMENTED:
+                if self.usbpd_options.augmented_type == AUGMENTED_TYPE.SPR_PPS:
+                    supply_type = 'Augmented PDO: SPR PPS'
+                elif self.usbpd_options.augmented_type == AUGMENTED_TYPE.EPR_AVS:
+                    supply_type = 'Augmented PDO: EPR AVS'
+                elif self.usbpd_options.augmented_type == AUGMENTED_TYPE.SPR_AVS:
+                    supply_type = 'Augmented PDO: SPR AVS'
         else:
             supply_type = 'Non USB-PD'
             
