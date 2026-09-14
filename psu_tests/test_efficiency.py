@@ -234,11 +234,12 @@ class EfficiencyTest(BaseTestObject):
             # Set the e-load to the maximum load level to be tested and turn it on
             # self.electronic_load.reset_values()
             iout_A = self.iout_list_A[0]
-            self.electronic_load.set_load(self.vout_V,iout_A,self.eload_type)
-            self.electronic_load.turn_on()
-
-            if iout_A == 0:
-                self.electronic_load.turn_off()
+            if getattr(self, "electronic_load", None):
+                self.electronic_load.set_load(self.vout_V,iout_A,self.eload_type)
+                self.electronic_load.turn_on()
+    
+                if iout_A == 0:
+                    self.electronic_load.turn_off()
             
             sleep(2)
             # Correct the ac source output, limit to 1V
