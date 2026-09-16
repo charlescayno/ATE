@@ -99,9 +99,9 @@ class Equipment(ABC):
         
         # Log successfully executed SCPI commands
         if '?' in command:
-            print(f"[{self.device_id}] QUERY: {command} -> {response}")
+            print(f"[{self.device_id}] [SCPI_QUERY] {command} -> {response}")
         else:
-            print(f"[{self.device_id}] WRITE: {command}")
+            print(f"[{self.device_id}] [SCPI_WRITE] {command}")
 
         return response
     

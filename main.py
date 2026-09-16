@@ -11,6 +11,7 @@ from PySide2.QtWidgets import QTextEdit, QVBoxLayout, QPushButton
 import platform
 import time
 import traceback
+import html
 
 class DualLogger(object):
     def __init__(self, filepath="app_log.txt"):
@@ -171,7 +172,27 @@ class MainWindow(QMainWindow):
     
 
     def append_log(self, text):
-        self.log_console.insertPlainText(text)
+        escaped_text = html.escape(text).replace('\n', '<br>')
+        if '[SCPI_QUERY]' in text:
+            color = '#00ffff' # Cyan
+        elif '[SCPI_WRITE]' in text:
+            color = '#ffaa00' # Orange
+        elif '[ERROR]' in text or '[UNCAUGHT EXCEPTION]' in text or 'Traceback' in text or 'Exception' in text:
+            color = '#ff0000' # Red
+        elif '[WARNING]' in text.upper():
+            color = '#ffff00' # Yellow
+        elif '[INFO]' in text.upper():
+            color = '#00ff00' # Green
+        else:
+            color = '#cccccc' # Light Gray
+        
+        styled_html = f'<span style="color: {color};">{escaped_text}</span>'
+        
+        # Move cursor to end before inserting
+        cursor = self.log_console.textCursor()
+        cursor.movePosition(QtGui.QTextCursor.End)
+        self.log_console.setTextCursor(cursor)
+        self.log_console.insertHtml(styled_html)
         self.log_console.ensureCursorVisible()
 
     def show_display(self):
