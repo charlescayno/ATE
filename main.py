@@ -213,8 +213,9 @@ class MainWindow(QMainWindow):
         # Add vertical spacing before major test steps for grouping
         prefix = '<br>' if '[TEST_STEP]' in clean_text else ''
         
-        # Use divs with margin for adequate spacing between all lines
-        styled_html = f'{prefix}<div style="color: {color}; font-weight: {font_weight}; margin-top: 4px; margin-bottom: 4px;">{formatted_line}</div>'
+        # Use span and <br> for newlines in QTextEdit
+        # Add extra <br> for [TEST_STEP] to group logically
+        styled_html = f'{prefix}<span style=\"color: {color}; font-weight: {font_weight};\">{formatted_line}</span><br>'
         
         # Move cursor to end before inserting
         cursor = self.log_console.textCursor()
