@@ -96,18 +96,18 @@ class SimulatedACSource:
         self.state.freq = float(val)
 
     def turn_on(self):
-        print(f'[INFO] AC Source Simulated: Output ON')
+        print(f'[AC_SOURCE] AC Source Simulated: Output ON')
         self.state.ac_on = True
 
     def turn_off(self):
-        print(f'[INFO] AC Source Simulated: Output OFF')
+        print(f'[AC_SOURCE] AC Source Simulated: Output OFF')
         self.state.ac_on = False
 
     def set_voltage(self, voltage: float):
         self.state.vin = float(voltage)
 
     def set_voltage_with_coupling(self, voltage: float, coupling='AC'):
-        print(f"[INFO] AC Source Simulated: Set Voltage to {voltage}V (Coupling: {coupling})")
+        print(f"[AC_SOURCE] AC Source Simulated: Set Voltage to {voltage}V (Coupling: {coupling})")
         self.state.vin = float(voltage)
         self.coupling = str(coupling)
 
@@ -202,11 +202,11 @@ class SimulatedElectronicLoadModule:
     def cp(self, val): pass
 
     def turn_on(self):
-        print(f"[INFO] Electronic Load Simulated (CH {self.channel}): Output ON")
+        print(f"[E_LOAD] Electronic Load Simulated (CH {self.channel}): Output ON")
         self._ch['load_on'] = True
 
     def turn_off(self):
-        print(f"[INFO] Electronic Load Simulated (CH {self.channel}): Output OFF")
+        print(f"[E_LOAD] Electronic Load Simulated (CH {self.channel}): Output OFF")
         self._ch['load_on'] = False
 
     def turn_on_all(self):
@@ -218,7 +218,7 @@ class SimulatedElectronicLoadModule:
             ld['load_on'] = False
 
     def set_load(self, vout: float, iout: float, eload_type=None):
-        print(f"[INFO] Electronic Load Simulated (CH {self.channel}): Set Load {iout} A")
+        print(f"[E_LOAD] Electronic Load Simulated (CH {self.channel}): Set Load {iout} A")
         self._ch['target_vout'] = float(vout)
         self._ch['iout'] = float(iout)
 

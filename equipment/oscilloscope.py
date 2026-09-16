@@ -321,7 +321,7 @@ class Oscilloscope(Equipment):
         self.write(f'TRIG:MODE {mode}') # AUTO | NORMal | FREerun
 
     def force_trigger(self):
-        print(f'[INFO] Oscilloscope {self.device_id}: Forcing Trigger...')
+        print(f'[SCOPE] Oscilloscope {self.device_id}: Forcing Trigger...')
         self.write('TRIG:FORC')
 
     def trigger_status(self):

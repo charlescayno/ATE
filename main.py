@@ -12,6 +12,7 @@ import platform
 import time
 import traceback
 import html
+import datetime
 
 class DualLogger(object):
     def __init__(self, filepath="app_log.txt"):
@@ -172,21 +173,44 @@ class MainWindow(QMainWindow):
     
 
     def append_log(self, text):
-        escaped_text = html.escape(text).replace('\n', '<br>')
-        if '[SCPI_QUERY]' in text:
-            color = '#00ffff' # Cyan
-        elif '[SCPI_WRITE]' in text:
-            color = '#ffaa00' # Orange
-        elif '[ERROR]' in text or '[UNCAUGHT EXCEPTION]' in text or 'Traceback' in text or 'Exception' in text:
-            color = '#ff0000' # Red
-        elif '[WARNING]' in text.upper():
-            color = '#ffff00' # Yellow
-        elif '[INFO]' in text.upper():
+        now = datetime.datetime.now().strftime('%H:%M:%S')
+        clean_text = text.strip()
+        if not clean_text:
+            return # Skip empty lines
+
+        escaped_text = html.escape(clean_text).replace('\n', '<br>')
+        
+        font_weight = 'normal'
+        
+        if '[TEST_STEP]' in clean_text:
             color = '#00ff00' # Green
+            font_weight = 'bold'
+        elif '[AC_SOURCE]' in clean_text:
+            color = '#00bfff' # Deep Sky Blue
+        elif '[E_LOAD]' in clean_text:
+            color = '#ffaa00' # Orange
+        elif '[SCOPE]' in clean_text:
+            color = '#da70d6' # Orchid
+        elif '[POWER_METER]' in clean_text:
+            color = '#ff69b4' # Hot Pink
+        elif '[SOAK]' in clean_text:
+            color = '#ffff00' # Yellow
+        elif '[SCPI_QUERY]' in clean_text:
+            color = '#00ffff' # Cyan
+        elif '[SCPI_WRITE]' in clean_text:
+            color = '#ffaa00' # Orange
+        elif '[ERROR]' in clean_text.upper() or '[UNCAUGHT EXCEPTION]' in clean_text or 'Traceback' in clean_text or 'Exception' in clean_text:
+            color = '#ff0000' # Red
+            font_weight = 'bold'
+        elif '[WARNING]' in clean_text.upper():
+            color = '#ffff00' # Yellow
         else:
             color = '#cccccc' # Light Gray
+            
+        # Format the line with timestamp
+        formatted_line = f'[{now}] {escaped_text}'
         
-        styled_html = f'<span style="color: {color};">{escaped_text}</span>'
+        styled_html = f'<span style="color: {color}; font-weight: {font_weight};">{formatted_line}</span><br>'
         
         # Move cursor to end before inserting
         cursor = self.log_console.textCursor()

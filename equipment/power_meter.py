@@ -117,7 +117,7 @@ class PowerMeter(Equipment):
         return time_s
 
     def start_integration(self):
-        print(f'[INFO] Power Meter {self.device_id}: Starting Integration...')
+        print(f'[POWER_METER] Power Meter {self.device_id}: Starting Integration...')
         try:
             self.query_averaging_state()
             self.current_auto_range_query()
