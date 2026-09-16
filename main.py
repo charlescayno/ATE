@@ -150,9 +150,30 @@ class MainWindow(QMainWindow):
         # WIDGET TO MOVE
         self.ui.frame_label_top_btns.mouseMoveEvent = moveWindow
 
+        # Setup View Logs UI
+        self.log_layout = QVBoxLayout(self.ui.page_view_logs)
+        self.log_console = QTextEdit(self.ui.page_view_logs)
+        self.log_console.setReadOnly(True)
+        self.log_console.setStyleSheet("background-color: #1e1e1e; color: #00ff00; font-family: Consolas;")
+        self.btn_clear_logs = QPushButton("Clear Logs", self.ui.page_view_logs)
+        self.btn_clear_logs.clicked.connect(self.log_console.clear)
+        self.log_layout.addWidget(self.btn_clear_logs)
+        self.log_layout.addWidget(self.log_console)
+
+        # Redirect stdout/stderr
+        self.log_emitter = LogEmitter()
+        self.log_emitter.log_signal.connect(self.append_log)
+        sys.stdout = OutputLogger(self.log_emitter, sys.stdout)
+        sys.stderr = OutputLogger(self.log_emitter, sys.stderr)
+
         self.ui.stackedWidget.setCurrentWidget(self.ui.page_home)
         
     
+
+    def append_log(self, text):
+        self.log_console.insertPlainText(text)
+        self.log_console.ensureCursorVisible()
+
     def show_display(self):
         # Show the user interface and maximize it
         self.show()
