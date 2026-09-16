@@ -210,7 +210,11 @@ class MainWindow(QMainWindow):
         # Format the line with timestamp
         formatted_line = f'[{now}] {escaped_text}'
         
-        styled_html = f'<span style="color: {color}; font-weight: {font_weight};">{formatted_line}</span><br>'
+        # Add vertical spacing before major test steps for grouping
+        prefix = '<br>' if '[TEST_STEP]' in clean_text else ''
+        
+        # Use divs with margin for adequate spacing between all lines
+        styled_html = f'{prefix}<div style="color: {color}; font-weight: {font_weight}; margin-top: 4px; margin-bottom: 4px;">{formatted_line}</div>'
         
         # Move cursor to end before inserting
         cursor = self.log_console.textCursor()
