@@ -779,6 +779,7 @@ class ElectronicLoadModule(Equipment):
         
     @visa_io
     def turn_on(self):
+        print(f"[INFO] Electronic Load {self.device_id} (CH {self.channel}): Output ON")
         self.write(f'{self.prog_func.channel} {self.channel}')
         self.write(f'{self.prog_func.load} ON')
         self.active_channel_status = self.write(f'{self.prog_func.load}?')
@@ -788,6 +789,7 @@ class ElectronicLoadModule(Equipment):
 
     @visa_io
     def turn_off(self):
+        print(f"[INFO] Electronic Load {self.device_id} (CH {self.channel}): Output OFF")
         self.write(f'{self.prog_func.channel} {self.channel}')
         self.write(f'{self.prog_func.load} OFF')
         self.active_channel_status = self.write(f'{self.prog_func.load}?')
@@ -814,6 +816,7 @@ class ElectronicLoadModule(Equipment):
     @visa_io
     def set_load(self, vout_V:float, iout_A:float, mode:str):
         ''' Set eload to defined load and automatically choose the eload type'''
+        print(f"[INFO] Electronic Load {self.device_id} (CH {self.channel}): Set Load {iout_A} A ({mode})")
         self.write(f'{self.prog_func.channel} {self.channel}')
         self.active_channel_voltage = vout_V
         if (not iout_A == 0) and (iout_A is not None):

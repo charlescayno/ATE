@@ -47,9 +47,11 @@ class ACSource(Equipment):
         # self.write(f'{self.command_coupling} {self._coupling}')
         # self.write(f'{self.command_volt_dc} {self._offset}')
             
+        print(f'[INFO] AC Source {self.device_id}: Output ON')
         self.write(f'{self.command_output} ON')
 
     def turn_off(self):
+        print(f'[INFO] AC Source {self.device_id}: Output OFF')
         self.write(f'{self.command_output} OFF')
 
     def set_freq(self, voltage):
@@ -121,6 +123,7 @@ class ACSource(Equipment):
         self.write(f'{self.command_freq_slew_rate} {self._freq_slew_rate}')
         
     def set_voltage_with_coupling(self,voltage,coupling):
+        print(f'[INFO] AC Source {self.device_id}: Set Voltage to {voltage}V (Coupling: {coupling})')
         if type(self.ac_source_object) is ACSourceIT7800:
             if coupling == AC_SOURCE_COUPLING.DC:
                 if not self.coupling == AC_SOURCE_COUPLING.DC:
