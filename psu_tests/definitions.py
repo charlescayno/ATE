@@ -390,12 +390,18 @@ class SoakTime:
         global test_control_flags
 
         soak = ceil(self.initial_soak)
+        if soak > 0:
+            print(f"[INFO] Initial Soak: Waiting {soak} seconds...")
 
         for i in range(soak*2):
+            if i > 0 and i % 10 == 0:
+                remaining = (soak*2 - i) // 2
+                if remaining % 5 == 0:
+                    print(f"[INFO] Initial Soak: {remaining} seconds remaining...")
             sleep(0.5)
-            if test_control_flags['StopTest'] == True:
+            if test_control_flags.get('StopTest', False):
                 raise TestStopped
-            if test_control_flags['SkipTest'] == True:
+            if test_control_flags.get('SkipTest', False):
                 raise TestSkipped
         # sleep(self.initial_soak)
 
@@ -403,12 +409,18 @@ class SoakTime:
         global test_control_flags
 
         soak = ceil(self.soak_per_line)
+        if soak > 0:
+            print(f"[INFO] Line Soak: Waiting {soak} seconds...")
 
         for i in range(soak*2):
+            if i > 0 and i % 10 == 0:
+                remaining = (soak*2 - i) // 2
+                if remaining % 5 == 0:
+                    print(f"[INFO] Line Soak: {remaining} seconds remaining...")
             sleep(0.5)
-            if test_control_flags['StopTest'] == True:
+            if test_control_flags.get('StopTest', False):
                 raise TestStopped
-            if test_control_flags['SkipTest'] == True:
+            if test_control_flags.get('SkipTest', False):
                 raise TestSkipped
         # sleep(self.soak_per_line)
     
@@ -416,24 +428,36 @@ class SoakTime:
         global test_control_flags
 
         soak = ceil(self.soak_per_load)
+        if soak > 0:
+            print(f"[INFO] Load Soak: Waiting {soak} seconds...")
 
         for i in range(soak*2):
+            if i > 0 and i % 10 == 0:
+                remaining = (soak*2 - i) // 2
+                if remaining % 5 == 0:
+                    print(f"[INFO] Load Soak: {remaining} seconds remaining...")
             sleep(0.5)
-            if test_control_flags['StopTest'] == True:
+            if test_control_flags.get('StopTest', False):
                 raise TestStopped
-            if test_control_flags['SkipTest'] == True:
+            if test_control_flags.get('SkipTest', False):
                 raise TestSkipped
 
     def do_integration_soak(self):
         global test_control_flags
 
         soak = ceil(self.integration_time)
+        if soak > 0:
+            print(f"[INFO] Integration Soak: Waiting {soak} seconds...")
 
         for i in range(soak*2):
+            if i > 0 and i % 10 == 0:
+                remaining = (soak*2 - i) // 2
+                if remaining % 5 == 0:
+                    print(f"[INFO] Integration Soak: {remaining} seconds remaining...")
             sleep(0.5)
-            if test_control_flags['StopTest'] == True:
+            if test_control_flags.get('StopTest', False):
                 raise TestStopped
-            if test_control_flags['SkipTest'] == True:
+            if test_control_flags.get('SkipTest', False):
                 raise TestSkipped
             
     ################################################################################

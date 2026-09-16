@@ -878,6 +878,7 @@ class VdsIdsSteadyStateTest(BaseTestObject):
             self.status_update.emit(TestStatus.COMPLETE)
 
     def update_status_log(self, msg, upcoming=None):
+        print(f"[INFO] {msg}")
         self.current_status_log = msg
         self.upcoming_event_log = upcoming
         self.update_test_list_text()
