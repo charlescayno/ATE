@@ -96,6 +96,12 @@ class Equipment(ABC):
         except Exception as e:
             print(f"Error when writing {command} to {self.device_id}")
             raise e
+        
+        # Log successfully executed SCPI commands
+        if '?' in command:
+            print(f"[{self.device_id}] QUERY: {command} -> {response}")
+        else:
+            print(f"[{self.device_id}] WRITE: {command}")
 
         return response
     

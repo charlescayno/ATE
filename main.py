@@ -7,6 +7,7 @@
 # Standard Library Imports
 import os
 import sys
+from PySide2.QtWidgets import QTextEdit, QVBoxLayout, QPushButton
 import platform
 import time
 import traceback
@@ -53,6 +54,23 @@ from PySide2.QtCore import (
     QTimer, QCoreApplication, QPropertyAnimation, QDate, 
     QDateTime, QMetaObject, QObject, QPoint, QRect, 
     QSize, QTime, QUrl, Qt, QEvent)
+from PySide2.QtCore import QObject, Signal
+
+class LogEmitter(QObject):
+    log_signal = Signal(str)
+
+class OutputLogger:
+    def __init__(self, emitter, out_stream):
+        self.emitter = emitter
+        self.out_stream = out_stream
+
+    def write(self, message):
+        self.emitter.log_signal.emit(message)
+        self.out_stream.write(message)
+
+    def flush(self):
+        self.out_stream.flush()
+
 from PySide2.QtGui import (
     QPixmap, QBrush, QColor, QConicalGradient, QCursor, QFont, 
     QFontDatabase, QIcon, QKeySequence, QLinearGradient, QPalette, 
@@ -259,9 +277,9 @@ class MainWindow(QMainWindow):
         # UIFunctions.addNewMenu(
         #     self, "I2C Controls", "btn_i2c_controls", 
         #     "url(:/20x20/icons/20x20/cil-lightbulb.png)", True)
-        # UIFunctions.addNewMenu(
-        #     self, "View Logs", "btn_view_logs", 
-        #     "url(:/20x20/icons/20x20/cil-notes.png)", True)
+        UIFunctions.addNewMenu(
+            self, "View Logs", "btn_view_logs",
+            "url(:/20x20/icons/20x20/cil-notes.png)", True)
         # UIFunctions.addNewMenu(
         #     self, "Save/Load Configuration", "btn_save_load_configs", 
         #     "url(:/20x20/icons/20x20/cil-save.png)", False)
@@ -427,12 +445,12 @@ class MainWindow(QMainWindow):
         #         UIFunctions.selectMenu(btnWidget.styleSheet()))
         
         # PAGE VIEW LOGS
-        # elif btnWidget.objectName() == "btn_view_logs":
-        #     self.ui.stackedWidget.setCurrentWidget(self.ui.page_view_logs)
-        #     UIFunctions.resetStyle(self, "btn_view_logs")
-        #     UIFunctions.labelPage(self, "View Logs")
-        #     btnWidget.setStyleSheet(
-        #         UIFunctions.selectMenu(btnWidget.styleSheet()))
+        elif btnWidget.objectName() == "btn_view_logs":
+            self.ui.stackedWidget.setCurrentWidget(self.ui.page_view_logs)
+            UIFunctions.resetStyle(self, "btn_view_logs")
+            UIFunctions.labelPage(self, "View Logs")
+            btnWidget.setStyleSheet(
+                UIFunctions.selectMenu(btnWidget.styleSheet()))
 
         # PAGE SAVE / LOAD CONFIGS
         # elif btnWidget.objectName() == "btn_save_load_configs":
