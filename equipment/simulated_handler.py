@@ -88,6 +88,10 @@ class SimulatedDCSource:
         self.output_status = 0
         print(f"[DC_SOURCE] DC Source Simulated: Output OFF")
 
+
+    def set_slew_rate(self, slew_rate):
+        print(f"[DC_SOURCE] DC Source Simulated: Slew Rate set to {slew_rate}")
+
     def set_voltage_with_coupling(self, voltage, coupling):
         self.voltage = voltage
         self.coupling = coupling

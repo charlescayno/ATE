@@ -187,6 +187,26 @@ class ManualControlPageHandler():
         self.source_caps_listed = False
     
     def bind_ui_elements(self):
+        from PySide2.QtWidgets import QCheckBox, QLabel, QLineEdit
+        # Create DC Source Ramp controls
+        self.ui.chkbox_manual_control_dc_source_ramp_enable = QCheckBox(self.ui.frame_manual_control_ac_source_params)
+        self.ui.chkbox_manual_control_dc_source_ramp_enable.setObjectName(u"chkbox_manual_control_dc_source_ramp_enable")
+        self.ui.chkbox_manual_control_dc_source_ramp_enable.setText("Enable Ramp")
+        self.ui.chkbox_manual_control_dc_source_ramp_enable.setStyleSheet("color: white;")
+        self.ui.chkbox_manual_control_dc_source_ramp_enable.setVisible(False)
+        self.ui.gridLayout_3.addWidget(self.ui.chkbox_manual_control_dc_source_ramp_enable, 3, 0, 1, 2)
+        
+        self.ui.label_manual_control_dc_source_slew_rate = QLabel(self.ui.frame_manual_control_ac_source_params)
+        self.ui.label_manual_control_dc_source_slew_rate.setText("Slew Rate (V/s)")
+        self.ui.label_manual_control_dc_source_slew_rate.setVisible(False)
+        self.ui.gridLayout_3.addWidget(self.ui.label_manual_control_dc_source_slew_rate, 4, 0, 1, 1)
+
+        self.ui.lineedit_manual_control_dc_source_slew_rate = QLineEdit(self.ui.frame_manual_control_ac_source_params)
+        self.ui.lineedit_manual_control_dc_source_slew_rate.setText("1.0")
+        self.ui.lineedit_manual_control_dc_source_slew_rate.setStyleSheet(self.ui.lineedit_manual_control_ac_source_voltage.styleSheet())
+        self.ui.lineedit_manual_control_dc_source_slew_rate.setVisible(False)
+        self.ui.gridLayout_3.addWidget(self.ui.lineedit_manual_control_dc_source_slew_rate, 4, 1, 1, 1)
+
         # Setup Equipment
         self.ui.btn_manual_control_setup_equipment.clicked.\
             connect(self.initialize_gpib_equipment)
@@ -709,6 +729,10 @@ class ManualControlPageHandler():
         self.ui.chkbox_manual_control_ac_source_coupling.setVisible(True)
         self.ui.label_manual_control_ac_source_frequency.setEnabled(True)
         self.ui.lineedit_manual_control_ac_source_frequency.setEnabled(True)
+
+        self.ui.chkbox_manual_control_dc_source_ramp_enable.setVisible(False)
+        self.ui.label_manual_control_dc_source_slew_rate.setVisible(False)
+        self.ui.lineedit_manual_control_dc_source_slew_rate.setVisible(False)
         
         if hasattr(self.equipment, 'dc_source') and self.equipment.dc_source is not None:
             if 'SL1000' in self.equipment.dc_source.model:
@@ -722,6 +746,10 @@ class ManualControlPageHandler():
                 self.ui.label_manual_control_ac_source_frequency.setEnabled(False)
                 self.ui.lineedit_manual_control_ac_source_frequency.setEnabled(False)
                 self.ac_source.coupling = AC_SOURCE_COUPLING.DC
+
+                self.ui.chkbox_manual_control_dc_source_ramp_enable.setVisible(True)
+                self.ui.label_manual_control_dc_source_slew_rate.setVisible(True)
+                self.ui.lineedit_manual_control_dc_source_slew_rate.setVisible(True)
 
     @eload_access
     def initialize_eload(self):
@@ -823,7 +851,24 @@ class ManualControlPageHandler():
             else:
                 freq = rounded_float(self.ui.lineedit_manual_control_ac_source_frequency.text())
             self.ac_source.frequency = freq
+        elif getattr(self.ac_source, 'manufacturer', '') == 'Magna-Power' or 'SL1000' in getattr(self.ac_source, 'model', ''):
+            # Prompt user to disengage discharge resistor
+            res = self.parent.msg_box_yes_no(
+                title="Discharge Resistor Check",
+                message="Is the discharge resistor disengaged? Please disengage before powering up."
+            )
+            if res != 16384: # QMessageBox.Yes
+                return
             
+            # Apply Slew rate if enabled
+            if hasattr(self.ui, 'chkbox_manual_control_dc_source_ramp_enable') and self.ui.chkbox_manual_control_dc_source_ramp_enable.isChecked():
+                slew_rate = self.ui.lineedit_manual_control_dc_source_slew_rate.text()
+                if slew_rate != '':
+                    if hasattr(self.ac_source, 'set_slew_rate'):
+                        self.ac_source.set_slew_rate(slew_rate)
+                    elif hasattr(self.ac_source, 'write') and hasattr(self.ac_source, 'command_volt'):
+                        self.ac_source.write(f'{self.ac_source.command_volt}:SLEW {slew_rate}')
+        
         self.ac_source.set_voltage_with_coupling(voltage= vin_V, coupling= self.ac_source.coupling) 
         self.ac_source.turn_on() 
         
@@ -836,6 +881,10 @@ class ManualControlPageHandler():
         else:
             self.ui.chkbox_manual_control_ac_source_coupling.setText(QCoreApplication.translate("MainWindow", 'AC', None))
             self.ui.lineedit_manual_control_ac_source_frequency.setEnabled(True)
+
+        self.ui.chkbox_manual_control_dc_source_ramp_enable.setVisible(False)
+        self.ui.label_manual_control_dc_source_slew_rate.setVisible(False)
+        self.ui.lineedit_manual_control_dc_source_slew_rate.setVisible(False)
             self.ui.label_manual_control_ac_source_frequency.setEnabled(True)
             self.ac_source.coupling = AC_SOURCE_COUPLING.AC       
         
