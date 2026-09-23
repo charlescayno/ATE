@@ -63,6 +63,37 @@ class VirtualCircuitState:
         return total
 
 
+
+class SimulatedDCSource:
+    def __init__(self, state):
+        self.state = state
+        self.description = "Simulated Magna-Power SL1000-1.5 DC Source"
+        self.manufacturer = "Magna-Power"
+        self.model = "SL1000-1.5"
+        self.serial = "SIM-DC-001"
+        self.output_status = 0 # 0 = OFF, 1 = ON
+        self.coupling = 'DC'
+        self.voltage = 0.0
+        self.current = 0.0
+
+    def update_status(self):
+        # Already tracked internally
+        pass
+        
+    def turn_on(self):
+        self.output_status = 1
+        print(f"[DC_SOURCE] DC Source Simulated: Output ON")
+
+    def turn_off(self):
+        self.output_status = 0
+        print(f"[DC_SOURCE] DC Source Simulated: Output OFF")
+
+    def set_voltage_with_coupling(self, voltage, coupling):
+        self.voltage = voltage
+        self.coupling = coupling
+        self.state.input_voltage = voltage
+        print(f"[DC_SOURCE] DC Source Simulated: Set Voltage to {voltage}V (Coupling: {coupling})")
+
 class SimulatedACSource:
     def __init__(self, state: VirtualCircuitState):
         self.state = state
@@ -499,7 +530,7 @@ class SimulatedEquipmentHandler(EquipmentHandler):
 
         # Virtual instruments
         self.ac_source = SimulatedACSource(self.state)
-        self.dc_source = None
+        self.dc_source = SimulatedDCSource(self.state)
         self.electronic_load_1 = SimulatedElectronicLoadModule(self.state, channel_idx=1)
         self.electronic_load_2 = SimulatedElectronicLoadModule(self.state, channel_idx=2)
         self.electronic_load_3 = SimulatedElectronicLoadModule(self.state, channel_idx=3)
@@ -521,7 +552,7 @@ class SimulatedEquipmentHandler(EquipmentHandler):
 
         # Equipment lists
         self.ac_sources = [self.ac_source]
-        self.dc_sources = []
+        self.dc_sources = [self.dc_source]
         self.e_loads = [
             self.electronic_load_1,
             self.electronic_load_2,
