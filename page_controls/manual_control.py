@@ -701,6 +701,27 @@ class ManualControlPageHandler():
     @ac_source_access
     def initialize_ac_source(self):
         self.ac_source = self.equipment.ac_source
+        
+        # Reset UI back to default (AC Source) just in case it was previously set to DC Source
+        self.ui.label_manual_control_ac_source.setText("AC SOURCE")
+        self.ui.label_manual_control_ac_source_frequency.setVisible(True)
+        self.ui.lineedit_manual_control_ac_source_frequency.setVisible(True)
+        self.ui.chkbox_manual_control_ac_source_coupling.setVisible(True)
+        self.ui.label_manual_control_ac_source_frequency.setEnabled(True)
+        self.ui.lineedit_manual_control_ac_source_frequency.setEnabled(True)
+        
+        if hasattr(self.equipment, 'dc_source') and self.equipment.dc_source is not None:
+            if 'SL1000' in self.equipment.dc_source.model:
+                self.ac_source = self.equipment.dc_source
+                # Modify UI for DC Source
+                self.ui.label_manual_control_ac_source.setText("DC SOURCE")
+                self.ui.label_manual_control_ac_source_frequency.setVisible(False)
+                self.ui.lineedit_manual_control_ac_source_frequency.setVisible(False)
+                self.ui.chkbox_manual_control_ac_source_coupling.setChecked(True)
+                self.ui.chkbox_manual_control_ac_source_coupling.setVisible(False)
+                self.ui.label_manual_control_ac_source_frequency.setEnabled(False)
+                self.ui.lineedit_manual_control_ac_source_frequency.setEnabled(False)
+                self.ac_source.coupling = AC_SOURCE_COUPLING.DC
 
     @eload_access
     def initialize_eload(self):
