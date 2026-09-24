@@ -823,7 +823,12 @@ class ManualControlPageHandler():
                         self.current_ramp_voltage = self.target_ramp_voltage
                         self.is_ramping = False
                 self.ac_source.set_voltage_with_coupling(voltage=self.current_ramp_voltage, coupling=self.ac_source.coupling)
-                print(f"[DC_SOURCE] Ramping Output: {self.current_ramp_voltage:.2f} V / {self.target_ramp_voltage:.2f} V")
+                
+                # Throttle log to once per second
+                current_time = time.time()
+                if current_time - getattr(self, 'last_ramp_log_time', 0.0) >= 1.0 or not self.is_ramping:
+                    print(f"[DC_SOURCE] Ramping Output: {self.current_ramp_voltage:.2f} V / {self.target_ramp_voltage:.2f} V")
+                    self.last_ramp_log_time = current_time
             except Exception as e:
                 print(f"[ERROR] Exception during software ramp: {str(e)}")
                 self.is_ramping = False

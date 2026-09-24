@@ -96,7 +96,9 @@ class SimulatedDCSource:
         self.voltage = voltage
         self.coupling = coupling
         self.state.input_voltage = voltage
-        print(f"[DC_SOURCE] DC Source Simulated: Set Voltage to {voltage}V (Coupling: {coupling})")
+        if not hasattr(self, '_last_printed_voltage') or abs(self._last_printed_voltage - voltage) > 0.001:
+            print(f"[DC_SOURCE] DC Source Simulated: Set Voltage to {voltage:.2f}V (Coupling: {coupling})")
+            self._last_printed_voltage = voltage
 
 class SimulatedACSource:
     def __init__(self, state: VirtualCircuitState):
@@ -142,7 +144,9 @@ class SimulatedACSource:
         self.state.vin = float(voltage)
 
     def set_voltage_with_coupling(self, voltage: float, coupling='AC'):
-        print(f"[AC_SOURCE] AC Source Simulated: Set Voltage to {voltage}V (Coupling: {coupling})")
+        if not hasattr(self, '_last_printed_voltage') or abs(self._last_printed_voltage - voltage) > 0.001:
+            print(f"[AC_SOURCE] AC Source Simulated: Set Voltage to {voltage:.2f}V (Coupling: {coupling})")
+            self._last_printed_voltage = voltage
         self.state.vin = float(voltage)
         self.coupling = str(coupling)
 
