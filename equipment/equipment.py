@@ -98,10 +98,10 @@ class Equipment(ABC):
             raise e
         
         # Log successfully executed SCPI commands
-        if '?' in command:
-            print(f"[{self.device_id}] [SCPI_QUERY] {command} -> {response}")
-        else:
-            print(f"[{self.device_id}] [SCPI_WRITE] {command}")
+        # if '?' in command:
+        #     print(f"[{self.device_id}] [SCPI_QUERY] {command} -> {response}")
+        # else:
+        #     print(f"[{self.device_id}] [SCPI_WRITE] {command}")
 
         return response
     
