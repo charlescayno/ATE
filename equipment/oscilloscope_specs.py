@@ -138,7 +138,7 @@ class RohdeSchwarzOscilloscope(OscilloscopeBaseClass):
                         ch = int(match.group(1))
                         expected_labels = self.configured_measurements.get(slot, [])
                         
-                        aresult = self.write(f"MEASurement{slot}:RESult?")
+                        aresult = self.write(f"MEASurement{slot}:RESult:ACTual?")
                         if aresult:
                             vals_str = aresult.split(',')
                             if ch not in result_dict:

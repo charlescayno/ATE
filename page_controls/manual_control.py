@@ -205,7 +205,14 @@ class ManualControlPageHandler():
         self.ui.lineedit_manual_control_dc_source_slew_rate.setText("1.0")
         self.ui.lineedit_manual_control_dc_source_slew_rate.setStyleSheet(self.ui.lineedit_manual_control_ac_source_voltage.styleSheet())
         self.ui.lineedit_manual_control_dc_source_slew_rate.setVisible(False)
+        self.ui.label_manual_control_dc_source_estimated_time = QLabel(self.ui.frame_manual_control_ac_source_params)
+        self.ui.label_manual_control_dc_source_estimated_time.setText("Estimated Time: N/A")
+        self.ui.label_manual_control_dc_source_estimated_time.setStyleSheet("color: white;")
+        self.ui.label_manual_control_dc_source_estimated_time.setVisible(False)
         self.ui.gridLayout_3.addWidget(self.ui.lineedit_manual_control_dc_source_slew_rate, 4, 1, 1, 1)
+        self.ui.gridLayout_3.addWidget(self.ui.label_manual_control_dc_source_estimated_time, 5, 0, 1, 2)
+        self.ui.lineedit_manual_control_dc_source_slew_rate.textChanged.connect(self.update_estimated_ramp_time)
+        self.ui.lineedit_manual_control_ac_source_voltage.textChanged.connect(self.update_estimated_ramp_time)
 
         # Setup Equipment
         self.ui.btn_manual_control_setup_equipment.clicked.\
@@ -733,9 +740,10 @@ class ManualControlPageHandler():
         self.ui.chkbox_manual_control_dc_source_ramp_enable.setVisible(False)
         self.ui.label_manual_control_dc_source_slew_rate.setVisible(False)
         self.ui.lineedit_manual_control_dc_source_slew_rate.setVisible(False)
+        self.ui.label_manual_control_dc_source_estimated_time.setVisible(False)
         
         if hasattr(self.equipment, 'dc_source') and self.equipment.dc_source is not None:
-            if 'SL1000' in self.equipment.dc_source.model:
+            if 'SL1000' in self.equipment.dc_source.model or 'Magna-Power' in getattr(self.equipment.dc_source, 'manufacturer', ''):
                 self.ac_source = self.equipment.dc_source
                 # Modify UI for DC Source
                 self.ui.label_manual_control_ac_source.setText("DC SOURCE")
@@ -750,6 +758,7 @@ class ManualControlPageHandler():
                 self.ui.chkbox_manual_control_dc_source_ramp_enable.setVisible(True)
                 self.ui.label_manual_control_dc_source_slew_rate.setVisible(True)
                 self.ui.lineedit_manual_control_dc_source_slew_rate.setVisible(True)
+                self.ui.label_manual_control_dc_source_estimated_time.setVisible(True)
 
     @eload_access
     def initialize_eload(self):
@@ -799,6 +808,20 @@ class ManualControlPageHandler():
         if not self.ac_source_request == AC_SOURCE_REQUEST.NO_REQUEST:
             self.ac_source_request_service()    
             self.ac_source_request = AC_SOURCE_REQUEST.NO_REQUEST
+            
+        # Software ramp execution
+        if getattr(self, 'is_ramping', False):
+            if self.current_ramp_voltage < self.target_ramp_voltage:
+                self.current_ramp_voltage += self.ramp_step_v
+                if self.current_ramp_voltage >= self.target_ramp_voltage:
+                    self.current_ramp_voltage = self.target_ramp_voltage
+                    self.is_ramping = False
+            elif self.current_ramp_voltage > self.target_ramp_voltage:
+                self.current_ramp_voltage -= self.ramp_step_v
+                if self.current_ramp_voltage <= self.target_ramp_voltage:
+                    self.current_ramp_voltage = self.target_ramp_voltage
+                    self.is_ramping = False
+            self.ac_source.set_voltage_with_coupling(voltage=self.current_ramp_voltage, coupling=self.ac_source.coupling)
 
         # Indicate the state of the AC source output by changing the frame color
         self.ac_source.update_status()
@@ -827,6 +850,7 @@ class ManualControlPageHandler():
             case AC_SOURCE_REQUEST.ON:
                 self.ac_source_power_on()
             case AC_SOURCE_REQUEST.OFF:
+                self.is_ramping = False
                 self.ac_source.turn_off()
 
     def ac_source_power_on(self):
@@ -851,13 +875,13 @@ class ManualControlPageHandler():
             else:
                 freq = rounded_float(self.ui.lineedit_manual_control_ac_source_frequency.text())
             self.ac_source.frequency = freq
-        elif getattr(self.ac_source, 'manufacturer', '') == 'Magna-Power' or 'SL1000' in getattr(self.ac_source, 'model', ''):
+        elif 'Magna-Power' in getattr(self.ac_source, 'manufacturer', '') or 'SL1000' in getattr(self.ac_source, 'model', ''):
             # Prompt user to disengage discharge resistor
-            res = self.parent.msg_box_yes_no(
+            res = self.parent.msg_box_pick(
                 title="Discharge Resistor Check",
                 message="Is the discharge resistor disengaged? Please disengage before powering up."
             )
-            if res != 16384: # QMessageBox.Yes
+            if res != 1024: # QMessageBox.Ok
                 return
             
             # Apply Slew rate if enabled
@@ -866,8 +890,22 @@ class ManualControlPageHandler():
                 if slew_rate != '':
                     if hasattr(self.ac_source, 'set_slew_rate'):
                         self.ac_source.set_slew_rate(slew_rate)
-                    elif hasattr(self.ac_source, 'write') and hasattr(self.ac_source, 'command_volt'):
-                        self.ac_source.write(f'{self.ac_source.command_volt}:SLEW {slew_rate}')
+                    else:
+                        # Magna-Power SL-series doesn't natively support VOLT:SLEW, so we must software ramp.
+                        interval_s = MANUAL_CONTROL_SETTINGS.UPDATE_INTERVAL_MS / 1000.0
+                        self.ramp_step_v = float(slew_rate) * interval_s
+                        try:
+                            self.current_ramp_voltage = float(self.ac_source.voltage)
+                        except (ValueError, TypeError, AttributeError):
+                            self.current_ramp_voltage = 0.0
+                        self.target_ramp_voltage = float(vin_V)
+                        
+                        # Only enable ramping if we actually have distance to cover
+                        if abs(self.target_ramp_voltage - self.current_ramp_voltage) > self.ramp_step_v:
+                            self.is_ramping = True
+                            self.ac_source.set_voltage_with_coupling(voltage=self.current_ramp_voltage, coupling=self.ac_source.coupling)
+                            self.ac_source.turn_on()
+                            return
         
         self.ac_source.set_voltage_with_coupling(voltage= vin_V, coupling= self.ac_source.coupling) 
         self.ac_source.turn_on() 
@@ -881,13 +919,22 @@ class ManualControlPageHandler():
         else:
             self.ui.chkbox_manual_control_ac_source_coupling.setText(QCoreApplication.translate("MainWindow", 'AC', None))
             self.ui.lineedit_manual_control_ac_source_frequency.setEnabled(True)
-
-        self.ui.chkbox_manual_control_dc_source_ramp_enable.setVisible(False)
-        self.ui.label_manual_control_dc_source_slew_rate.setVisible(False)
-        self.ui.lineedit_manual_control_dc_source_slew_rate.setVisible(False)
             self.ui.label_manual_control_ac_source_frequency.setEnabled(True)
-            self.ac_source.coupling = AC_SOURCE_COUPLING.AC       
+            self.ac_source.coupling = AC_SOURCE_COUPLING.AC
         
+
+    def update_estimated_ramp_time(self):
+        try:
+            target_voltage = float(self.ui.lineedit_manual_control_ac_source_voltage.text())
+            slew_rate = float(self.ui.lineedit_manual_control_dc_source_slew_rate.text())
+            if slew_rate > 0:
+                time_s = target_voltage / slew_rate
+                self.ui.label_manual_control_dc_source_estimated_time.setText(f"Estimated Time: {time_s:.2f} s")
+            else:
+                self.ui.label_manual_control_dc_source_estimated_time.setText("Estimated Time: N/A")
+        except ValueError:
+            self.ui.label_manual_control_dc_source_estimated_time.setText("Estimated Time: N/A")
+
     # Electronic Load Functions
     @eload_access
     def update_eload_modes_cbx(self):
