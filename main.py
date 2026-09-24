@@ -187,6 +187,8 @@ class MainWindow(QMainWindow):
             font_weight = 'bold'
         elif '[AC_SOURCE]' in clean_text:
             color = '#00bfff' # Deep Sky Blue
+        elif '[DC_SOURCE]' in clean_text:
+            color = '#40e0d0' # Turquoise
         elif '[E_LOAD]' in clean_text:
             color = '#ffaa00' # Orange
         elif '[SCOPE]' in clean_text:

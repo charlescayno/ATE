@@ -811,17 +811,22 @@ class ManualControlPageHandler():
             
         # Software ramp execution
         if getattr(self, 'is_ramping', False):
-            if self.current_ramp_voltage < self.target_ramp_voltage:
-                self.current_ramp_voltage += self.ramp_step_v
-                if self.current_ramp_voltage >= self.target_ramp_voltage:
-                    self.current_ramp_voltage = self.target_ramp_voltage
-                    self.is_ramping = False
-            elif self.current_ramp_voltage > self.target_ramp_voltage:
-                self.current_ramp_voltage -= self.ramp_step_v
-                if self.current_ramp_voltage <= self.target_ramp_voltage:
-                    self.current_ramp_voltage = self.target_ramp_voltage
-                    self.is_ramping = False
-            self.ac_source.set_voltage_with_coupling(voltage=self.current_ramp_voltage, coupling=self.ac_source.coupling)
+            try:
+                if self.current_ramp_voltage < self.target_ramp_voltage:
+                    self.current_ramp_voltage += self.ramp_step_v
+                    if self.current_ramp_voltage >= self.target_ramp_voltage:
+                        self.current_ramp_voltage = self.target_ramp_voltage
+                        self.is_ramping = False
+                elif self.current_ramp_voltage > self.target_ramp_voltage:
+                    self.current_ramp_voltage -= self.ramp_step_v
+                    if self.current_ramp_voltage <= self.target_ramp_voltage:
+                        self.current_ramp_voltage = self.target_ramp_voltage
+                        self.is_ramping = False
+                self.ac_source.set_voltage_with_coupling(voltage=self.current_ramp_voltage, coupling=self.ac_source.coupling)
+                print(f"[DC_SOURCE] Ramping Output: {self.current_ramp_voltage:.2f} V / {self.target_ramp_voltage:.2f} V")
+            except Exception as e:
+                print(f"[ERROR] Exception during software ramp: {str(e)}")
+                self.is_ramping = False
 
         # Indicate the state of the AC source output by changing the frame color
         self.ac_source.update_status()
