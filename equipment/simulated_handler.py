@@ -502,6 +502,7 @@ class SimulatedSinkController:
         self.device_id = 'PISinkController,SIM-001,1.0'
         self.details = self.description
         self.open_status = False
+        self.status = 1  # Dummy status (e.g. SINK_STATE.USBPD_SOURCE_CONNECTED)
         self.source_cap_count = 4
         self.source_capabilities = [
             {'pdo_index': 1, 'type': 'FIXED', 'voltage': 5.0, 'max_current': 3.0},
