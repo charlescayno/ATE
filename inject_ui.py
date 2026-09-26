@@ -10,7 +10,14 @@ def inject_ui(self):
         self.ui.tabWidget_pml = QTabWidget(self.ui.frame_manual_control_upper)
         self.ui.tabWidget_pml.setStyleSheet("QTabWidget::pane { border: 1px solid #3f4657; top: -1px; background-color: transparent; } QTabBar::tab { height: 30px; width: 100px; font-weight: bold; background-color: #1f232a; color: #8a95aa; border: 1px solid #3f4657; border-bottom: none; border-top-left-radius: 4px; border-top-right-radius: 4px; } QTabBar::tab:selected { background-color: #2c313c; color: white; }")
         idx_pml = self.ui.horizontalLayout_9.indexOf(self.ui.frame_manual_control_pml)
+        
         self.ui.horizontalLayout_9.insertWidget(idx_pml, self.ui.tabWidget_pml)
+        
+        # Set stretch factors to balance the split
+        # pms is at index 0, tabWidget_pml is at idx_pml
+        self.ui.horizontalLayout_9.setStretch(0, 1) # frame_manual_control_pms
+        self.ui.horizontalLayout_9.setStretch(idx_pml, 1) # tabWidget_pml
+
         self.ui.tabWidget_pml.addTab(self.ui.frame_manual_control_pml, "CH 1")
 
     if not hasattr(self.ui, 'tabWidget_eload'):
