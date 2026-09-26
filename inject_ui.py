@@ -142,8 +142,7 @@ def inject_ui(self):
     
     self.ui.frame_manual_control_eload_2_contents = QFrame(self.ui.frame_manual_control_eload_2)
     self.ui.frame_manual_control_eload_2_contents.setObjectName(u"frame_manual_control_eload_contents_2")
-    self.ui.frame_manual_control_eload_2_contents.setStyleSheet(u"border:none;")
-    self.ui.frame_manual_control_eload_2_contents.setFrameShape(QFrame.StyledPanel)
+        self.ui.frame_manual_control_eload_2_contents.setFrameShape(QFrame.StyledPanel)
     self.ui.frame_manual_control_eload_2_contents.setFrameShadow(QFrame.Raised)
     self.verticalLayout_77 = QVBoxLayout(self.ui.frame_manual_control_eload_2_contents)
     self.verticalLayout_77.setObjectName(u"verticalLayout_77")
@@ -695,8 +694,7 @@ def inject_ui(self):
     
     self.ui.frame_pml_contents_2 = QFrame(self.ui.frame_manual_control_pml_2)
     self.ui.frame_pml_contents_2.setObjectName(u"frame_pml_contents_2")
-    self.ui.frame_pml_contents_2.setStyleSheet(u"border:none;")
-    self.ui.frame_pml_contents_2.setFrameShape(QFrame.StyledPanel)
+        self.ui.frame_pml_contents_2.setFrameShape(QFrame.StyledPanel)
     self.ui.frame_pml_contents_2.setFrameShadow(QFrame.Raised)
     self.ui.horizontalLayout_15_2 = QHBoxLayout(self.ui.frame_pml_contents_2)
     self.ui.horizontalLayout_15_2.setObjectName(u"horizontalLayout_15_2")
@@ -857,8 +855,7 @@ def inject_ui(self):
     self.ui.label_pml_voltage_range_2 = QLabel(self.ui.frame_pml_control_2__range)
     self.ui.label_pml_voltage_range_2.setObjectName(u"label_pml_voltage_range")
     self.ui.label_pml_voltage_range_2.setFont(font10)
-    self.ui.label_pml_voltage_range_2.setStyleSheet(u"border:none;")
-    
+        
     self.ui.formLayout_2_2.setWidget(0, QFormLayout.LabelRole, self.ui.label_pml_voltage_range_2)
     
     self.ui.cbx_pml_voltage_range_2 = QComboBox(self.ui.frame_pml_control_2__range)
@@ -873,8 +870,7 @@ def inject_ui(self):
     self.ui.label_pml_current_range_2 = QLabel(self.ui.frame_pml_control_2__range)
     self.ui.label_pml_current_range_2.setObjectName(u"label_pml_current_range")
     self.ui.label_pml_current_range_2.setFont(font10)
-    self.ui.label_pml_current_range_2.setStyleSheet(u"border:none;")
-    
+        
     self.ui.formLayout_2_2.setWidget(1, QFormLayout.LabelRole, self.ui.label_pml_current_range_2)
     
     self.ui.cbx_pml_current_range_2 = QComboBox(self.ui.frame_pml_control_2__range)
@@ -891,8 +887,7 @@ def inject_ui(self):
     
     self.ui.frame_pml_control_2_lower = QFrame(self.ui.frame_pml_control_2)
     self.ui.frame_pml_control_2_lower.setObjectName(u"frame_pml_control_lower")
-    self.ui.frame_pml_control_2_lower.setStyleSheet(u"border:none;")
-    self.ui.frame_pml_control_2_lower.setFrameShape(QFrame.StyledPanel)
+        self.ui.frame_pml_control_2_lower.setFrameShape(QFrame.StyledPanel)
     self.ui.frame_pml_control_2_lower.setFrameShadow(QFrame.Raised)
     self.ui.horizontalLayout_19_2 = QHBoxLayout(self.ui.frame_pml_control_2_lower)
     self.ui.horizontalLayout_19_2.setSpacing(0)
@@ -913,8 +908,7 @@ def inject_ui(self):
     self.ui.label_pml_integration_2.setMinimumSize(QtCore.QSize(0, 20))
     self.ui.label_pml_integration_2.setMaximumSize(QtCore.QSize(16777215, 20))
     self.ui.label_pml_integration_2.setFont(font10)
-    self.ui.label_pml_integration_2.setStyleSheet(u"border:none;")
-    
+        
     self.verticalLayout_30.addWidget(self.ui.label_pml_integration_2)
     
     self.btn_pml_integration_start = QPushButton(self.ui.frame_pml_integration_2)
@@ -994,8 +988,7 @@ def inject_ui(self):
     self.ui.label_pml_averaging_2.setMinimumSize(QtCore.QSize(0, 20))
     self.ui.label_pml_averaging_2.setMaximumSize(QtCore.QSize(16777215, 20))
     self.ui.label_pml_averaging_2.setFont(font10)
-    self.ui.label_pml_averaging_2.setStyleSheet(u"border:none;")
-    
+        
     self.verticalLayout_31.addWidget(self.ui.label_pml_averaging_2)
     
     self.btn_pml_averaging_toggle = QPushButton(self.ui.frame_pml_averaging_2)
@@ -1055,8 +1048,7 @@ def inject_ui(self):
     self.ui.label_pml_measure_mode_2.setSizePolicy(sizePolicy)
     self.ui.label_pml_measure_mode_2.setMaximumSize(QtCore.QSize(16777215, 20))
     self.ui.label_pml_measure_mode_2.setFont(font10)
-    self.ui.label_pml_measure_mode_2.setStyleSheet(u"border:none;")
-    
+        
     self.ui.verticalLayout_32_2.addWidget(self.ui.label_pml_measure_mode_2)
     
     self.ui.btn_pml_measure_mode_2 = QPushButton(self.ui.frame_pml_measure_mode_2)
@@ -1126,8 +1118,7 @@ def inject_ui(self):
     
     self.ui.frame_manual_control_eload_3_contents = QFrame(self.ui.frame_manual_control_eload_3)
     self.ui.frame_manual_control_eload_3_contents.setObjectName(u"frame_manual_control_eload_contents_3")
-    self.ui.frame_manual_control_eload_3_contents.setStyleSheet(u"border:none;")
-    self.ui.frame_manual_control_eload_3_contents.setFrameShape(QFrame.StyledPanel)
+        self.ui.frame_manual_control_eload_3_contents.setFrameShape(QFrame.StyledPanel)
     self.ui.frame_manual_control_eload_3_contents.setFrameShadow(QFrame.Raised)
     self.verticalLayout_77 = QVBoxLayout(self.ui.frame_manual_control_eload_3_contents)
     self.verticalLayout_77.setObjectName(u"verticalLayout_77")
@@ -1679,8 +1670,7 @@ def inject_ui(self):
     
     self.ui.frame_pml_contents_3 = QFrame(self.ui.frame_manual_control_pml_3)
     self.ui.frame_pml_contents_3.setObjectName(u"frame_pml_contents_3")
-    self.ui.frame_pml_contents_3.setStyleSheet(u"border:none;")
-    self.ui.frame_pml_contents_3.setFrameShape(QFrame.StyledPanel)
+        self.ui.frame_pml_contents_3.setFrameShape(QFrame.StyledPanel)
     self.ui.frame_pml_contents_3.setFrameShadow(QFrame.Raised)
     self.ui.horizontalLayout_15_3 = QHBoxLayout(self.ui.frame_pml_contents_3)
     self.ui.horizontalLayout_15_3.setObjectName(u"horizontalLayout_15_3")
@@ -1841,8 +1831,7 @@ def inject_ui(self):
     self.ui.label_pml_voltage_range_3 = QLabel(self.ui.frame_pml_control_3__range)
     self.ui.label_pml_voltage_range_3.setObjectName(u"label_pml_voltage_range")
     self.ui.label_pml_voltage_range_3.setFont(font10)
-    self.ui.label_pml_voltage_range_3.setStyleSheet(u"border:none;")
-    
+        
     self.ui.formLayout_2_3.setWidget(0, QFormLayout.LabelRole, self.ui.label_pml_voltage_range_3)
     
     self.ui.cbx_pml_voltage_range_3 = QComboBox(self.ui.frame_pml_control_3__range)
@@ -1857,8 +1846,7 @@ def inject_ui(self):
     self.ui.label_pml_current_range_3 = QLabel(self.ui.frame_pml_control_3__range)
     self.ui.label_pml_current_range_3.setObjectName(u"label_pml_current_range")
     self.ui.label_pml_current_range_3.setFont(font10)
-    self.ui.label_pml_current_range_3.setStyleSheet(u"border:none;")
-    
+        
     self.ui.formLayout_2_3.setWidget(1, QFormLayout.LabelRole, self.ui.label_pml_current_range_3)
     
     self.ui.cbx_pml_current_range_3 = QComboBox(self.ui.frame_pml_control_3__range)
@@ -1875,8 +1863,7 @@ def inject_ui(self):
     
     self.ui.frame_pml_control_3_lower = QFrame(self.ui.frame_pml_control_3)
     self.ui.frame_pml_control_3_lower.setObjectName(u"frame_pml_control_lower")
-    self.ui.frame_pml_control_3_lower.setStyleSheet(u"border:none;")
-    self.ui.frame_pml_control_3_lower.setFrameShape(QFrame.StyledPanel)
+        self.ui.frame_pml_control_3_lower.setFrameShape(QFrame.StyledPanel)
     self.ui.frame_pml_control_3_lower.setFrameShadow(QFrame.Raised)
     self.ui.horizontalLayout_19_3 = QHBoxLayout(self.ui.frame_pml_control_3_lower)
     self.ui.horizontalLayout_19_3.setSpacing(0)
@@ -1897,8 +1884,7 @@ def inject_ui(self):
     self.ui.label_pml_integration_3.setMinimumSize(QtCore.QSize(0, 20))
     self.ui.label_pml_integration_3.setMaximumSize(QtCore.QSize(16777215, 20))
     self.ui.label_pml_integration_3.setFont(font10)
-    self.ui.label_pml_integration_3.setStyleSheet(u"border:none;")
-    
+        
     self.verticalLayout_30.addWidget(self.ui.label_pml_integration_3)
     
     self.btn_pml_integration_start = QPushButton(self.ui.frame_pml_integration_3)
@@ -1978,8 +1964,7 @@ def inject_ui(self):
     self.ui.label_pml_averaging_3.setMinimumSize(QtCore.QSize(0, 20))
     self.ui.label_pml_averaging_3.setMaximumSize(QtCore.QSize(16777215, 20))
     self.ui.label_pml_averaging_3.setFont(font10)
-    self.ui.label_pml_averaging_3.setStyleSheet(u"border:none;")
-    
+        
     self.verticalLayout_31.addWidget(self.ui.label_pml_averaging_3)
     
     self.btn_pml_averaging_toggle = QPushButton(self.ui.frame_pml_averaging_3)
@@ -2039,8 +2024,7 @@ def inject_ui(self):
     self.ui.label_pml_measure_mode_3.setSizePolicy(sizePolicy)
     self.ui.label_pml_measure_mode_3.setMaximumSize(QtCore.QSize(16777215, 20))
     self.ui.label_pml_measure_mode_3.setFont(font10)
-    self.ui.label_pml_measure_mode_3.setStyleSheet(u"border:none;")
-    
+        
     self.ui.verticalLayout_32_3.addWidget(self.ui.label_pml_measure_mode_3)
     
     self.ui.btn_pml_measure_mode_3 = QPushButton(self.ui.frame_pml_measure_mode_3)
@@ -2110,8 +2094,7 @@ def inject_ui(self):
     
     self.ui.frame_manual_control_eload_4_contents = QFrame(self.ui.frame_manual_control_eload_4)
     self.ui.frame_manual_control_eload_4_contents.setObjectName(u"frame_manual_control_eload_contents_4")
-    self.ui.frame_manual_control_eload_4_contents.setStyleSheet(u"border:none;")
-    self.ui.frame_manual_control_eload_4_contents.setFrameShape(QFrame.StyledPanel)
+        self.ui.frame_manual_control_eload_4_contents.setFrameShape(QFrame.StyledPanel)
     self.ui.frame_manual_control_eload_4_contents.setFrameShadow(QFrame.Raised)
     self.verticalLayout_77 = QVBoxLayout(self.ui.frame_manual_control_eload_4_contents)
     self.verticalLayout_77.setObjectName(u"verticalLayout_77")
@@ -2663,8 +2646,7 @@ def inject_ui(self):
     
     self.ui.frame_pml_contents_4 = QFrame(self.ui.frame_manual_control_pml_4)
     self.ui.frame_pml_contents_4.setObjectName(u"frame_pml_contents_4")
-    self.ui.frame_pml_contents_4.setStyleSheet(u"border:none;")
-    self.ui.frame_pml_contents_4.setFrameShape(QFrame.StyledPanel)
+        self.ui.frame_pml_contents_4.setFrameShape(QFrame.StyledPanel)
     self.ui.frame_pml_contents_4.setFrameShadow(QFrame.Raised)
     self.ui.horizontalLayout_15_4 = QHBoxLayout(self.ui.frame_pml_contents_4)
     self.ui.horizontalLayout_15_4.setObjectName(u"horizontalLayout_15_4")
@@ -2825,8 +2807,7 @@ def inject_ui(self):
     self.ui.label_pml_voltage_range_4 = QLabel(self.ui.frame_pml_control_4__range)
     self.ui.label_pml_voltage_range_4.setObjectName(u"label_pml_voltage_range")
     self.ui.label_pml_voltage_range_4.setFont(font10)
-    self.ui.label_pml_voltage_range_4.setStyleSheet(u"border:none;")
-    
+        
     self.ui.formLayout_2_4.setWidget(0, QFormLayout.LabelRole, self.ui.label_pml_voltage_range_4)
     
     self.ui.cbx_pml_voltage_range_4 = QComboBox(self.ui.frame_pml_control_4__range)
@@ -2841,8 +2822,7 @@ def inject_ui(self):
     self.ui.label_pml_current_range_4 = QLabel(self.ui.frame_pml_control_4__range)
     self.ui.label_pml_current_range_4.setObjectName(u"label_pml_current_range")
     self.ui.label_pml_current_range_4.setFont(font10)
-    self.ui.label_pml_current_range_4.setStyleSheet(u"border:none;")
-    
+        
     self.ui.formLayout_2_4.setWidget(1, QFormLayout.LabelRole, self.ui.label_pml_current_range_4)
     
     self.ui.cbx_pml_current_range_4 = QComboBox(self.ui.frame_pml_control_4__range)
@@ -2859,8 +2839,7 @@ def inject_ui(self):
     
     self.ui.frame_pml_control_4_lower = QFrame(self.ui.frame_pml_control_4)
     self.ui.frame_pml_control_4_lower.setObjectName(u"frame_pml_control_lower")
-    self.ui.frame_pml_control_4_lower.setStyleSheet(u"border:none;")
-    self.ui.frame_pml_control_4_lower.setFrameShape(QFrame.StyledPanel)
+        self.ui.frame_pml_control_4_lower.setFrameShape(QFrame.StyledPanel)
     self.ui.frame_pml_control_4_lower.setFrameShadow(QFrame.Raised)
     self.ui.horizontalLayout_19_4 = QHBoxLayout(self.ui.frame_pml_control_4_lower)
     self.ui.horizontalLayout_19_4.setSpacing(0)
@@ -2881,8 +2860,7 @@ def inject_ui(self):
     self.ui.label_pml_integration_4.setMinimumSize(QtCore.QSize(0, 20))
     self.ui.label_pml_integration_4.setMaximumSize(QtCore.QSize(16777215, 20))
     self.ui.label_pml_integration_4.setFont(font10)
-    self.ui.label_pml_integration_4.setStyleSheet(u"border:none;")
-    
+        
     self.verticalLayout_30.addWidget(self.ui.label_pml_integration_4)
     
     self.btn_pml_integration_start = QPushButton(self.ui.frame_pml_integration_4)
@@ -2962,8 +2940,7 @@ def inject_ui(self):
     self.ui.label_pml_averaging_4.setMinimumSize(QtCore.QSize(0, 20))
     self.ui.label_pml_averaging_4.setMaximumSize(QtCore.QSize(16777215, 20))
     self.ui.label_pml_averaging_4.setFont(font10)
-    self.ui.label_pml_averaging_4.setStyleSheet(u"border:none;")
-    
+        
     self.verticalLayout_31.addWidget(self.ui.label_pml_averaging_4)
     
     self.btn_pml_averaging_toggle = QPushButton(self.ui.frame_pml_averaging_4)
@@ -3023,8 +3000,7 @@ def inject_ui(self):
     self.ui.label_pml_measure_mode_4.setSizePolicy(sizePolicy)
     self.ui.label_pml_measure_mode_4.setMaximumSize(QtCore.QSize(16777215, 20))
     self.ui.label_pml_measure_mode_4.setFont(font10)
-    self.ui.label_pml_measure_mode_4.setStyleSheet(u"border:none;")
-    
+        
     self.ui.verticalLayout_32_4.addWidget(self.ui.label_pml_measure_mode_4)
     
     self.ui.btn_pml_measure_mode_4 = QPushButton(self.ui.frame_pml_measure_mode_4)
