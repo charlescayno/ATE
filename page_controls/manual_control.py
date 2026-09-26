@@ -230,6 +230,9 @@ class ManualControlPageHandler():
         # Let the handler control the ui
         self.ui:Ui_MainWindow = parent.ui
 
+        # Inject multi-channel UI components
+        inject_ui.inject_ui(self)
+
         # Bind UI elements to functionss
         self.bind_ui_elements()
 
@@ -259,6 +262,8 @@ class ManualControlPageHandler():
         self.source_caps_listed = False
     
     def bind_ui_elements(self):
+        from PySide2.QtGui import QDoubleValidator
+        self.validator = QDoubleValidator(0, 16777215, 6)
 
         # Channel 3 binds
         self.ui.btn_manual_control_eload_turn_on_3.clicked.connect(self.eload_3_turn_on)

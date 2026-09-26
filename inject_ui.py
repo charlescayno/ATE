@@ -4,6 +4,11 @@ from PySide2.QtGui import *
 from PySide2.QtWidgets import *
 
 def inject_ui(self):
+    icon8 = QIcon()
+    icon9 = QIcon()
+    sizePolicy = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+    sizePolicy11 = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+    sizePolicy19 = QSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
     font = QFont()
     font.setFamily(u"Segoe UI")
     font.setPointSize(10)
@@ -130,16 +135,16 @@ def inject_ui(self):
     self.ui.frame_manual_control_eload_2_top.setObjectName(u"frame_manual_control_eload_top_2")
     self.ui.frame_manual_control_eload_2_top.setFrameShape(QFrame.StyledPanel)
     self.ui.frame_manual_control_eload_2_top.setFrameShadow(QFrame.Raised)
-    self.horizontalLayout_47 = QHBoxLayout(self.ui.frame_manual_control_eload_2_top)
-    self.horizontalLayout_47.setObjectName(u"horizontalLayout_47")
-    self.cbx_manual_control_eload_type = QComboBox(self.ui.frame_manual_control_eload_2_top)
-    self.cbx_manual_control_eload_type.addItem("")
-    self.cbx_manual_control_eload_type.addItem("")
-    self.cbx_manual_control_eload_type.addItem("")
-    self.cbx_manual_control_eload_type.setObjectName(u"cbx_manual_control_eload_type")
-    self.cbx_manual_control_eload_type.setMaximumSize(QtCore.QSize(16777215, 40))
-    self.cbx_manual_control_eload_type.setFont(font10)
-    self.cbx_manual_control_eload_type.setStyleSheet(u"QComboBox{\n"
+    self.ui.horizontalLayout_47_2 = QHBoxLayout(self.ui.frame_manual_control_eload_2_top)
+    self.ui.horizontalLayout_47_2.setObjectName(u"horizontalLayout_47")
+    self.ui.cbx_manual_control_eload_type_2 = QComboBox(self.ui.frame_manual_control_eload_2_top)
+    self.ui.cbx_manual_control_eload_type_2.addItem("")
+    self.ui.cbx_manual_control_eload_type_2.addItem("")
+    self.ui.cbx_manual_control_eload_type_2.addItem("")
+    self.ui.cbx_manual_control_eload_type_2.setObjectName(u"cbx_manual_control_eload_type")
+    self.ui.cbx_manual_control_eload_type_2.setMaximumSize(QtCore.QSize(16777215, 40))
+    self.ui.cbx_manual_control_eload_type_2.setFont(font10)
+    self.ui.cbx_manual_control_eload_type_2.setStyleSheet(u"QComboBox{\n"
     "border: 2px solid black;\n"
     "border-radius:5px;\n"
     "}\n"
@@ -148,7 +153,7 @@ def inject_ui(self):
     "	color: rgb(71, 71, 71);\n"
     "}")
     
-    self.horizontalLayout_47.addWidget(self.cbx_manual_control_eload_type)
+    self.ui.horizontalLayout_47_2.addWidget(self.ui.cbx_manual_control_eload_type_2)
     
     self.ui.btn_manual_control_eload_a_b_swap_2 = QPushButton(self.ui.frame_manual_control_eload_2_top)
     self.ui.btn_manual_control_eload_a_b_swap_2.setObjectName(u"btn_manual_control_eload_a_b_swap_2")
@@ -178,7 +183,7 @@ def inject_ui(self):
     self.ui.btn_manual_control_eload_a_b_swap_2.setCheckable(False)
     self.ui.btn_manual_control_eload_a_b_swap_2.setChecked(False)
     
-    self.horizontalLayout_47.addWidget(self.ui.btn_manual_control_eload_a_b_swap_2)
+    self.ui.horizontalLayout_47_2.addWidget(self.ui.btn_manual_control_eload_a_b_swap_2)
     
     
     self.verticalLayout_77.addWidget(self.ui.frame_manual_control_eload_2_top)
@@ -187,8 +192,8 @@ def inject_ui(self):
     self.ui.frame_manual_control_eload_2_center.setObjectName(u"frame_manual_control_eload_center_2")
     self.ui.frame_manual_control_eload_2_center.setFrameShape(QFrame.StyledPanel)
     self.ui.frame_manual_control_eload_2_center.setFrameShadow(QFrame.Raised)
-    self.horizontalLayout_46 = QHBoxLayout(self.ui.frame_manual_control_eload_2_center)
-    self.horizontalLayout_46.setObjectName(u"horizontalLayout_46")
+    self.ui.horizontalLayout_46_2 = QHBoxLayout(self.ui.frame_manual_control_eload_2_center)
+    self.ui.horizontalLayout_46_2.setObjectName(u"horizontalLayout_46")
     self.ui.frame_manual_control_eload_2_level = QFrame(self.ui.frame_manual_control_eload_2_center)
     self.ui.frame_manual_control_eload_2_level.setObjectName(u"frame_manual_control_eload_level_2")
     self.ui.frame_manual_control_eload_2_level.setFrameShape(QFrame.StyledPanel)
@@ -199,8 +204,8 @@ def inject_ui(self):
     self.ui.frame_manual_control_eload_2_a.setObjectName(u"frame_manual_control_eload_a_2")
     self.ui.frame_manual_control_eload_2_a.setFrameShape(QFrame.StyledPanel)
     self.ui.frame_manual_control_eload_2_a.setFrameShadow(QFrame.Raised)
-    self.horizontalLayout_45 = QHBoxLayout(self.ui.frame_manual_control_eload_2_a)
-    self.horizontalLayout_45.setObjectName(u"horizontalLayout_45")
+    self.ui.horizontalLayout_45_2 = QHBoxLayout(self.ui.frame_manual_control_eload_2_a)
+    self.ui.horizontalLayout_45_2.setObjectName(u"horizontalLayout_45")
     self.ui.label_manual_control_eload_2_a = QLabel(self.ui.frame_manual_control_eload_2_a)
     self.ui.label_manual_control_eload_2_a.setObjectName(u"label_manual_control_eload_a_2")
     self.ui.label_manual_control_eload_2_a.setMaximumSize(QtCore.QSize(16777215, 30))
@@ -214,7 +219,7 @@ def inject_ui(self):
     "}")
     self.ui.label_manual_control_eload_2_a.setAlignment(Qt.AlignCenter)
     
-    self.horizontalLayout_45.addWidget(self.ui.label_manual_control_eload_2_a)
+    self.ui.horizontalLayout_45_2.addWidget(self.ui.label_manual_control_eload_2_a)
     
     self.ui.lineedit_manual_control_eload_a_level_2 = QLineEdit(self.ui.frame_manual_control_eload_2_a)
     self.ui.lineedit_manual_control_eload_a_level_2.setObjectName(u"lineedit_manual_control_eload_a_level_2")
@@ -246,7 +251,7 @@ def inject_ui(self):
     "	padding-left: 10px;\n"
     "}")
     
-    self.horizontalLayout_45.addWidget(self.ui.lineedit_manual_control_eload_a_level_2)
+    self.ui.horizontalLayout_45_2.addWidget(self.ui.lineedit_manual_control_eload_a_level_2)
     
     self.ui.label_manual_control_eload_2_a_level_unit = QLabel(self.ui.frame_manual_control_eload_2_a)
     self.ui.label_manual_control_eload_2_a_level_unit.setObjectName(u"label_manual_control_eload_a_level_unit")
@@ -262,13 +267,13 @@ def inject_ui(self):
     "border:none\n"
     "}")
     
-    self.horizontalLayout_45.addWidget(self.ui.label_manual_control_eload_2_a_level_unit)
+    self.ui.horizontalLayout_45_2.addWidget(self.ui.label_manual_control_eload_2_a_level_unit)
     
-    self.btn_manual_control_eload_set_A = QPushButton(self.ui.frame_manual_control_eload_2_a)
-    self.btn_manual_control_eload_set_A.setObjectName(u"btn_manual_control_eload_set_A")
-    self.btn_manual_control_eload_set_A.setMinimumSize(QtCore.QSize(50, 30))
-    self.btn_manual_control_eload_set_A.setFont(font4)
-    self.btn_manual_control_eload_set_A.setStyleSheet(u"QPushButton {\n"
+    self.ui.btn_manual_control_eload_set_A_2 = QPushButton(self.ui.frame_manual_control_eload_2_a)
+    self.ui.btn_manual_control_eload_set_A_2.setObjectName(u"btn_manual_control_eload_set_A")
+    self.ui.btn_manual_control_eload_set_A_2.setMinimumSize(QtCore.QSize(50, 30))
+    self.ui.btn_manual_control_eload_set_A_2.setFont(font4)
+    self.ui.btn_manual_control_eload_set_A_2.setStyleSheet(u"QPushButton {\n"
     "	border: 2px solid rgb(52, 59, 72);\n"
     "	border-radius: 5px;	\n"
     "	background-color: rgb(52, 59, 72);\n"
@@ -286,10 +291,10 @@ def inject_ui(self):
     "	border: 2px solid rgb(33, 40, 51);\n"
     "	color: rgb(71, 71, 71);\n"
     "}")
-    self.btn_manual_control_eload_set_A.setCheckable(False)
-    self.btn_manual_control_eload_set_A.setChecked(False)
+    self.ui.btn_manual_control_eload_set_A_2.setCheckable(False)
+    self.ui.btn_manual_control_eload_set_A_2.setChecked(False)
     
-    self.horizontalLayout_45.addWidget(self.btn_manual_control_eload_set_A)
+    self.ui.horizontalLayout_45_2.addWidget(self.ui.btn_manual_control_eload_set_A_2)
     
     
     self.verticalLayout_70.addWidget(self.ui.frame_manual_control_eload_2_a)
@@ -361,11 +366,11 @@ def inject_ui(self):
     
     self.ui.horizontalLayout_39_2.addWidget(self.ui.label_manual_control_eload_2_b_level_unit)
     
-    self.btn_manual_control_eload_set_B = QPushButton(self.ui.frame_manual_control_eload_2_b)
-    self.btn_manual_control_eload_set_B.setObjectName(u"btn_manual_control_eload_set_B")
-    self.btn_manual_control_eload_set_B.setMinimumSize(QtCore.QSize(50, 30))
-    self.btn_manual_control_eload_set_B.setFont(font4)
-    self.btn_manual_control_eload_set_B.setStyleSheet(u"QPushButton {\n"
+    self.ui.btn_manual_control_eload_set_B_2 = QPushButton(self.ui.frame_manual_control_eload_2_b)
+    self.ui.btn_manual_control_eload_set_B_2.setObjectName(u"btn_manual_control_eload_set_B")
+    self.ui.btn_manual_control_eload_set_B_2.setMinimumSize(QtCore.QSize(50, 30))
+    self.ui.btn_manual_control_eload_set_B_2.setFont(font4)
+    self.ui.btn_manual_control_eload_set_B_2.setStyleSheet(u"QPushButton {\n"
     "	border: 2px solid rgb(52, 59, 72);\n"
     "	border-radius: 5px;	\n"
     "	background-color: rgb(52, 59, 72);\n"
@@ -383,16 +388,16 @@ def inject_ui(self):
     "	border: 2px solid rgb(33, 40, 51);\n"
     "	color: rgb(71, 71, 71);\n"
     "}")
-    self.btn_manual_control_eload_set_B.setCheckable(False)
-    self.btn_manual_control_eload_set_B.setChecked(False)
+    self.ui.btn_manual_control_eload_set_B_2.setCheckable(False)
+    self.ui.btn_manual_control_eload_set_B_2.setChecked(False)
     
-    self.ui.horizontalLayout_39_2.addWidget(self.btn_manual_control_eload_set_B)
+    self.ui.horizontalLayout_39_2.addWidget(self.ui.btn_manual_control_eload_set_B_2)
     
     
     self.verticalLayout_70.addWidget(self.ui.frame_manual_control_eload_2_b)
     
     
-    self.horizontalLayout_46.addWidget(self.ui.frame_manual_control_eload_2_level)
+    self.ui.horizontalLayout_46_2.addWidget(self.ui.frame_manual_control_eload_2_level)
     
     self.ui.frame_manual_control_eload_2_slew = QFrame(self.ui.frame_manual_control_eload_2_center)
     self.ui.frame_manual_control_eload_2_slew.setObjectName(u"frame_manual_control_eload_slew_2")
@@ -422,13 +427,13 @@ def inject_ui(self):
     
     self.ui.horizontalLayout_38_2.addWidget(self.label_manual_control_electronic_load_fall)
     
-    self.lineedit_manual_control_eload_slew_fall = QLineEdit(self.ui.frame_manual_control_eload_2_slew_fall)
-    self.lineedit_manual_control_eload_slew_fall.setObjectName(u"lineedit_manual_control_eload_slew_fall")
-    sizePolicy21.setHeightForWidth(self.lineedit_manual_control_eload_slew_fall.sizePolicy().hasHeightForWidth())
-    self.lineedit_manual_control_eload_slew_fall.setSizePolicy(sizePolicy21)
-    self.lineedit_manual_control_eload_slew_fall.setMinimumSize(QtCore.QSize(0, 40))
-    self.lineedit_manual_control_eload_slew_fall.setFont(font10)
-    self.lineedit_manual_control_eload_slew_fall.setStyleSheet(u"QLineEdit {\n"
+    self.ui.lineedit_manual_control_eload_slew_fall_2 = QLineEdit(self.ui.frame_manual_control_eload_2_slew_fall)
+    self.ui.lineedit_manual_control_eload_slew_fall_2.setObjectName(u"lineedit_manual_control_eload_slew_fall")
+    sizePolicy21.setHeightForWidth(self.ui.lineedit_manual_control_eload_slew_fall_2.sizePolicy().hasHeightForWidth())
+    self.ui.lineedit_manual_control_eload_slew_fall_2.setSizePolicy(sizePolicy21)
+    self.ui.lineedit_manual_control_eload_slew_fall_2.setMinimumSize(QtCore.QSize(0, 40))
+    self.ui.lineedit_manual_control_eload_slew_fall_2.setFont(font10)
+    self.ui.lineedit_manual_control_eload_slew_fall_2.setStyleSheet(u"QLineEdit {\n"
     "	background-color: rgb(27, 29, 35);\n"
     "	border-radius: 5px;\n"
     "	border: 2px solid rgb(27, 29, 35);\n"
@@ -449,7 +454,7 @@ def inject_ui(self):
     "	padding-left: 10px;\n"
     "}")
     
-    self.ui.horizontalLayout_38_2.addWidget(self.lineedit_manual_control_eload_slew_fall)
+    self.ui.horizontalLayout_38_2.addWidget(self.ui.lineedit_manual_control_eload_slew_fall_2)
     
     self.ui.label_manual_control_eload_2_slew_fall_unit = QLabel(self.ui.frame_manual_control_eload_2_slew_fall)
     self.ui.label_manual_control_eload_2_slew_fall_unit.setObjectName(u"label_manual_control_eload_slew_fall_unit")
@@ -491,13 +496,13 @@ def inject_ui(self):
     
     self.ui.horizontalLayout_36_2.addWidget(self.label_manual_control_electronic_load_rise)
     
-    self.lineedit_manual_control_eload_slew_rise = QLineEdit(self.ui.frame_manual_control_eload_2_slew_rise)
-    self.lineedit_manual_control_eload_slew_rise.setObjectName(u"lineedit_manual_control_eload_slew_rise")
-    sizePolicy21.setHeightForWidth(self.lineedit_manual_control_eload_slew_rise.sizePolicy().hasHeightForWidth())
-    self.lineedit_manual_control_eload_slew_rise.setSizePolicy(sizePolicy21)
-    self.lineedit_manual_control_eload_slew_rise.setMinimumSize(QtCore.QSize(0, 40))
-    self.lineedit_manual_control_eload_slew_rise.setFont(font10)
-    self.lineedit_manual_control_eload_slew_rise.setStyleSheet(u"QLineEdit {\n"
+    self.ui.lineedit_manual_control_eload_slew_rise_2 = QLineEdit(self.ui.frame_manual_control_eload_2_slew_rise)
+    self.ui.lineedit_manual_control_eload_slew_rise_2.setObjectName(u"lineedit_manual_control_eload_slew_rise")
+    sizePolicy21.setHeightForWidth(self.ui.lineedit_manual_control_eload_slew_rise_2.sizePolicy().hasHeightForWidth())
+    self.ui.lineedit_manual_control_eload_slew_rise_2.setSizePolicy(sizePolicy21)
+    self.ui.lineedit_manual_control_eload_slew_rise_2.setMinimumSize(QtCore.QSize(0, 40))
+    self.ui.lineedit_manual_control_eload_slew_rise_2.setFont(font10)
+    self.ui.lineedit_manual_control_eload_slew_rise_2.setStyleSheet(u"QLineEdit {\n"
     "	background-color: rgb(27, 29, 35);\n"
     "	border-radius: 5px;\n"
     "	border: 2px solid rgb(27, 29, 35);\n"
@@ -518,7 +523,7 @@ def inject_ui(self):
     "	padding-left: 10px;\n"
     "}")
     
-    self.ui.horizontalLayout_36_2.addWidget(self.lineedit_manual_control_eload_slew_rise)
+    self.ui.horizontalLayout_36_2.addWidget(self.ui.lineedit_manual_control_eload_slew_rise_2)
     
     self.ui.label_manual_control_eload_2_slew_rise_unit = QLabel(self.ui.frame_manual_control_eload_2_slew_rise)
     self.ui.label_manual_control_eload_2_slew_rise_unit.setObjectName(u"label_manual_control_eload_slew_rise_unit")
@@ -539,13 +544,13 @@ def inject_ui(self):
     
     self.gridLayout_29.addWidget(self.ui.frame_manual_control_eload_2_slew_rise, 0, 0, 1, 1)
     
-    self.btn_manual_control_eload_set_slew = QPushButton(self.ui.frame_manual_control_eload_2_slew)
-    self.btn_manual_control_eload_set_slew.setObjectName(u"btn_manual_control_eload_set_slew")
-    sizePolicy19.setHeightForWidth(self.btn_manual_control_eload_set_slew.sizePolicy().hasHeightForWidth())
-    self.btn_manual_control_eload_set_slew.setSizePolicy(sizePolicy19)
-    self.btn_manual_control_eload_set_slew.setMinimumSize(QtCore.QSize(50, 60))
-    self.btn_manual_control_eload_set_slew.setFont(font4)
-    self.btn_manual_control_eload_set_slew.setStyleSheet(u"QPushButton {\n"
+    self.ui.btn_manual_control_eload_set_slew_2 = QPushButton(self.ui.frame_manual_control_eload_2_slew)
+    self.ui.btn_manual_control_eload_set_slew_2.setObjectName(u"btn_manual_control_eload_set_slew")
+    sizePolicy19.setHeightForWidth(self.ui.btn_manual_control_eload_set_slew_2.sizePolicy().hasHeightForWidth())
+    self.ui.btn_manual_control_eload_set_slew_2.setSizePolicy(sizePolicy19)
+    self.ui.btn_manual_control_eload_set_slew_2.setMinimumSize(QtCore.QSize(50, 60))
+    self.ui.btn_manual_control_eload_set_slew_2.setFont(font4)
+    self.ui.btn_manual_control_eload_set_slew_2.setStyleSheet(u"QPushButton {\n"
     "	border: 2px solid rgb(52, 59, 72);\n"
     "	border-radius: 5px;	\n"
     "	background-color: rgb(52, 59, 72);\n"
@@ -563,13 +568,13 @@ def inject_ui(self):
     "	border: 2px solid rgb(33, 40, 51);\n"
     "	color: rgb(71, 71, 71);\n"
     "}")
-    self.btn_manual_control_eload_set_slew.setCheckable(False)
-    self.btn_manual_control_eload_set_slew.setChecked(False)
+    self.ui.btn_manual_control_eload_set_slew_2.setCheckable(False)
+    self.ui.btn_manual_control_eload_set_slew_2.setChecked(False)
     
-    self.gridLayout_29.addWidget(self.btn_manual_control_eload_set_slew, 0, 1, 2, 1)
+    self.gridLayout_29.addWidget(self.ui.btn_manual_control_eload_set_slew_2, 0, 1, 2, 1)
     
     
-    self.horizontalLayout_46.addWidget(self.ui.frame_manual_control_eload_2_slew)
+    self.ui.horizontalLayout_46_2.addWidget(self.ui.frame_manual_control_eload_2_slew)
     
     
     self.verticalLayout_77.addWidget(self.ui.frame_manual_control_eload_2_center)
@@ -578,13 +583,13 @@ def inject_ui(self):
     self.ui.frame_manual_control_eload_2_bottom.setObjectName(u"frame_manual_control_eload_bottom_2")
     self.ui.frame_manual_control_eload_2_bottom.setFrameShape(QFrame.StyledPanel)
     self.ui.frame_manual_control_eload_2_bottom.setFrameShadow(QFrame.Raised)
-    self.horizontalLayout_56 = QHBoxLayout(self.ui.frame_manual_control_eload_2_bottom)
-    self.horizontalLayout_56.setObjectName(u"horizontalLayout_56")
-    self.btn_manual_control_eload_turn_on = QPushButton(self.ui.frame_manual_control_eload_2_bottom)
-    self.btn_manual_control_eload_turn_on.setObjectName(u"btn_manual_control_eload_turn_on")
-    self.btn_manual_control_eload_turn_on.setMinimumSize(QtCore.QSize(120, 40))
-    self.btn_manual_control_eload_turn_on.setFont(font13)
-    self.btn_manual_control_eload_turn_on.setStyleSheet(u"QPushButton {\n"
+    self.ui.horizontalLayout_56_2 = QHBoxLayout(self.ui.frame_manual_control_eload_2_bottom)
+    self.ui.horizontalLayout_56_2.setObjectName(u"horizontalLayout_56")
+    self.ui.btn_manual_control_eload_turn_on_2 = QPushButton(self.ui.frame_manual_control_eload_2_bottom)
+    self.ui.btn_manual_control_eload_turn_on_2.setObjectName(u"btn_manual_control_eload_turn_on")
+    self.ui.btn_manual_control_eload_turn_on_2.setMinimumSize(QtCore.QSize(120, 40))
+    self.ui.btn_manual_control_eload_turn_on_2.setFont(font13)
+    self.ui.btn_manual_control_eload_turn_on_2.setStyleSheet(u"QPushButton {\n"
     "	border: 2px solid rgb(52, 59, 72);\n"
     "	border-radius: 5px;	\n"
     "	background-color: rgb(52, 59, 72);\n"
@@ -602,17 +607,17 @@ def inject_ui(self):
     "	border: 2px solid rgb(33, 40, 51);\n"
     "	color: rgb(71, 71, 71);\n"
     "}")
-    self.btn_manual_control_eload_turn_on.setIcon(icon8)
-    self.btn_manual_control_eload_turn_on.setCheckable(False)
-    self.btn_manual_control_eload_turn_on.setChecked(False)
+    self.ui.btn_manual_control_eload_turn_on_2.setIcon(icon8)
+    self.ui.btn_manual_control_eload_turn_on_2.setCheckable(False)
+    self.ui.btn_manual_control_eload_turn_on_2.setChecked(False)
     
-    self.horizontalLayout_56.addWidget(self.btn_manual_control_eload_turn_on)
+    self.ui.horizontalLayout_56_2.addWidget(self.ui.btn_manual_control_eload_turn_on_2)
     
-    self.btn_manual_control_eload_turn_off = QPushButton(self.ui.frame_manual_control_eload_2_bottom)
-    self.btn_manual_control_eload_turn_off.setObjectName(u"btn_manual_control_eload_turn_off")
-    self.btn_manual_control_eload_turn_off.setMinimumSize(QtCore.QSize(120, 40))
-    self.btn_manual_control_eload_turn_off.setFont(font13)
-    self.btn_manual_control_eload_turn_off.setStyleSheet(u"QPushButton {\n"
+    self.ui.btn_manual_control_eload_turn_off_2 = QPushButton(self.ui.frame_manual_control_eload_2_bottom)
+    self.ui.btn_manual_control_eload_turn_off_2.setObjectName(u"btn_manual_control_eload_turn_off")
+    self.ui.btn_manual_control_eload_turn_off_2.setMinimumSize(QtCore.QSize(120, 40))
+    self.ui.btn_manual_control_eload_turn_off_2.setFont(font13)
+    self.ui.btn_manual_control_eload_turn_off_2.setStyleSheet(u"QPushButton {\n"
     "	border: 2px solid rgb(52, 59, 72);\n"
     "	border-radius: 5px;	\n"
     "	background-color: rgb(52, 59, 72);\n"
@@ -630,11 +635,11 @@ def inject_ui(self):
     "	border: 2px solid rgb(33, 40, 51);\n"
     "	color: rgb(71, 71, 71);\n"
     "}")
-    self.btn_manual_control_eload_turn_off.setIcon(icon9)
-    self.btn_manual_control_eload_turn_off.setCheckable(False)
-    self.btn_manual_control_eload_turn_off.setChecked(False)
+    self.ui.btn_manual_control_eload_turn_off_2.setIcon(icon9)
+    self.ui.btn_manual_control_eload_turn_off_2.setCheckable(False)
+    self.ui.btn_manual_control_eload_turn_off_2.setChecked(False)
     
-    self.horizontalLayout_56.addWidget(self.btn_manual_control_eload_turn_off)
+    self.ui.horizontalLayout_56_2.addWidget(self.ui.btn_manual_control_eload_turn_off_2)
     
     
     self.verticalLayout_77.addWidget(self.ui.frame_manual_control_eload_2_bottom)
@@ -659,18 +664,18 @@ def inject_ui(self):
     self.ui.frame_manual_control_pml_2.setFrameShadow(QFrame.Sunken)
     self.ui.verticalLayout_19_2 = QVBoxLayout(self.ui.frame_manual_control_pml_2)
     self.ui.verticalLayout_19_2.setObjectName(u"verticalLayout_19_2")
-    self.label_load_power_meter = QLabel(self.ui.frame_manual_control_pml_2)
-    self.label_load_power_meter.setObjectName(u"label_load_power_meter")
-    self.label_load_power_meter.setMaximumSize(QtCore.QSize(16777215, 30))
-    self.label_load_power_meter.setFont(font1)
-    self.label_load_power_meter.setCursor(QCursor(Qt.ArrowCursor))
-    self.label_load_power_meter.setStyleSheet(u"QLabel{border:none;}\n"
+    self.ui.label_load_power_meter_2 = QLabel(self.ui.frame_manual_control_pml_2)
+    self.ui.label_load_power_meter_2.setObjectName(u"label_load_power_meter")
+    self.ui.label_load_power_meter_2.setMaximumSize(QtCore.QSize(16777215, 30))
+    self.ui.label_load_power_meter_2.setFont(font1)
+    self.ui.label_load_power_meter_2.setCursor(QCursor(Qt.ArrowCursor))
+    self.ui.label_load_power_meter_2.setStyleSheet(u"QLabel{border:none;}\n"
     "QLabel:disabled{\n"
     "	color: rgb(71, 71, 71)\n"
     "}")
-    self.label_load_power_meter.setAlignment(Qt.AlignCenter)
+    self.ui.label_load_power_meter_2.setAlignment(Qt.AlignCenter)
     
-    self.ui.verticalLayout_19_2.addWidget(self.label_load_power_meter)
+    self.ui.verticalLayout_19_2.addWidget(self.ui.label_load_power_meter_2)
     
     self.ui.frame_pml_contents_2 = QFrame(self.ui.frame_manual_control_pml_2)
     self.ui.frame_pml_contents_2.setObjectName(u"frame_pml_contents_2")
@@ -784,33 +789,33 @@ def inject_ui(self):
     "}")
     self.ui.frame_pml_display_2_select.setFrameShape(QFrame.StyledPanel)
     self.ui.frame_pml_display_2_select.setFrameShadow(QFrame.Raised)
-    self.verticalLayout_21 = QVBoxLayout(self.ui.frame_pml_display_2_select)
-    self.verticalLayout_21.setSpacing(0)
-    self.verticalLayout_21.setObjectName(u"verticalLayout_21")
-    self.verticalLayout_21.setContentsMargins(0, 0, 0, 0)
-    self.cbx_pml_display_a = QComboBox(self.ui.frame_pml_display_2_select)
-    self.cbx_pml_display_a.setObjectName(u"cbx_pml_display_a")
-    self.cbx_pml_display_a.setMaximumSize(QtCore.QSize(16777215, 54))
+    self.ui.verticalLayout_21_2 = QVBoxLayout(self.ui.frame_pml_display_2_select)
+    self.ui.verticalLayout_21_2.setSpacing(0)
+    self.ui.verticalLayout_21_2.setObjectName(u"verticalLayout_21")
+    self.ui.verticalLayout_21_2.setContentsMargins(0, 0, 0, 0)
+    self.ui.cbx_pml_display_a_2 = QComboBox(self.ui.frame_pml_display_2_select)
+    self.ui.cbx_pml_display_a_2.setObjectName(u"cbx_pml_display_a")
+    self.ui.cbx_pml_display_a_2.setMaximumSize(QtCore.QSize(16777215, 54))
     
-    self.verticalLayout_21.addWidget(self.cbx_pml_display_a)
+    self.ui.verticalLayout_21_2.addWidget(self.ui.cbx_pml_display_a_2)
     
-    self.cbx_pml_display_b = QComboBox(self.ui.frame_pml_display_2_select)
-    self.cbx_pml_display_b.setObjectName(u"cbx_pml_display_b")
-    self.cbx_pml_display_b.setMaximumSize(QtCore.QSize(16777215, 54))
+    self.ui.cbx_pml_display_b_2 = QComboBox(self.ui.frame_pml_display_2_select)
+    self.ui.cbx_pml_display_b_2.setObjectName(u"cbx_pml_display_b")
+    self.ui.cbx_pml_display_b_2.setMaximumSize(QtCore.QSize(16777215, 54))
     
-    self.verticalLayout_21.addWidget(self.cbx_pml_display_b)
+    self.ui.verticalLayout_21_2.addWidget(self.ui.cbx_pml_display_b_2)
     
-    self.cbx_pml_display_c = QComboBox(self.ui.frame_pml_display_2_select)
-    self.cbx_pml_display_c.setObjectName(u"cbx_pml_display_c")
-    self.cbx_pml_display_c.setMaximumSize(QtCore.QSize(16777215, 54))
+    self.ui.cbx_pml_display_c_2 = QComboBox(self.ui.frame_pml_display_2_select)
+    self.ui.cbx_pml_display_c_2.setObjectName(u"cbx_pml_display_c")
+    self.ui.cbx_pml_display_c_2.setMaximumSize(QtCore.QSize(16777215, 54))
     
-    self.verticalLayout_21.addWidget(self.cbx_pml_display_c)
+    self.ui.verticalLayout_21_2.addWidget(self.ui.cbx_pml_display_c_2)
     
-    self.cbx_pml_display_d = QComboBox(self.ui.frame_pml_display_2_select)
-    self.cbx_pml_display_d.setObjectName(u"cbx_pml_display_d")
-    self.cbx_pml_display_d.setMaximumSize(QtCore.QSize(16777215, 54))
+    self.ui.cbx_pml_display_d_2 = QComboBox(self.ui.frame_pml_display_2_select)
+    self.ui.cbx_pml_display_d_2.setObjectName(u"cbx_pml_display_d")
+    self.ui.cbx_pml_display_d_2.setMaximumSize(QtCore.QSize(16777215, 54))
     
-    self.verticalLayout_21.addWidget(self.cbx_pml_display_d)
+    self.ui.verticalLayout_21_2.addWidget(self.ui.cbx_pml_display_d_2)
     
     
     self.ui.horizontalLayout_15_2.addWidget(self.ui.frame_pml_display_2_select)
@@ -823,50 +828,50 @@ def inject_ui(self):
     "")
     self.ui.frame_pml_control_2.setFrameShape(QFrame.StyledPanel)
     self.ui.frame_pml_control_2.setFrameShadow(QFrame.Raised)
-    self.verticalLayout_29 = QVBoxLayout(self.ui.frame_pml_control_2)
-    self.verticalLayout_29.setSpacing(0)
-    self.verticalLayout_29.setObjectName(u"verticalLayout_29")
-    self.verticalLayout_29.setContentsMargins(0, 0, 0, 0)
+    self.ui.verticalLayout_29_2 = QVBoxLayout(self.ui.frame_pml_control_2)
+    self.ui.verticalLayout_29_2.setSpacing(0)
+    self.ui.verticalLayout_29_2.setObjectName(u"verticalLayout_29")
+    self.ui.verticalLayout_29_2.setContentsMargins(0, 0, 0, 0)
     self.ui.frame_pml_control_2__range = QFrame(self.ui.frame_pml_control_2)
     self.ui.frame_pml_control_2__range.setObjectName(u"frame_pml_control__range")
     self.ui.frame_pml_control_2__range.setFrameShape(QFrame.StyledPanel)
     self.ui.frame_pml_control_2__range.setFrameShadow(QFrame.Raised)
-    self.formLayout_2 = QFormLayout(self.ui.frame_pml_control_2__range)
-    self.formLayout_2.setObjectName(u"formLayout_2")
-    self.label_pml_voltage_range = QLabel(self.ui.frame_pml_control_2__range)
-    self.label_pml_voltage_range.setObjectName(u"label_pml_voltage_range")
-    self.label_pml_voltage_range.setFont(font10)
-    self.label_pml_voltage_range.setStyleSheet(u"border:none;")
+    self.ui.formLayout_2_2 = QFormLayout(self.ui.frame_pml_control_2__range)
+    self.ui.formLayout_2_2.setObjectName(u"formLayout_2")
+    self.ui.label_pml_voltage_range_2 = QLabel(self.ui.frame_pml_control_2__range)
+    self.ui.label_pml_voltage_range_2.setObjectName(u"label_pml_voltage_range")
+    self.ui.label_pml_voltage_range_2.setFont(font10)
+    self.ui.label_pml_voltage_range_2.setStyleSheet(u"border:none;")
     
-    self.formLayout_2.setWidget(0, QFormLayout.LabelRole, self.label_pml_voltage_range)
+    self.ui.formLayout_2_2.setWidget(0, QFormLayout.LabelRole, self.ui.label_pml_voltage_range_2)
     
-    self.cbx_pml_voltage_range = QComboBox(self.ui.frame_pml_control_2__range)
-    self.cbx_pml_voltage_range.addItem("")
-    self.cbx_pml_voltage_range.addItem("")
-    self.cbx_pml_voltage_range.setObjectName(u"cbx_pml_voltage_range")
-    self.cbx_pml_voltage_range.setMaximumSize(QtCore.QSize(16777215, 54))
-    self.cbx_pml_voltage_range.setFont(font10)
+    self.ui.cbx_pml_voltage_range_2 = QComboBox(self.ui.frame_pml_control_2__range)
+    self.ui.cbx_pml_voltage_range_2.addItem("")
+    self.ui.cbx_pml_voltage_range_2.addItem("")
+    self.ui.cbx_pml_voltage_range_2.setObjectName(u"cbx_pml_voltage_range")
+    self.ui.cbx_pml_voltage_range_2.setMaximumSize(QtCore.QSize(16777215, 54))
+    self.ui.cbx_pml_voltage_range_2.setFont(font10)
     
-    self.formLayout_2.setWidget(0, QFormLayout.FieldRole, self.cbx_pml_voltage_range)
+    self.ui.formLayout_2_2.setWidget(0, QFormLayout.FieldRole, self.ui.cbx_pml_voltage_range_2)
     
-    self.label_pml_current_range = QLabel(self.ui.frame_pml_control_2__range)
-    self.label_pml_current_range.setObjectName(u"label_pml_current_range")
-    self.label_pml_current_range.setFont(font10)
-    self.label_pml_current_range.setStyleSheet(u"border:none;")
+    self.ui.label_pml_current_range_2 = QLabel(self.ui.frame_pml_control_2__range)
+    self.ui.label_pml_current_range_2.setObjectName(u"label_pml_current_range")
+    self.ui.label_pml_current_range_2.setFont(font10)
+    self.ui.label_pml_current_range_2.setStyleSheet(u"border:none;")
     
-    self.formLayout_2.setWidget(1, QFormLayout.LabelRole, self.label_pml_current_range)
+    self.ui.formLayout_2_2.setWidget(1, QFormLayout.LabelRole, self.ui.label_pml_current_range_2)
     
-    self.cbx_pml_current_range = QComboBox(self.ui.frame_pml_control_2__range)
-    self.cbx_pml_current_range.addItem("")
-    self.cbx_pml_current_range.addItem("")
-    self.cbx_pml_current_range.setObjectName(u"cbx_pml_current_range")
-    self.cbx_pml_current_range.setMaximumSize(QtCore.QSize(16777215, 54))
-    self.cbx_pml_current_range.setFont(font10)
+    self.ui.cbx_pml_current_range_2 = QComboBox(self.ui.frame_pml_control_2__range)
+    self.ui.cbx_pml_current_range_2.addItem("")
+    self.ui.cbx_pml_current_range_2.addItem("")
+    self.ui.cbx_pml_current_range_2.setObjectName(u"cbx_pml_current_range")
+    self.ui.cbx_pml_current_range_2.setMaximumSize(QtCore.QSize(16777215, 54))
+    self.ui.cbx_pml_current_range_2.setFont(font10)
     
-    self.formLayout_2.setWidget(1, QFormLayout.FieldRole, self.cbx_pml_current_range)
+    self.ui.formLayout_2_2.setWidget(1, QFormLayout.FieldRole, self.ui.cbx_pml_current_range_2)
     
     
-    self.verticalLayout_29.addWidget(self.ui.frame_pml_control_2__range)
+    self.ui.verticalLayout_29_2.addWidget(self.ui.frame_pml_control_2__range)
     
     self.ui.frame_pml_control_2_lower = QFrame(self.ui.frame_pml_control_2)
     self.ui.frame_pml_control_2_lower.setObjectName(u"frame_pml_control_lower")
@@ -877,26 +882,26 @@ def inject_ui(self):
     self.ui.horizontalLayout_19_2.setSpacing(0)
     self.ui.horizontalLayout_19_2.setObjectName(u"horizontalLayout_19_2")
     self.ui.horizontalLayout_19_2.setContentsMargins(0, 0, 0, 0)
-    self.frame_pml_integration = QFrame(self.ui.frame_pml_control_2_lower)
-    self.frame_pml_integration.setObjectName(u"frame_pml_integration")
-    self.frame_pml_integration.setStyleSheet(u"border: 2px solid black;\n"
+    self.ui.frame_pml_integration_2 = QFrame(self.ui.frame_pml_control_2_lower)
+    self.ui.frame_pml_integration_2.setObjectName(u"frame_pml_integration")
+    self.ui.frame_pml_integration_2.setStyleSheet(u"border: 2px solid black;\n"
     "border-radius: 10px;")
-    self.frame_pml_integration.setFrameShape(QFrame.StyledPanel)
-    self.frame_pml_integration.setFrameShadow(QFrame.Raised)
-    self.verticalLayout_30 = QVBoxLayout(self.frame_pml_integration)
+    self.ui.frame_pml_integration_2.setFrameShape(QFrame.StyledPanel)
+    self.ui.frame_pml_integration_2.setFrameShadow(QFrame.Raised)
+    self.verticalLayout_30 = QVBoxLayout(self.ui.frame_pml_integration_2)
     self.verticalLayout_30.setObjectName(u"verticalLayout_30")
-    self.label_pml_integration = QLabel(self.frame_pml_integration)
-    self.label_pml_integration.setObjectName(u"label_pml_integration")
-    sizePolicy.setHeightForWidth(self.label_pml_integration.sizePolicy().hasHeightForWidth())
-    self.label_pml_integration.setSizePolicy(sizePolicy)
-    self.label_pml_integration.setMinimumSize(QtCore.QSize(0, 20))
-    self.label_pml_integration.setMaximumSize(QtCore.QSize(16777215, 20))
-    self.label_pml_integration.setFont(font10)
-    self.label_pml_integration.setStyleSheet(u"border:none;")
+    self.ui.label_pml_integration_2 = QLabel(self.ui.frame_pml_integration_2)
+    self.ui.label_pml_integration_2.setObjectName(u"label_pml_integration")
+    sizePolicy.setHeightForWidth(self.ui.label_pml_integration_2.sizePolicy().hasHeightForWidth())
+    self.ui.label_pml_integration_2.setSizePolicy(sizePolicy)
+    self.ui.label_pml_integration_2.setMinimumSize(QtCore.QSize(0, 20))
+    self.ui.label_pml_integration_2.setMaximumSize(QtCore.QSize(16777215, 20))
+    self.ui.label_pml_integration_2.setFont(font10)
+    self.ui.label_pml_integration_2.setStyleSheet(u"border:none;")
     
-    self.verticalLayout_30.addWidget(self.label_pml_integration)
+    self.verticalLayout_30.addWidget(self.ui.label_pml_integration_2)
     
-    self.btn_pml_integration_start = QPushButton(self.frame_pml_integration)
+    self.btn_pml_integration_start = QPushButton(self.ui.frame_pml_integration_2)
     self.btn_pml_integration_start.setObjectName(u"btn_pml_integration_start")
     self.btn_pml_integration_start.setFont(font10)
     self.btn_pml_integration_start.setStyleSheet(u"QPushButton {\n"
@@ -915,7 +920,7 @@ def inject_ui(self):
     
     self.verticalLayout_30.addWidget(self.btn_pml_integration_start)
     
-    self.btn_pml_integration_stop = QPushButton(self.frame_pml_integration)
+    self.btn_pml_integration_stop = QPushButton(self.ui.frame_pml_integration_2)
     self.btn_pml_integration_stop.setObjectName(u"btn_pml_integration_stop")
     self.btn_pml_integration_stop.setFont(font10)
     self.btn_pml_integration_stop.setStyleSheet(u"QPushButton {\n"
@@ -934,7 +939,7 @@ def inject_ui(self):
     
     self.verticalLayout_30.addWidget(self.btn_pml_integration_stop)
     
-    self.btn_pml_integration_reset = QPushButton(self.frame_pml_integration)
+    self.btn_pml_integration_reset = QPushButton(self.ui.frame_pml_integration_2)
     self.btn_pml_integration_reset.setObjectName(u"btn_pml_integration_reset")
     self.btn_pml_integration_reset.setFont(font10)
     self.btn_pml_integration_reset.setStyleSheet(u"QPushButton {\n"
@@ -954,30 +959,30 @@ def inject_ui(self):
     self.verticalLayout_30.addWidget(self.btn_pml_integration_reset)
     
     
-    self.ui.horizontalLayout_19_2.addWidget(self.frame_pml_integration)
+    self.ui.horizontalLayout_19_2.addWidget(self.ui.frame_pml_integration_2)
     
-    self.frame_pml_averaging = QFrame(self.ui.frame_pml_control_2_lower)
-    self.frame_pml_averaging.setObjectName(u"frame_pml_averaging")
-    self.frame_pml_averaging.setStyleSheet(u"border: 2px solid black;\n"
+    self.ui.frame_pml_averaging_2 = QFrame(self.ui.frame_pml_control_2_lower)
+    self.ui.frame_pml_averaging_2.setObjectName(u"frame_pml_averaging")
+    self.ui.frame_pml_averaging_2.setStyleSheet(u"border: 2px solid black;\n"
     "border-radius: 10px;")
-    self.frame_pml_averaging.setFrameShape(QFrame.StyledPanel)
-    self.frame_pml_averaging.setFrameShadow(QFrame.Raised)
-    self.verticalLayout_31 = QVBoxLayout(self.frame_pml_averaging)
+    self.ui.frame_pml_averaging_2.setFrameShape(QFrame.StyledPanel)
+    self.ui.frame_pml_averaging_2.setFrameShadow(QFrame.Raised)
+    self.verticalLayout_31 = QVBoxLayout(self.ui.frame_pml_averaging_2)
     self.verticalLayout_31.setSpacing(2)
     self.verticalLayout_31.setObjectName(u"verticalLayout_31")
     self.verticalLayout_31.setContentsMargins(-1, 5, -1, 5)
-    self.label_pml_averaging = QLabel(self.frame_pml_averaging)
-    self.label_pml_averaging.setObjectName(u"label_pml_averaging")
-    sizePolicy.setHeightForWidth(self.label_pml_averaging.sizePolicy().hasHeightForWidth())
-    self.label_pml_averaging.setSizePolicy(sizePolicy)
-    self.label_pml_averaging.setMinimumSize(QtCore.QSize(0, 20))
-    self.label_pml_averaging.setMaximumSize(QtCore.QSize(16777215, 20))
-    self.label_pml_averaging.setFont(font10)
-    self.label_pml_averaging.setStyleSheet(u"border:none;")
+    self.ui.label_pml_averaging_2 = QLabel(self.ui.frame_pml_averaging_2)
+    self.ui.label_pml_averaging_2.setObjectName(u"label_pml_averaging")
+    sizePolicy.setHeightForWidth(self.ui.label_pml_averaging_2.sizePolicy().hasHeightForWidth())
+    self.ui.label_pml_averaging_2.setSizePolicy(sizePolicy)
+    self.ui.label_pml_averaging_2.setMinimumSize(QtCore.QSize(0, 20))
+    self.ui.label_pml_averaging_2.setMaximumSize(QtCore.QSize(16777215, 20))
+    self.ui.label_pml_averaging_2.setFont(font10)
+    self.ui.label_pml_averaging_2.setStyleSheet(u"border:none;")
     
-    self.verticalLayout_31.addWidget(self.label_pml_averaging)
+    self.verticalLayout_31.addWidget(self.ui.label_pml_averaging_2)
     
-    self.btn_pml_averaging_toggle = QPushButton(self.frame_pml_averaging)
+    self.btn_pml_averaging_toggle = QPushButton(self.ui.frame_pml_averaging_2)
     self.btn_pml_averaging_toggle.setObjectName(u"btn_pml_averaging_toggle")
     self.btn_pml_averaging_toggle.setFont(font10)
     self.btn_pml_averaging_toggle.setStyleSheet(u"QPushButton {\n"
@@ -996,7 +1001,7 @@ def inject_ui(self):
     
     self.verticalLayout_31.addWidget(self.btn_pml_averaging_toggle)
     
-    self.cbx_pml_averaging_count = QComboBox(self.frame_pml_averaging)
+    self.cbx_pml_averaging_count = QComboBox(self.ui.frame_pml_averaging_2)
     self.cbx_pml_averaging_count.addItem("")
     self.cbx_pml_averaging_count.addItem("")
     self.cbx_pml_averaging_count.addItem("")
@@ -1006,7 +1011,7 @@ def inject_ui(self):
     
     self.verticalLayout_31.addWidget(self.cbx_pml_averaging_count)
     
-    self.cbx_pml_averaging_mode = QComboBox(self.frame_pml_averaging)
+    self.cbx_pml_averaging_mode = QComboBox(self.ui.frame_pml_averaging_2)
     self.cbx_pml_averaging_mode.addItem("")
     self.cbx_pml_averaging_mode.addItem("")
     self.cbx_pml_averaging_mode.setObjectName(u"cbx_pml_averaging_mode")
@@ -1016,32 +1021,32 @@ def inject_ui(self):
     self.verticalLayout_31.addWidget(self.cbx_pml_averaging_mode)
     
     
-    self.ui.horizontalLayout_19_2.addWidget(self.frame_pml_averaging)
+    self.ui.horizontalLayout_19_2.addWidget(self.ui.frame_pml_averaging_2)
     
-    self.frame_pml_measure_mode = QFrame(self.ui.frame_pml_control_2_lower)
-    self.frame_pml_measure_mode.setObjectName(u"frame_pml_measure_mode")
-    self.frame_pml_measure_mode.setStyleSheet(u"border: 2px solid black;\n"
+    self.ui.frame_pml_measure_mode_2 = QFrame(self.ui.frame_pml_control_2_lower)
+    self.ui.frame_pml_measure_mode_2.setObjectName(u"frame_pml_measure_mode")
+    self.ui.frame_pml_measure_mode_2.setStyleSheet(u"border: 2px solid black;\n"
     "border-radius: 10px;")
-    self.frame_pml_measure_mode.setFrameShape(QFrame.StyledPanel)
-    self.frame_pml_measure_mode.setFrameShadow(QFrame.Raised)
-    self.verticalLayout_32 = QVBoxLayout(self.frame_pml_measure_mode)
-    self.verticalLayout_32.setSpacing(13)
-    self.verticalLayout_32.setObjectName(u"verticalLayout_32")
-    self.verticalLayout_32.setContentsMargins(13, 13, 13, 13)
-    self.label_pml_measure_mode = QLabel(self.frame_pml_measure_mode)
-    self.label_pml_measure_mode.setObjectName(u"label_pml_measure_mode")
-    sizePolicy.setHeightForWidth(self.label_pml_measure_mode.sizePolicy().hasHeightForWidth())
-    self.label_pml_measure_mode.setSizePolicy(sizePolicy)
-    self.label_pml_measure_mode.setMaximumSize(QtCore.QSize(16777215, 20))
-    self.label_pml_measure_mode.setFont(font10)
-    self.label_pml_measure_mode.setStyleSheet(u"border:none;")
+    self.ui.frame_pml_measure_mode_2.setFrameShape(QFrame.StyledPanel)
+    self.ui.frame_pml_measure_mode_2.setFrameShadow(QFrame.Raised)
+    self.ui.verticalLayout_32_2 = QVBoxLayout(self.ui.frame_pml_measure_mode_2)
+    self.ui.verticalLayout_32_2.setSpacing(13)
+    self.ui.verticalLayout_32_2.setObjectName(u"verticalLayout_32")
+    self.ui.verticalLayout_32_2.setContentsMargins(13, 13, 13, 13)
+    self.ui.label_pml_measure_mode_2 = QLabel(self.ui.frame_pml_measure_mode_2)
+    self.ui.label_pml_measure_mode_2.setObjectName(u"label_pml_measure_mode")
+    sizePolicy.setHeightForWidth(self.ui.label_pml_measure_mode_2.sizePolicy().hasHeightForWidth())
+    self.ui.label_pml_measure_mode_2.setSizePolicy(sizePolicy)
+    self.ui.label_pml_measure_mode_2.setMaximumSize(QtCore.QSize(16777215, 20))
+    self.ui.label_pml_measure_mode_2.setFont(font10)
+    self.ui.label_pml_measure_mode_2.setStyleSheet(u"border:none;")
     
-    self.verticalLayout_32.addWidget(self.label_pml_measure_mode)
+    self.ui.verticalLayout_32_2.addWidget(self.ui.label_pml_measure_mode_2)
     
-    self.btn_pml_measure_mode = QPushButton(self.frame_pml_measure_mode)
-    self.btn_pml_measure_mode.setObjectName(u"btn_pml_measure_mode")
-    self.btn_pml_measure_mode.setFont(font10)
-    self.btn_pml_measure_mode.setStyleSheet(u"QPushButton {\n"
+    self.ui.btn_pml_measure_mode_2 = QPushButton(self.ui.frame_pml_measure_mode_2)
+    self.ui.btn_pml_measure_mode_2.setObjectName(u"btn_pml_measure_mode")
+    self.ui.btn_pml_measure_mode_2.setFont(font10)
+    self.ui.btn_pml_measure_mode_2.setStyleSheet(u"QPushButton {\n"
     "	border: 2px solid rgb(52, 59, 72);\n"
     "	border-radius: 5px;	\n"
     "	background-color: rgb(52, 59, 72);\n"
@@ -1055,13 +1060,13 @@ def inject_ui(self):
     "	border: 2px solid rgb(43, 50, 61);\n"
     "}")
     
-    self.verticalLayout_32.addWidget(self.btn_pml_measure_mode)
+    self.ui.verticalLayout_32_2.addWidget(self.ui.btn_pml_measure_mode_2)
     
     
-    self.ui.horizontalLayout_19_2.addWidget(self.frame_pml_measure_mode)
+    self.ui.horizontalLayout_19_2.addWidget(self.ui.frame_pml_measure_mode_2)
     
     
-    self.verticalLayout_29.addWidget(self.ui.frame_pml_control_2_lower)
+    self.ui.verticalLayout_29_2.addWidget(self.ui.frame_pml_control_2_lower)
     
     
     self.ui.horizontalLayout_15_2.addWidget(self.ui.frame_pml_control_2)
@@ -1114,16 +1119,16 @@ def inject_ui(self):
     self.ui.frame_manual_control_eload_3_top.setObjectName(u"frame_manual_control_eload_top_3")
     self.ui.frame_manual_control_eload_3_top.setFrameShape(QFrame.StyledPanel)
     self.ui.frame_manual_control_eload_3_top.setFrameShadow(QFrame.Raised)
-    self.horizontalLayout_47 = QHBoxLayout(self.ui.frame_manual_control_eload_3_top)
-    self.horizontalLayout_47.setObjectName(u"horizontalLayout_47")
-    self.cbx_manual_control_eload_type = QComboBox(self.ui.frame_manual_control_eload_3_top)
-    self.cbx_manual_control_eload_type.addItem("")
-    self.cbx_manual_control_eload_type.addItem("")
-    self.cbx_manual_control_eload_type.addItem("")
-    self.cbx_manual_control_eload_type.setObjectName(u"cbx_manual_control_eload_type")
-    self.cbx_manual_control_eload_type.setMaximumSize(QtCore.QSize(16777215, 40))
-    self.cbx_manual_control_eload_type.setFont(font10)
-    self.cbx_manual_control_eload_type.setStyleSheet(u"QComboBox{\n"
+    self.ui.horizontalLayout_47_3 = QHBoxLayout(self.ui.frame_manual_control_eload_3_top)
+    self.ui.horizontalLayout_47_3.setObjectName(u"horizontalLayout_47")
+    self.ui.cbx_manual_control_eload_type_3 = QComboBox(self.ui.frame_manual_control_eload_3_top)
+    self.ui.cbx_manual_control_eload_type_3.addItem("")
+    self.ui.cbx_manual_control_eload_type_3.addItem("")
+    self.ui.cbx_manual_control_eload_type_3.addItem("")
+    self.ui.cbx_manual_control_eload_type_3.setObjectName(u"cbx_manual_control_eload_type")
+    self.ui.cbx_manual_control_eload_type_3.setMaximumSize(QtCore.QSize(16777215, 40))
+    self.ui.cbx_manual_control_eload_type_3.setFont(font10)
+    self.ui.cbx_manual_control_eload_type_3.setStyleSheet(u"QComboBox{\n"
     "border: 2px solid black;\n"
     "border-radius:5px;\n"
     "}\n"
@@ -1132,7 +1137,7 @@ def inject_ui(self):
     "	color: rgb(71, 71, 71);\n"
     "}")
     
-    self.horizontalLayout_47.addWidget(self.cbx_manual_control_eload_type)
+    self.ui.horizontalLayout_47_3.addWidget(self.ui.cbx_manual_control_eload_type_3)
     
     self.ui.btn_manual_control_eload_a_b_swap_3 = QPushButton(self.ui.frame_manual_control_eload_3_top)
     self.ui.btn_manual_control_eload_a_b_swap_3.setObjectName(u"btn_manual_control_eload_a_b_swap_3")
@@ -1162,7 +1167,7 @@ def inject_ui(self):
     self.ui.btn_manual_control_eload_a_b_swap_3.setCheckable(False)
     self.ui.btn_manual_control_eload_a_b_swap_3.setChecked(False)
     
-    self.horizontalLayout_47.addWidget(self.ui.btn_manual_control_eload_a_b_swap_3)
+    self.ui.horizontalLayout_47_3.addWidget(self.ui.btn_manual_control_eload_a_b_swap_3)
     
     
     self.verticalLayout_77.addWidget(self.ui.frame_manual_control_eload_3_top)
@@ -1171,8 +1176,8 @@ def inject_ui(self):
     self.ui.frame_manual_control_eload_3_center.setObjectName(u"frame_manual_control_eload_center_3")
     self.ui.frame_manual_control_eload_3_center.setFrameShape(QFrame.StyledPanel)
     self.ui.frame_manual_control_eload_3_center.setFrameShadow(QFrame.Raised)
-    self.horizontalLayout_46 = QHBoxLayout(self.ui.frame_manual_control_eload_3_center)
-    self.horizontalLayout_46.setObjectName(u"horizontalLayout_46")
+    self.ui.horizontalLayout_46_3 = QHBoxLayout(self.ui.frame_manual_control_eload_3_center)
+    self.ui.horizontalLayout_46_3.setObjectName(u"horizontalLayout_46")
     self.ui.frame_manual_control_eload_3_level = QFrame(self.ui.frame_manual_control_eload_3_center)
     self.ui.frame_manual_control_eload_3_level.setObjectName(u"frame_manual_control_eload_level_3")
     self.ui.frame_manual_control_eload_3_level.setFrameShape(QFrame.StyledPanel)
@@ -1183,8 +1188,8 @@ def inject_ui(self):
     self.ui.frame_manual_control_eload_3_a.setObjectName(u"frame_manual_control_eload_a_3")
     self.ui.frame_manual_control_eload_3_a.setFrameShape(QFrame.StyledPanel)
     self.ui.frame_manual_control_eload_3_a.setFrameShadow(QFrame.Raised)
-    self.horizontalLayout_45 = QHBoxLayout(self.ui.frame_manual_control_eload_3_a)
-    self.horizontalLayout_45.setObjectName(u"horizontalLayout_45")
+    self.ui.horizontalLayout_45_3 = QHBoxLayout(self.ui.frame_manual_control_eload_3_a)
+    self.ui.horizontalLayout_45_3.setObjectName(u"horizontalLayout_45")
     self.ui.label_manual_control_eload_3_a = QLabel(self.ui.frame_manual_control_eload_3_a)
     self.ui.label_manual_control_eload_3_a.setObjectName(u"label_manual_control_eload_a_3")
     self.ui.label_manual_control_eload_3_a.setMaximumSize(QtCore.QSize(16777215, 30))
@@ -1198,7 +1203,7 @@ def inject_ui(self):
     "}")
     self.ui.label_manual_control_eload_3_a.setAlignment(Qt.AlignCenter)
     
-    self.horizontalLayout_45.addWidget(self.ui.label_manual_control_eload_3_a)
+    self.ui.horizontalLayout_45_3.addWidget(self.ui.label_manual_control_eload_3_a)
     
     self.ui.lineedit_manual_control_eload_a_level_3 = QLineEdit(self.ui.frame_manual_control_eload_3_a)
     self.ui.lineedit_manual_control_eload_a_level_3.setObjectName(u"lineedit_manual_control_eload_a_level_3")
@@ -1230,7 +1235,7 @@ def inject_ui(self):
     "	padding-left: 10px;\n"
     "}")
     
-    self.horizontalLayout_45.addWidget(self.ui.lineedit_manual_control_eload_a_level_3)
+    self.ui.horizontalLayout_45_3.addWidget(self.ui.lineedit_manual_control_eload_a_level_3)
     
     self.ui.label_manual_control_eload_3_a_level_unit = QLabel(self.ui.frame_manual_control_eload_3_a)
     self.ui.label_manual_control_eload_3_a_level_unit.setObjectName(u"label_manual_control_eload_a_level_unit")
@@ -1246,13 +1251,13 @@ def inject_ui(self):
     "border:none\n"
     "}")
     
-    self.horizontalLayout_45.addWidget(self.ui.label_manual_control_eload_3_a_level_unit)
+    self.ui.horizontalLayout_45_3.addWidget(self.ui.label_manual_control_eload_3_a_level_unit)
     
-    self.btn_manual_control_eload_set_A = QPushButton(self.ui.frame_manual_control_eload_3_a)
-    self.btn_manual_control_eload_set_A.setObjectName(u"btn_manual_control_eload_set_A")
-    self.btn_manual_control_eload_set_A.setMinimumSize(QtCore.QSize(50, 30))
-    self.btn_manual_control_eload_set_A.setFont(font4)
-    self.btn_manual_control_eload_set_A.setStyleSheet(u"QPushButton {\n"
+    self.ui.btn_manual_control_eload_set_A_3 = QPushButton(self.ui.frame_manual_control_eload_3_a)
+    self.ui.btn_manual_control_eload_set_A_3.setObjectName(u"btn_manual_control_eload_set_A")
+    self.ui.btn_manual_control_eload_set_A_3.setMinimumSize(QtCore.QSize(50, 30))
+    self.ui.btn_manual_control_eload_set_A_3.setFont(font4)
+    self.ui.btn_manual_control_eload_set_A_3.setStyleSheet(u"QPushButton {\n"
     "	border: 2px solid rgb(52, 59, 72);\n"
     "	border-radius: 5px;	\n"
     "	background-color: rgb(52, 59, 72);\n"
@@ -1270,10 +1275,10 @@ def inject_ui(self):
     "	border: 2px solid rgb(33, 40, 51);\n"
     "	color: rgb(71, 71, 71);\n"
     "}")
-    self.btn_manual_control_eload_set_A.setCheckable(False)
-    self.btn_manual_control_eload_set_A.setChecked(False)
+    self.ui.btn_manual_control_eload_set_A_3.setCheckable(False)
+    self.ui.btn_manual_control_eload_set_A_3.setChecked(False)
     
-    self.horizontalLayout_45.addWidget(self.btn_manual_control_eload_set_A)
+    self.ui.horizontalLayout_45_3.addWidget(self.ui.btn_manual_control_eload_set_A_3)
     
     
     self.verticalLayout_70.addWidget(self.ui.frame_manual_control_eload_3_a)
@@ -1345,11 +1350,11 @@ def inject_ui(self):
     
     self.ui.horizontalLayout_39_3.addWidget(self.ui.label_manual_control_eload_3_b_level_unit)
     
-    self.btn_manual_control_eload_set_B = QPushButton(self.ui.frame_manual_control_eload_3_b)
-    self.btn_manual_control_eload_set_B.setObjectName(u"btn_manual_control_eload_set_B")
-    self.btn_manual_control_eload_set_B.setMinimumSize(QtCore.QSize(50, 30))
-    self.btn_manual_control_eload_set_B.setFont(font4)
-    self.btn_manual_control_eload_set_B.setStyleSheet(u"QPushButton {\n"
+    self.ui.btn_manual_control_eload_set_B_3 = QPushButton(self.ui.frame_manual_control_eload_3_b)
+    self.ui.btn_manual_control_eload_set_B_3.setObjectName(u"btn_manual_control_eload_set_B")
+    self.ui.btn_manual_control_eload_set_B_3.setMinimumSize(QtCore.QSize(50, 30))
+    self.ui.btn_manual_control_eload_set_B_3.setFont(font4)
+    self.ui.btn_manual_control_eload_set_B_3.setStyleSheet(u"QPushButton {\n"
     "	border: 2px solid rgb(52, 59, 72);\n"
     "	border-radius: 5px;	\n"
     "	background-color: rgb(52, 59, 72);\n"
@@ -1367,16 +1372,16 @@ def inject_ui(self):
     "	border: 2px solid rgb(33, 40, 51);\n"
     "	color: rgb(71, 71, 71);\n"
     "}")
-    self.btn_manual_control_eload_set_B.setCheckable(False)
-    self.btn_manual_control_eload_set_B.setChecked(False)
+    self.ui.btn_manual_control_eload_set_B_3.setCheckable(False)
+    self.ui.btn_manual_control_eload_set_B_3.setChecked(False)
     
-    self.ui.horizontalLayout_39_3.addWidget(self.btn_manual_control_eload_set_B)
+    self.ui.horizontalLayout_39_3.addWidget(self.ui.btn_manual_control_eload_set_B_3)
     
     
     self.verticalLayout_70.addWidget(self.ui.frame_manual_control_eload_3_b)
     
     
-    self.horizontalLayout_46.addWidget(self.ui.frame_manual_control_eload_3_level)
+    self.ui.horizontalLayout_46_3.addWidget(self.ui.frame_manual_control_eload_3_level)
     
     self.ui.frame_manual_control_eload_3_slew = QFrame(self.ui.frame_manual_control_eload_3_center)
     self.ui.frame_manual_control_eload_3_slew.setObjectName(u"frame_manual_control_eload_slew_3")
@@ -1406,13 +1411,13 @@ def inject_ui(self):
     
     self.ui.horizontalLayout_38_3.addWidget(self.label_manual_control_electronic_load_fall)
     
-    self.lineedit_manual_control_eload_slew_fall = QLineEdit(self.ui.frame_manual_control_eload_3_slew_fall)
-    self.lineedit_manual_control_eload_slew_fall.setObjectName(u"lineedit_manual_control_eload_slew_fall")
-    sizePolicy21.setHeightForWidth(self.lineedit_manual_control_eload_slew_fall.sizePolicy().hasHeightForWidth())
-    self.lineedit_manual_control_eload_slew_fall.setSizePolicy(sizePolicy21)
-    self.lineedit_manual_control_eload_slew_fall.setMinimumSize(QtCore.QSize(0, 40))
-    self.lineedit_manual_control_eload_slew_fall.setFont(font10)
-    self.lineedit_manual_control_eload_slew_fall.setStyleSheet(u"QLineEdit {\n"
+    self.ui.lineedit_manual_control_eload_slew_fall_3 = QLineEdit(self.ui.frame_manual_control_eload_3_slew_fall)
+    self.ui.lineedit_manual_control_eload_slew_fall_3.setObjectName(u"lineedit_manual_control_eload_slew_fall")
+    sizePolicy21.setHeightForWidth(self.ui.lineedit_manual_control_eload_slew_fall_3.sizePolicy().hasHeightForWidth())
+    self.ui.lineedit_manual_control_eload_slew_fall_3.setSizePolicy(sizePolicy21)
+    self.ui.lineedit_manual_control_eload_slew_fall_3.setMinimumSize(QtCore.QSize(0, 40))
+    self.ui.lineedit_manual_control_eload_slew_fall_3.setFont(font10)
+    self.ui.lineedit_manual_control_eload_slew_fall_3.setStyleSheet(u"QLineEdit {\n"
     "	background-color: rgb(27, 29, 35);\n"
     "	border-radius: 5px;\n"
     "	border: 2px solid rgb(27, 29, 35);\n"
@@ -1433,7 +1438,7 @@ def inject_ui(self):
     "	padding-left: 10px;\n"
     "}")
     
-    self.ui.horizontalLayout_38_3.addWidget(self.lineedit_manual_control_eload_slew_fall)
+    self.ui.horizontalLayout_38_3.addWidget(self.ui.lineedit_manual_control_eload_slew_fall_3)
     
     self.ui.label_manual_control_eload_3_slew_fall_unit = QLabel(self.ui.frame_manual_control_eload_3_slew_fall)
     self.ui.label_manual_control_eload_3_slew_fall_unit.setObjectName(u"label_manual_control_eload_slew_fall_unit")
@@ -1475,13 +1480,13 @@ def inject_ui(self):
     
     self.ui.horizontalLayout_36_3.addWidget(self.label_manual_control_electronic_load_rise)
     
-    self.lineedit_manual_control_eload_slew_rise = QLineEdit(self.ui.frame_manual_control_eload_3_slew_rise)
-    self.lineedit_manual_control_eload_slew_rise.setObjectName(u"lineedit_manual_control_eload_slew_rise")
-    sizePolicy21.setHeightForWidth(self.lineedit_manual_control_eload_slew_rise.sizePolicy().hasHeightForWidth())
-    self.lineedit_manual_control_eload_slew_rise.setSizePolicy(sizePolicy21)
-    self.lineedit_manual_control_eload_slew_rise.setMinimumSize(QtCore.QSize(0, 40))
-    self.lineedit_manual_control_eload_slew_rise.setFont(font10)
-    self.lineedit_manual_control_eload_slew_rise.setStyleSheet(u"QLineEdit {\n"
+    self.ui.lineedit_manual_control_eload_slew_rise_3 = QLineEdit(self.ui.frame_manual_control_eload_3_slew_rise)
+    self.ui.lineedit_manual_control_eload_slew_rise_3.setObjectName(u"lineedit_manual_control_eload_slew_rise")
+    sizePolicy21.setHeightForWidth(self.ui.lineedit_manual_control_eload_slew_rise_3.sizePolicy().hasHeightForWidth())
+    self.ui.lineedit_manual_control_eload_slew_rise_3.setSizePolicy(sizePolicy21)
+    self.ui.lineedit_manual_control_eload_slew_rise_3.setMinimumSize(QtCore.QSize(0, 40))
+    self.ui.lineedit_manual_control_eload_slew_rise_3.setFont(font10)
+    self.ui.lineedit_manual_control_eload_slew_rise_3.setStyleSheet(u"QLineEdit {\n"
     "	background-color: rgb(27, 29, 35);\n"
     "	border-radius: 5px;\n"
     "	border: 2px solid rgb(27, 29, 35);\n"
@@ -1502,7 +1507,7 @@ def inject_ui(self):
     "	padding-left: 10px;\n"
     "}")
     
-    self.ui.horizontalLayout_36_3.addWidget(self.lineedit_manual_control_eload_slew_rise)
+    self.ui.horizontalLayout_36_3.addWidget(self.ui.lineedit_manual_control_eload_slew_rise_3)
     
     self.ui.label_manual_control_eload_3_slew_rise_unit = QLabel(self.ui.frame_manual_control_eload_3_slew_rise)
     self.ui.label_manual_control_eload_3_slew_rise_unit.setObjectName(u"label_manual_control_eload_slew_rise_unit")
@@ -1523,13 +1528,13 @@ def inject_ui(self):
     
     self.gridLayout_29.addWidget(self.ui.frame_manual_control_eload_3_slew_rise, 0, 0, 1, 1)
     
-    self.btn_manual_control_eload_set_slew = QPushButton(self.ui.frame_manual_control_eload_3_slew)
-    self.btn_manual_control_eload_set_slew.setObjectName(u"btn_manual_control_eload_set_slew")
-    sizePolicy19.setHeightForWidth(self.btn_manual_control_eload_set_slew.sizePolicy().hasHeightForWidth())
-    self.btn_manual_control_eload_set_slew.setSizePolicy(sizePolicy19)
-    self.btn_manual_control_eload_set_slew.setMinimumSize(QtCore.QSize(50, 60))
-    self.btn_manual_control_eload_set_slew.setFont(font4)
-    self.btn_manual_control_eload_set_slew.setStyleSheet(u"QPushButton {\n"
+    self.ui.btn_manual_control_eload_set_slew_3 = QPushButton(self.ui.frame_manual_control_eload_3_slew)
+    self.ui.btn_manual_control_eload_set_slew_3.setObjectName(u"btn_manual_control_eload_set_slew")
+    sizePolicy19.setHeightForWidth(self.ui.btn_manual_control_eload_set_slew_3.sizePolicy().hasHeightForWidth())
+    self.ui.btn_manual_control_eload_set_slew_3.setSizePolicy(sizePolicy19)
+    self.ui.btn_manual_control_eload_set_slew_3.setMinimumSize(QtCore.QSize(50, 60))
+    self.ui.btn_manual_control_eload_set_slew_3.setFont(font4)
+    self.ui.btn_manual_control_eload_set_slew_3.setStyleSheet(u"QPushButton {\n"
     "	border: 2px solid rgb(52, 59, 72);\n"
     "	border-radius: 5px;	\n"
     "	background-color: rgb(52, 59, 72);\n"
@@ -1547,13 +1552,13 @@ def inject_ui(self):
     "	border: 2px solid rgb(33, 40, 51);\n"
     "	color: rgb(71, 71, 71);\n"
     "}")
-    self.btn_manual_control_eload_set_slew.setCheckable(False)
-    self.btn_manual_control_eload_set_slew.setChecked(False)
+    self.ui.btn_manual_control_eload_set_slew_3.setCheckable(False)
+    self.ui.btn_manual_control_eload_set_slew_3.setChecked(False)
     
-    self.gridLayout_29.addWidget(self.btn_manual_control_eload_set_slew, 0, 1, 2, 1)
+    self.gridLayout_29.addWidget(self.ui.btn_manual_control_eload_set_slew_3, 0, 1, 2, 1)
     
     
-    self.horizontalLayout_46.addWidget(self.ui.frame_manual_control_eload_3_slew)
+    self.ui.horizontalLayout_46_3.addWidget(self.ui.frame_manual_control_eload_3_slew)
     
     
     self.verticalLayout_77.addWidget(self.ui.frame_manual_control_eload_3_center)
@@ -1562,13 +1567,13 @@ def inject_ui(self):
     self.ui.frame_manual_control_eload_3_bottom.setObjectName(u"frame_manual_control_eload_bottom_3")
     self.ui.frame_manual_control_eload_3_bottom.setFrameShape(QFrame.StyledPanel)
     self.ui.frame_manual_control_eload_3_bottom.setFrameShadow(QFrame.Raised)
-    self.horizontalLayout_56 = QHBoxLayout(self.ui.frame_manual_control_eload_3_bottom)
-    self.horizontalLayout_56.setObjectName(u"horizontalLayout_56")
-    self.btn_manual_control_eload_turn_on = QPushButton(self.ui.frame_manual_control_eload_3_bottom)
-    self.btn_manual_control_eload_turn_on.setObjectName(u"btn_manual_control_eload_turn_on")
-    self.btn_manual_control_eload_turn_on.setMinimumSize(QtCore.QSize(120, 40))
-    self.btn_manual_control_eload_turn_on.setFont(font13)
-    self.btn_manual_control_eload_turn_on.setStyleSheet(u"QPushButton {\n"
+    self.ui.horizontalLayout_56_3 = QHBoxLayout(self.ui.frame_manual_control_eload_3_bottom)
+    self.ui.horizontalLayout_56_3.setObjectName(u"horizontalLayout_56")
+    self.ui.btn_manual_control_eload_turn_on_3 = QPushButton(self.ui.frame_manual_control_eload_3_bottom)
+    self.ui.btn_manual_control_eload_turn_on_3.setObjectName(u"btn_manual_control_eload_turn_on")
+    self.ui.btn_manual_control_eload_turn_on_3.setMinimumSize(QtCore.QSize(120, 40))
+    self.ui.btn_manual_control_eload_turn_on_3.setFont(font13)
+    self.ui.btn_manual_control_eload_turn_on_3.setStyleSheet(u"QPushButton {\n"
     "	border: 2px solid rgb(52, 59, 72);\n"
     "	border-radius: 5px;	\n"
     "	background-color: rgb(52, 59, 72);\n"
@@ -1586,17 +1591,17 @@ def inject_ui(self):
     "	border: 2px solid rgb(33, 40, 51);\n"
     "	color: rgb(71, 71, 71);\n"
     "}")
-    self.btn_manual_control_eload_turn_on.setIcon(icon8)
-    self.btn_manual_control_eload_turn_on.setCheckable(False)
-    self.btn_manual_control_eload_turn_on.setChecked(False)
+    self.ui.btn_manual_control_eload_turn_on_3.setIcon(icon8)
+    self.ui.btn_manual_control_eload_turn_on_3.setCheckable(False)
+    self.ui.btn_manual_control_eload_turn_on_3.setChecked(False)
     
-    self.horizontalLayout_56.addWidget(self.btn_manual_control_eload_turn_on)
+    self.ui.horizontalLayout_56_3.addWidget(self.ui.btn_manual_control_eload_turn_on_3)
     
-    self.btn_manual_control_eload_turn_off = QPushButton(self.ui.frame_manual_control_eload_3_bottom)
-    self.btn_manual_control_eload_turn_off.setObjectName(u"btn_manual_control_eload_turn_off")
-    self.btn_manual_control_eload_turn_off.setMinimumSize(QtCore.QSize(120, 40))
-    self.btn_manual_control_eload_turn_off.setFont(font13)
-    self.btn_manual_control_eload_turn_off.setStyleSheet(u"QPushButton {\n"
+    self.ui.btn_manual_control_eload_turn_off_3 = QPushButton(self.ui.frame_manual_control_eload_3_bottom)
+    self.ui.btn_manual_control_eload_turn_off_3.setObjectName(u"btn_manual_control_eload_turn_off")
+    self.ui.btn_manual_control_eload_turn_off_3.setMinimumSize(QtCore.QSize(120, 40))
+    self.ui.btn_manual_control_eload_turn_off_3.setFont(font13)
+    self.ui.btn_manual_control_eload_turn_off_3.setStyleSheet(u"QPushButton {\n"
     "	border: 2px solid rgb(52, 59, 72);\n"
     "	border-radius: 5px;	\n"
     "	background-color: rgb(52, 59, 72);\n"
@@ -1614,11 +1619,11 @@ def inject_ui(self):
     "	border: 2px solid rgb(33, 40, 51);\n"
     "	color: rgb(71, 71, 71);\n"
     "}")
-    self.btn_manual_control_eload_turn_off.setIcon(icon9)
-    self.btn_manual_control_eload_turn_off.setCheckable(False)
-    self.btn_manual_control_eload_turn_off.setChecked(False)
+    self.ui.btn_manual_control_eload_turn_off_3.setIcon(icon9)
+    self.ui.btn_manual_control_eload_turn_off_3.setCheckable(False)
+    self.ui.btn_manual_control_eload_turn_off_3.setChecked(False)
     
-    self.horizontalLayout_56.addWidget(self.btn_manual_control_eload_turn_off)
+    self.ui.horizontalLayout_56_3.addWidget(self.ui.btn_manual_control_eload_turn_off_3)
     
     
     self.verticalLayout_77.addWidget(self.ui.frame_manual_control_eload_3_bottom)
@@ -1643,18 +1648,18 @@ def inject_ui(self):
     self.ui.frame_manual_control_pml_3.setFrameShadow(QFrame.Sunken)
     self.ui.verticalLayout_19_3 = QVBoxLayout(self.ui.frame_manual_control_pml_3)
     self.ui.verticalLayout_19_3.setObjectName(u"verticalLayout_19_3")
-    self.label_load_power_meter = QLabel(self.ui.frame_manual_control_pml_3)
-    self.label_load_power_meter.setObjectName(u"label_load_power_meter")
-    self.label_load_power_meter.setMaximumSize(QtCore.QSize(16777215, 30))
-    self.label_load_power_meter.setFont(font1)
-    self.label_load_power_meter.setCursor(QCursor(Qt.ArrowCursor))
-    self.label_load_power_meter.setStyleSheet(u"QLabel{border:none;}\n"
+    self.ui.label_load_power_meter_3 = QLabel(self.ui.frame_manual_control_pml_3)
+    self.ui.label_load_power_meter_3.setObjectName(u"label_load_power_meter")
+    self.ui.label_load_power_meter_3.setMaximumSize(QtCore.QSize(16777215, 30))
+    self.ui.label_load_power_meter_3.setFont(font1)
+    self.ui.label_load_power_meter_3.setCursor(QCursor(Qt.ArrowCursor))
+    self.ui.label_load_power_meter_3.setStyleSheet(u"QLabel{border:none;}\n"
     "QLabel:disabled{\n"
     "	color: rgb(71, 71, 71)\n"
     "}")
-    self.label_load_power_meter.setAlignment(Qt.AlignCenter)
+    self.ui.label_load_power_meter_3.setAlignment(Qt.AlignCenter)
     
-    self.ui.verticalLayout_19_3.addWidget(self.label_load_power_meter)
+    self.ui.verticalLayout_19_3.addWidget(self.ui.label_load_power_meter_3)
     
     self.ui.frame_pml_contents_3 = QFrame(self.ui.frame_manual_control_pml_3)
     self.ui.frame_pml_contents_3.setObjectName(u"frame_pml_contents_3")
@@ -1768,33 +1773,33 @@ def inject_ui(self):
     "}")
     self.ui.frame_pml_display_3_select.setFrameShape(QFrame.StyledPanel)
     self.ui.frame_pml_display_3_select.setFrameShadow(QFrame.Raised)
-    self.verticalLayout_21 = QVBoxLayout(self.ui.frame_pml_display_3_select)
-    self.verticalLayout_21.setSpacing(0)
-    self.verticalLayout_21.setObjectName(u"verticalLayout_21")
-    self.verticalLayout_21.setContentsMargins(0, 0, 0, 0)
-    self.cbx_pml_display_a = QComboBox(self.ui.frame_pml_display_3_select)
-    self.cbx_pml_display_a.setObjectName(u"cbx_pml_display_a")
-    self.cbx_pml_display_a.setMaximumSize(QtCore.QSize(16777215, 54))
+    self.ui.verticalLayout_21_3 = QVBoxLayout(self.ui.frame_pml_display_3_select)
+    self.ui.verticalLayout_21_3.setSpacing(0)
+    self.ui.verticalLayout_21_3.setObjectName(u"verticalLayout_21")
+    self.ui.verticalLayout_21_3.setContentsMargins(0, 0, 0, 0)
+    self.ui.cbx_pml_display_a_3 = QComboBox(self.ui.frame_pml_display_3_select)
+    self.ui.cbx_pml_display_a_3.setObjectName(u"cbx_pml_display_a")
+    self.ui.cbx_pml_display_a_3.setMaximumSize(QtCore.QSize(16777215, 54))
     
-    self.verticalLayout_21.addWidget(self.cbx_pml_display_a)
+    self.ui.verticalLayout_21_3.addWidget(self.ui.cbx_pml_display_a_3)
     
-    self.cbx_pml_display_b = QComboBox(self.ui.frame_pml_display_3_select)
-    self.cbx_pml_display_b.setObjectName(u"cbx_pml_display_b")
-    self.cbx_pml_display_b.setMaximumSize(QtCore.QSize(16777215, 54))
+    self.ui.cbx_pml_display_b_3 = QComboBox(self.ui.frame_pml_display_3_select)
+    self.ui.cbx_pml_display_b_3.setObjectName(u"cbx_pml_display_b")
+    self.ui.cbx_pml_display_b_3.setMaximumSize(QtCore.QSize(16777215, 54))
     
-    self.verticalLayout_21.addWidget(self.cbx_pml_display_b)
+    self.ui.verticalLayout_21_3.addWidget(self.ui.cbx_pml_display_b_3)
     
-    self.cbx_pml_display_c = QComboBox(self.ui.frame_pml_display_3_select)
-    self.cbx_pml_display_c.setObjectName(u"cbx_pml_display_c")
-    self.cbx_pml_display_c.setMaximumSize(QtCore.QSize(16777215, 54))
+    self.ui.cbx_pml_display_c_3 = QComboBox(self.ui.frame_pml_display_3_select)
+    self.ui.cbx_pml_display_c_3.setObjectName(u"cbx_pml_display_c")
+    self.ui.cbx_pml_display_c_3.setMaximumSize(QtCore.QSize(16777215, 54))
     
-    self.verticalLayout_21.addWidget(self.cbx_pml_display_c)
+    self.ui.verticalLayout_21_3.addWidget(self.ui.cbx_pml_display_c_3)
     
-    self.cbx_pml_display_d = QComboBox(self.ui.frame_pml_display_3_select)
-    self.cbx_pml_display_d.setObjectName(u"cbx_pml_display_d")
-    self.cbx_pml_display_d.setMaximumSize(QtCore.QSize(16777215, 54))
+    self.ui.cbx_pml_display_d_3 = QComboBox(self.ui.frame_pml_display_3_select)
+    self.ui.cbx_pml_display_d_3.setObjectName(u"cbx_pml_display_d")
+    self.ui.cbx_pml_display_d_3.setMaximumSize(QtCore.QSize(16777215, 54))
     
-    self.verticalLayout_21.addWidget(self.cbx_pml_display_d)
+    self.ui.verticalLayout_21_3.addWidget(self.ui.cbx_pml_display_d_3)
     
     
     self.ui.horizontalLayout_15_3.addWidget(self.ui.frame_pml_display_3_select)
@@ -1807,50 +1812,50 @@ def inject_ui(self):
     "")
     self.ui.frame_pml_control_3.setFrameShape(QFrame.StyledPanel)
     self.ui.frame_pml_control_3.setFrameShadow(QFrame.Raised)
-    self.verticalLayout_29 = QVBoxLayout(self.ui.frame_pml_control_3)
-    self.verticalLayout_29.setSpacing(0)
-    self.verticalLayout_29.setObjectName(u"verticalLayout_29")
-    self.verticalLayout_29.setContentsMargins(0, 0, 0, 0)
+    self.ui.verticalLayout_29_3 = QVBoxLayout(self.ui.frame_pml_control_3)
+    self.ui.verticalLayout_29_3.setSpacing(0)
+    self.ui.verticalLayout_29_3.setObjectName(u"verticalLayout_29")
+    self.ui.verticalLayout_29_3.setContentsMargins(0, 0, 0, 0)
     self.ui.frame_pml_control_3__range = QFrame(self.ui.frame_pml_control_3)
     self.ui.frame_pml_control_3__range.setObjectName(u"frame_pml_control__range")
     self.ui.frame_pml_control_3__range.setFrameShape(QFrame.StyledPanel)
     self.ui.frame_pml_control_3__range.setFrameShadow(QFrame.Raised)
-    self.formLayout_2 = QFormLayout(self.ui.frame_pml_control_3__range)
-    self.formLayout_2.setObjectName(u"formLayout_2")
-    self.label_pml_voltage_range = QLabel(self.ui.frame_pml_control_3__range)
-    self.label_pml_voltage_range.setObjectName(u"label_pml_voltage_range")
-    self.label_pml_voltage_range.setFont(font10)
-    self.label_pml_voltage_range.setStyleSheet(u"border:none;")
+    self.ui.formLayout_2_3 = QFormLayout(self.ui.frame_pml_control_3__range)
+    self.ui.formLayout_2_3.setObjectName(u"formLayout_2")
+    self.ui.label_pml_voltage_range_3 = QLabel(self.ui.frame_pml_control_3__range)
+    self.ui.label_pml_voltage_range_3.setObjectName(u"label_pml_voltage_range")
+    self.ui.label_pml_voltage_range_3.setFont(font10)
+    self.ui.label_pml_voltage_range_3.setStyleSheet(u"border:none;")
     
-    self.formLayout_2.setWidget(0, QFormLayout.LabelRole, self.label_pml_voltage_range)
+    self.ui.formLayout_2_3.setWidget(0, QFormLayout.LabelRole, self.ui.label_pml_voltage_range_3)
     
-    self.cbx_pml_voltage_range = QComboBox(self.ui.frame_pml_control_3__range)
-    self.cbx_pml_voltage_range.addItem("")
-    self.cbx_pml_voltage_range.addItem("")
-    self.cbx_pml_voltage_range.setObjectName(u"cbx_pml_voltage_range")
-    self.cbx_pml_voltage_range.setMaximumSize(QtCore.QSize(16777215, 54))
-    self.cbx_pml_voltage_range.setFont(font10)
+    self.ui.cbx_pml_voltage_range_3 = QComboBox(self.ui.frame_pml_control_3__range)
+    self.ui.cbx_pml_voltage_range_3.addItem("")
+    self.ui.cbx_pml_voltage_range_3.addItem("")
+    self.ui.cbx_pml_voltage_range_3.setObjectName(u"cbx_pml_voltage_range")
+    self.ui.cbx_pml_voltage_range_3.setMaximumSize(QtCore.QSize(16777215, 54))
+    self.ui.cbx_pml_voltage_range_3.setFont(font10)
     
-    self.formLayout_2.setWidget(0, QFormLayout.FieldRole, self.cbx_pml_voltage_range)
+    self.ui.formLayout_2_3.setWidget(0, QFormLayout.FieldRole, self.ui.cbx_pml_voltage_range_3)
     
-    self.label_pml_current_range = QLabel(self.ui.frame_pml_control_3__range)
-    self.label_pml_current_range.setObjectName(u"label_pml_current_range")
-    self.label_pml_current_range.setFont(font10)
-    self.label_pml_current_range.setStyleSheet(u"border:none;")
+    self.ui.label_pml_current_range_3 = QLabel(self.ui.frame_pml_control_3__range)
+    self.ui.label_pml_current_range_3.setObjectName(u"label_pml_current_range")
+    self.ui.label_pml_current_range_3.setFont(font10)
+    self.ui.label_pml_current_range_3.setStyleSheet(u"border:none;")
     
-    self.formLayout_2.setWidget(1, QFormLayout.LabelRole, self.label_pml_current_range)
+    self.ui.formLayout_2_3.setWidget(1, QFormLayout.LabelRole, self.ui.label_pml_current_range_3)
     
-    self.cbx_pml_current_range = QComboBox(self.ui.frame_pml_control_3__range)
-    self.cbx_pml_current_range.addItem("")
-    self.cbx_pml_current_range.addItem("")
-    self.cbx_pml_current_range.setObjectName(u"cbx_pml_current_range")
-    self.cbx_pml_current_range.setMaximumSize(QtCore.QSize(16777215, 54))
-    self.cbx_pml_current_range.setFont(font10)
+    self.ui.cbx_pml_current_range_3 = QComboBox(self.ui.frame_pml_control_3__range)
+    self.ui.cbx_pml_current_range_3.addItem("")
+    self.ui.cbx_pml_current_range_3.addItem("")
+    self.ui.cbx_pml_current_range_3.setObjectName(u"cbx_pml_current_range")
+    self.ui.cbx_pml_current_range_3.setMaximumSize(QtCore.QSize(16777215, 54))
+    self.ui.cbx_pml_current_range_3.setFont(font10)
     
-    self.formLayout_2.setWidget(1, QFormLayout.FieldRole, self.cbx_pml_current_range)
+    self.ui.formLayout_2_3.setWidget(1, QFormLayout.FieldRole, self.ui.cbx_pml_current_range_3)
     
     
-    self.verticalLayout_29.addWidget(self.ui.frame_pml_control_3__range)
+    self.ui.verticalLayout_29_3.addWidget(self.ui.frame_pml_control_3__range)
     
     self.ui.frame_pml_control_3_lower = QFrame(self.ui.frame_pml_control_3)
     self.ui.frame_pml_control_3_lower.setObjectName(u"frame_pml_control_lower")
@@ -1861,26 +1866,26 @@ def inject_ui(self):
     self.ui.horizontalLayout_19_3.setSpacing(0)
     self.ui.horizontalLayout_19_3.setObjectName(u"horizontalLayout_19_3")
     self.ui.horizontalLayout_19_3.setContentsMargins(0, 0, 0, 0)
-    self.frame_pml_integration = QFrame(self.ui.frame_pml_control_3_lower)
-    self.frame_pml_integration.setObjectName(u"frame_pml_integration")
-    self.frame_pml_integration.setStyleSheet(u"border: 2px solid black;\n"
+    self.ui.frame_pml_integration_3 = QFrame(self.ui.frame_pml_control_3_lower)
+    self.ui.frame_pml_integration_3.setObjectName(u"frame_pml_integration")
+    self.ui.frame_pml_integration_3.setStyleSheet(u"border: 2px solid black;\n"
     "border-radius: 10px;")
-    self.frame_pml_integration.setFrameShape(QFrame.StyledPanel)
-    self.frame_pml_integration.setFrameShadow(QFrame.Raised)
-    self.verticalLayout_30 = QVBoxLayout(self.frame_pml_integration)
+    self.ui.frame_pml_integration_3.setFrameShape(QFrame.StyledPanel)
+    self.ui.frame_pml_integration_3.setFrameShadow(QFrame.Raised)
+    self.verticalLayout_30 = QVBoxLayout(self.ui.frame_pml_integration_3)
     self.verticalLayout_30.setObjectName(u"verticalLayout_30")
-    self.label_pml_integration = QLabel(self.frame_pml_integration)
-    self.label_pml_integration.setObjectName(u"label_pml_integration")
-    sizePolicy.setHeightForWidth(self.label_pml_integration.sizePolicy().hasHeightForWidth())
-    self.label_pml_integration.setSizePolicy(sizePolicy)
-    self.label_pml_integration.setMinimumSize(QtCore.QSize(0, 20))
-    self.label_pml_integration.setMaximumSize(QtCore.QSize(16777215, 20))
-    self.label_pml_integration.setFont(font10)
-    self.label_pml_integration.setStyleSheet(u"border:none;")
+    self.ui.label_pml_integration_3 = QLabel(self.ui.frame_pml_integration_3)
+    self.ui.label_pml_integration_3.setObjectName(u"label_pml_integration")
+    sizePolicy.setHeightForWidth(self.ui.label_pml_integration_3.sizePolicy().hasHeightForWidth())
+    self.ui.label_pml_integration_3.setSizePolicy(sizePolicy)
+    self.ui.label_pml_integration_3.setMinimumSize(QtCore.QSize(0, 20))
+    self.ui.label_pml_integration_3.setMaximumSize(QtCore.QSize(16777215, 20))
+    self.ui.label_pml_integration_3.setFont(font10)
+    self.ui.label_pml_integration_3.setStyleSheet(u"border:none;")
     
-    self.verticalLayout_30.addWidget(self.label_pml_integration)
+    self.verticalLayout_30.addWidget(self.ui.label_pml_integration_3)
     
-    self.btn_pml_integration_start = QPushButton(self.frame_pml_integration)
+    self.btn_pml_integration_start = QPushButton(self.ui.frame_pml_integration_3)
     self.btn_pml_integration_start.setObjectName(u"btn_pml_integration_start")
     self.btn_pml_integration_start.setFont(font10)
     self.btn_pml_integration_start.setStyleSheet(u"QPushButton {\n"
@@ -1899,7 +1904,7 @@ def inject_ui(self):
     
     self.verticalLayout_30.addWidget(self.btn_pml_integration_start)
     
-    self.btn_pml_integration_stop = QPushButton(self.frame_pml_integration)
+    self.btn_pml_integration_stop = QPushButton(self.ui.frame_pml_integration_3)
     self.btn_pml_integration_stop.setObjectName(u"btn_pml_integration_stop")
     self.btn_pml_integration_stop.setFont(font10)
     self.btn_pml_integration_stop.setStyleSheet(u"QPushButton {\n"
@@ -1918,7 +1923,7 @@ def inject_ui(self):
     
     self.verticalLayout_30.addWidget(self.btn_pml_integration_stop)
     
-    self.btn_pml_integration_reset = QPushButton(self.frame_pml_integration)
+    self.btn_pml_integration_reset = QPushButton(self.ui.frame_pml_integration_3)
     self.btn_pml_integration_reset.setObjectName(u"btn_pml_integration_reset")
     self.btn_pml_integration_reset.setFont(font10)
     self.btn_pml_integration_reset.setStyleSheet(u"QPushButton {\n"
@@ -1938,30 +1943,30 @@ def inject_ui(self):
     self.verticalLayout_30.addWidget(self.btn_pml_integration_reset)
     
     
-    self.ui.horizontalLayout_19_3.addWidget(self.frame_pml_integration)
+    self.ui.horizontalLayout_19_3.addWidget(self.ui.frame_pml_integration_3)
     
-    self.frame_pml_averaging = QFrame(self.ui.frame_pml_control_3_lower)
-    self.frame_pml_averaging.setObjectName(u"frame_pml_averaging")
-    self.frame_pml_averaging.setStyleSheet(u"border: 2px solid black;\n"
+    self.ui.frame_pml_averaging_3 = QFrame(self.ui.frame_pml_control_3_lower)
+    self.ui.frame_pml_averaging_3.setObjectName(u"frame_pml_averaging")
+    self.ui.frame_pml_averaging_3.setStyleSheet(u"border: 2px solid black;\n"
     "border-radius: 10px;")
-    self.frame_pml_averaging.setFrameShape(QFrame.StyledPanel)
-    self.frame_pml_averaging.setFrameShadow(QFrame.Raised)
-    self.verticalLayout_31 = QVBoxLayout(self.frame_pml_averaging)
+    self.ui.frame_pml_averaging_3.setFrameShape(QFrame.StyledPanel)
+    self.ui.frame_pml_averaging_3.setFrameShadow(QFrame.Raised)
+    self.verticalLayout_31 = QVBoxLayout(self.ui.frame_pml_averaging_3)
     self.verticalLayout_31.setSpacing(2)
     self.verticalLayout_31.setObjectName(u"verticalLayout_31")
     self.verticalLayout_31.setContentsMargins(-1, 5, -1, 5)
-    self.label_pml_averaging = QLabel(self.frame_pml_averaging)
-    self.label_pml_averaging.setObjectName(u"label_pml_averaging")
-    sizePolicy.setHeightForWidth(self.label_pml_averaging.sizePolicy().hasHeightForWidth())
-    self.label_pml_averaging.setSizePolicy(sizePolicy)
-    self.label_pml_averaging.setMinimumSize(QtCore.QSize(0, 20))
-    self.label_pml_averaging.setMaximumSize(QtCore.QSize(16777215, 20))
-    self.label_pml_averaging.setFont(font10)
-    self.label_pml_averaging.setStyleSheet(u"border:none;")
+    self.ui.label_pml_averaging_3 = QLabel(self.ui.frame_pml_averaging_3)
+    self.ui.label_pml_averaging_3.setObjectName(u"label_pml_averaging")
+    sizePolicy.setHeightForWidth(self.ui.label_pml_averaging_3.sizePolicy().hasHeightForWidth())
+    self.ui.label_pml_averaging_3.setSizePolicy(sizePolicy)
+    self.ui.label_pml_averaging_3.setMinimumSize(QtCore.QSize(0, 20))
+    self.ui.label_pml_averaging_3.setMaximumSize(QtCore.QSize(16777215, 20))
+    self.ui.label_pml_averaging_3.setFont(font10)
+    self.ui.label_pml_averaging_3.setStyleSheet(u"border:none;")
     
-    self.verticalLayout_31.addWidget(self.label_pml_averaging)
+    self.verticalLayout_31.addWidget(self.ui.label_pml_averaging_3)
     
-    self.btn_pml_averaging_toggle = QPushButton(self.frame_pml_averaging)
+    self.btn_pml_averaging_toggle = QPushButton(self.ui.frame_pml_averaging_3)
     self.btn_pml_averaging_toggle.setObjectName(u"btn_pml_averaging_toggle")
     self.btn_pml_averaging_toggle.setFont(font10)
     self.btn_pml_averaging_toggle.setStyleSheet(u"QPushButton {\n"
@@ -1980,7 +1985,7 @@ def inject_ui(self):
     
     self.verticalLayout_31.addWidget(self.btn_pml_averaging_toggle)
     
-    self.cbx_pml_averaging_count = QComboBox(self.frame_pml_averaging)
+    self.cbx_pml_averaging_count = QComboBox(self.ui.frame_pml_averaging_3)
     self.cbx_pml_averaging_count.addItem("")
     self.cbx_pml_averaging_count.addItem("")
     self.cbx_pml_averaging_count.addItem("")
@@ -1990,7 +1995,7 @@ def inject_ui(self):
     
     self.verticalLayout_31.addWidget(self.cbx_pml_averaging_count)
     
-    self.cbx_pml_averaging_mode = QComboBox(self.frame_pml_averaging)
+    self.cbx_pml_averaging_mode = QComboBox(self.ui.frame_pml_averaging_3)
     self.cbx_pml_averaging_mode.addItem("")
     self.cbx_pml_averaging_mode.addItem("")
     self.cbx_pml_averaging_mode.setObjectName(u"cbx_pml_averaging_mode")
@@ -2000,32 +2005,32 @@ def inject_ui(self):
     self.verticalLayout_31.addWidget(self.cbx_pml_averaging_mode)
     
     
-    self.ui.horizontalLayout_19_3.addWidget(self.frame_pml_averaging)
+    self.ui.horizontalLayout_19_3.addWidget(self.ui.frame_pml_averaging_3)
     
-    self.frame_pml_measure_mode = QFrame(self.ui.frame_pml_control_3_lower)
-    self.frame_pml_measure_mode.setObjectName(u"frame_pml_measure_mode")
-    self.frame_pml_measure_mode.setStyleSheet(u"border: 2px solid black;\n"
+    self.ui.frame_pml_measure_mode_3 = QFrame(self.ui.frame_pml_control_3_lower)
+    self.ui.frame_pml_measure_mode_3.setObjectName(u"frame_pml_measure_mode")
+    self.ui.frame_pml_measure_mode_3.setStyleSheet(u"border: 2px solid black;\n"
     "border-radius: 10px;")
-    self.frame_pml_measure_mode.setFrameShape(QFrame.StyledPanel)
-    self.frame_pml_measure_mode.setFrameShadow(QFrame.Raised)
-    self.verticalLayout_32 = QVBoxLayout(self.frame_pml_measure_mode)
-    self.verticalLayout_32.setSpacing(13)
-    self.verticalLayout_32.setObjectName(u"verticalLayout_32")
-    self.verticalLayout_32.setContentsMargins(13, 13, 13, 13)
-    self.label_pml_measure_mode = QLabel(self.frame_pml_measure_mode)
-    self.label_pml_measure_mode.setObjectName(u"label_pml_measure_mode")
-    sizePolicy.setHeightForWidth(self.label_pml_measure_mode.sizePolicy().hasHeightForWidth())
-    self.label_pml_measure_mode.setSizePolicy(sizePolicy)
-    self.label_pml_measure_mode.setMaximumSize(QtCore.QSize(16777215, 20))
-    self.label_pml_measure_mode.setFont(font10)
-    self.label_pml_measure_mode.setStyleSheet(u"border:none;")
+    self.ui.frame_pml_measure_mode_3.setFrameShape(QFrame.StyledPanel)
+    self.ui.frame_pml_measure_mode_3.setFrameShadow(QFrame.Raised)
+    self.ui.verticalLayout_32_3 = QVBoxLayout(self.ui.frame_pml_measure_mode_3)
+    self.ui.verticalLayout_32_3.setSpacing(13)
+    self.ui.verticalLayout_32_3.setObjectName(u"verticalLayout_32")
+    self.ui.verticalLayout_32_3.setContentsMargins(13, 13, 13, 13)
+    self.ui.label_pml_measure_mode_3 = QLabel(self.ui.frame_pml_measure_mode_3)
+    self.ui.label_pml_measure_mode_3.setObjectName(u"label_pml_measure_mode")
+    sizePolicy.setHeightForWidth(self.ui.label_pml_measure_mode_3.sizePolicy().hasHeightForWidth())
+    self.ui.label_pml_measure_mode_3.setSizePolicy(sizePolicy)
+    self.ui.label_pml_measure_mode_3.setMaximumSize(QtCore.QSize(16777215, 20))
+    self.ui.label_pml_measure_mode_3.setFont(font10)
+    self.ui.label_pml_measure_mode_3.setStyleSheet(u"border:none;")
     
-    self.verticalLayout_32.addWidget(self.label_pml_measure_mode)
+    self.ui.verticalLayout_32_3.addWidget(self.ui.label_pml_measure_mode_3)
     
-    self.btn_pml_measure_mode = QPushButton(self.frame_pml_measure_mode)
-    self.btn_pml_measure_mode.setObjectName(u"btn_pml_measure_mode")
-    self.btn_pml_measure_mode.setFont(font10)
-    self.btn_pml_measure_mode.setStyleSheet(u"QPushButton {\n"
+    self.ui.btn_pml_measure_mode_3 = QPushButton(self.ui.frame_pml_measure_mode_3)
+    self.ui.btn_pml_measure_mode_3.setObjectName(u"btn_pml_measure_mode")
+    self.ui.btn_pml_measure_mode_3.setFont(font10)
+    self.ui.btn_pml_measure_mode_3.setStyleSheet(u"QPushButton {\n"
     "	border: 2px solid rgb(52, 59, 72);\n"
     "	border-radius: 5px;	\n"
     "	background-color: rgb(52, 59, 72);\n"
@@ -2039,13 +2044,13 @@ def inject_ui(self):
     "	border: 2px solid rgb(43, 50, 61);\n"
     "}")
     
-    self.verticalLayout_32.addWidget(self.btn_pml_measure_mode)
+    self.ui.verticalLayout_32_3.addWidget(self.ui.btn_pml_measure_mode_3)
     
     
-    self.ui.horizontalLayout_19_3.addWidget(self.frame_pml_measure_mode)
+    self.ui.horizontalLayout_19_3.addWidget(self.ui.frame_pml_measure_mode_3)
     
     
-    self.verticalLayout_29.addWidget(self.ui.frame_pml_control_3_lower)
+    self.ui.verticalLayout_29_3.addWidget(self.ui.frame_pml_control_3_lower)
     
     
     self.ui.horizontalLayout_15_3.addWidget(self.ui.frame_pml_control_3)
@@ -2098,16 +2103,16 @@ def inject_ui(self):
     self.ui.frame_manual_control_eload_4_top.setObjectName(u"frame_manual_control_eload_top_4")
     self.ui.frame_manual_control_eload_4_top.setFrameShape(QFrame.StyledPanel)
     self.ui.frame_manual_control_eload_4_top.setFrameShadow(QFrame.Raised)
-    self.horizontalLayout_47 = QHBoxLayout(self.ui.frame_manual_control_eload_4_top)
-    self.horizontalLayout_47.setObjectName(u"horizontalLayout_47")
-    self.cbx_manual_control_eload_type = QComboBox(self.ui.frame_manual_control_eload_4_top)
-    self.cbx_manual_control_eload_type.addItem("")
-    self.cbx_manual_control_eload_type.addItem("")
-    self.cbx_manual_control_eload_type.addItem("")
-    self.cbx_manual_control_eload_type.setObjectName(u"cbx_manual_control_eload_type")
-    self.cbx_manual_control_eload_type.setMaximumSize(QtCore.QSize(16777215, 40))
-    self.cbx_manual_control_eload_type.setFont(font10)
-    self.cbx_manual_control_eload_type.setStyleSheet(u"QComboBox{\n"
+    self.ui.horizontalLayout_47_4 = QHBoxLayout(self.ui.frame_manual_control_eload_4_top)
+    self.ui.horizontalLayout_47_4.setObjectName(u"horizontalLayout_47")
+    self.ui.cbx_manual_control_eload_type_4 = QComboBox(self.ui.frame_manual_control_eload_4_top)
+    self.ui.cbx_manual_control_eload_type_4.addItem("")
+    self.ui.cbx_manual_control_eload_type_4.addItem("")
+    self.ui.cbx_manual_control_eload_type_4.addItem("")
+    self.ui.cbx_manual_control_eload_type_4.setObjectName(u"cbx_manual_control_eload_type")
+    self.ui.cbx_manual_control_eload_type_4.setMaximumSize(QtCore.QSize(16777215, 40))
+    self.ui.cbx_manual_control_eload_type_4.setFont(font10)
+    self.ui.cbx_manual_control_eload_type_4.setStyleSheet(u"QComboBox{\n"
     "border: 2px solid black;\n"
     "border-radius:5px;\n"
     "}\n"
@@ -2116,7 +2121,7 @@ def inject_ui(self):
     "	color: rgb(71, 71, 71);\n"
     "}")
     
-    self.horizontalLayout_47.addWidget(self.cbx_manual_control_eload_type)
+    self.ui.horizontalLayout_47_4.addWidget(self.ui.cbx_manual_control_eload_type_4)
     
     self.ui.btn_manual_control_eload_a_b_swap_4 = QPushButton(self.ui.frame_manual_control_eload_4_top)
     self.ui.btn_manual_control_eload_a_b_swap_4.setObjectName(u"btn_manual_control_eload_a_b_swap_4")
@@ -2146,7 +2151,7 @@ def inject_ui(self):
     self.ui.btn_manual_control_eload_a_b_swap_4.setCheckable(False)
     self.ui.btn_manual_control_eload_a_b_swap_4.setChecked(False)
     
-    self.horizontalLayout_47.addWidget(self.ui.btn_manual_control_eload_a_b_swap_4)
+    self.ui.horizontalLayout_47_4.addWidget(self.ui.btn_manual_control_eload_a_b_swap_4)
     
     
     self.verticalLayout_77.addWidget(self.ui.frame_manual_control_eload_4_top)
@@ -2155,8 +2160,8 @@ def inject_ui(self):
     self.ui.frame_manual_control_eload_4_center.setObjectName(u"frame_manual_control_eload_center_4")
     self.ui.frame_manual_control_eload_4_center.setFrameShape(QFrame.StyledPanel)
     self.ui.frame_manual_control_eload_4_center.setFrameShadow(QFrame.Raised)
-    self.horizontalLayout_46 = QHBoxLayout(self.ui.frame_manual_control_eload_4_center)
-    self.horizontalLayout_46.setObjectName(u"horizontalLayout_46")
+    self.ui.horizontalLayout_46_4 = QHBoxLayout(self.ui.frame_manual_control_eload_4_center)
+    self.ui.horizontalLayout_46_4.setObjectName(u"horizontalLayout_46")
     self.ui.frame_manual_control_eload_4_level = QFrame(self.ui.frame_manual_control_eload_4_center)
     self.ui.frame_manual_control_eload_4_level.setObjectName(u"frame_manual_control_eload_level_4")
     self.ui.frame_manual_control_eload_4_level.setFrameShape(QFrame.StyledPanel)
@@ -2167,8 +2172,8 @@ def inject_ui(self):
     self.ui.frame_manual_control_eload_4_a.setObjectName(u"frame_manual_control_eload_a_4")
     self.ui.frame_manual_control_eload_4_a.setFrameShape(QFrame.StyledPanel)
     self.ui.frame_manual_control_eload_4_a.setFrameShadow(QFrame.Raised)
-    self.horizontalLayout_45 = QHBoxLayout(self.ui.frame_manual_control_eload_4_a)
-    self.horizontalLayout_45.setObjectName(u"horizontalLayout_45")
+    self.ui.horizontalLayout_45_4 = QHBoxLayout(self.ui.frame_manual_control_eload_4_a)
+    self.ui.horizontalLayout_45_4.setObjectName(u"horizontalLayout_45")
     self.ui.label_manual_control_eload_4_a = QLabel(self.ui.frame_manual_control_eload_4_a)
     self.ui.label_manual_control_eload_4_a.setObjectName(u"label_manual_control_eload_a_4")
     self.ui.label_manual_control_eload_4_a.setMaximumSize(QtCore.QSize(16777215, 30))
@@ -2182,7 +2187,7 @@ def inject_ui(self):
     "}")
     self.ui.label_manual_control_eload_4_a.setAlignment(Qt.AlignCenter)
     
-    self.horizontalLayout_45.addWidget(self.ui.label_manual_control_eload_4_a)
+    self.ui.horizontalLayout_45_4.addWidget(self.ui.label_manual_control_eload_4_a)
     
     self.ui.lineedit_manual_control_eload_a_level_4 = QLineEdit(self.ui.frame_manual_control_eload_4_a)
     self.ui.lineedit_manual_control_eload_a_level_4.setObjectName(u"lineedit_manual_control_eload_a_level_4")
@@ -2214,7 +2219,7 @@ def inject_ui(self):
     "	padding-left: 10px;\n"
     "}")
     
-    self.horizontalLayout_45.addWidget(self.ui.lineedit_manual_control_eload_a_level_4)
+    self.ui.horizontalLayout_45_4.addWidget(self.ui.lineedit_manual_control_eload_a_level_4)
     
     self.ui.label_manual_control_eload_4_a_level_unit = QLabel(self.ui.frame_manual_control_eload_4_a)
     self.ui.label_manual_control_eload_4_a_level_unit.setObjectName(u"label_manual_control_eload_a_level_unit")
@@ -2230,13 +2235,13 @@ def inject_ui(self):
     "border:none\n"
     "}")
     
-    self.horizontalLayout_45.addWidget(self.ui.label_manual_control_eload_4_a_level_unit)
+    self.ui.horizontalLayout_45_4.addWidget(self.ui.label_manual_control_eload_4_a_level_unit)
     
-    self.btn_manual_control_eload_set_A = QPushButton(self.ui.frame_manual_control_eload_4_a)
-    self.btn_manual_control_eload_set_A.setObjectName(u"btn_manual_control_eload_set_A")
-    self.btn_manual_control_eload_set_A.setMinimumSize(QtCore.QSize(50, 30))
-    self.btn_manual_control_eload_set_A.setFont(font4)
-    self.btn_manual_control_eload_set_A.setStyleSheet(u"QPushButton {\n"
+    self.ui.btn_manual_control_eload_set_A_4 = QPushButton(self.ui.frame_manual_control_eload_4_a)
+    self.ui.btn_manual_control_eload_set_A_4.setObjectName(u"btn_manual_control_eload_set_A")
+    self.ui.btn_manual_control_eload_set_A_4.setMinimumSize(QtCore.QSize(50, 30))
+    self.ui.btn_manual_control_eload_set_A_4.setFont(font4)
+    self.ui.btn_manual_control_eload_set_A_4.setStyleSheet(u"QPushButton {\n"
     "	border: 2px solid rgb(52, 59, 72);\n"
     "	border-radius: 5px;	\n"
     "	background-color: rgb(52, 59, 72);\n"
@@ -2254,10 +2259,10 @@ def inject_ui(self):
     "	border: 2px solid rgb(33, 40, 51);\n"
     "	color: rgb(71, 71, 71);\n"
     "}")
-    self.btn_manual_control_eload_set_A.setCheckable(False)
-    self.btn_manual_control_eload_set_A.setChecked(False)
+    self.ui.btn_manual_control_eload_set_A_4.setCheckable(False)
+    self.ui.btn_manual_control_eload_set_A_4.setChecked(False)
     
-    self.horizontalLayout_45.addWidget(self.btn_manual_control_eload_set_A)
+    self.ui.horizontalLayout_45_4.addWidget(self.ui.btn_manual_control_eload_set_A_4)
     
     
     self.verticalLayout_70.addWidget(self.ui.frame_manual_control_eload_4_a)
@@ -2329,11 +2334,11 @@ def inject_ui(self):
     
     self.ui.horizontalLayout_39_4.addWidget(self.ui.label_manual_control_eload_4_b_level_unit)
     
-    self.btn_manual_control_eload_set_B = QPushButton(self.ui.frame_manual_control_eload_4_b)
-    self.btn_manual_control_eload_set_B.setObjectName(u"btn_manual_control_eload_set_B")
-    self.btn_manual_control_eload_set_B.setMinimumSize(QtCore.QSize(50, 30))
-    self.btn_manual_control_eload_set_B.setFont(font4)
-    self.btn_manual_control_eload_set_B.setStyleSheet(u"QPushButton {\n"
+    self.ui.btn_manual_control_eload_set_B_4 = QPushButton(self.ui.frame_manual_control_eload_4_b)
+    self.ui.btn_manual_control_eload_set_B_4.setObjectName(u"btn_manual_control_eload_set_B")
+    self.ui.btn_manual_control_eload_set_B_4.setMinimumSize(QtCore.QSize(50, 30))
+    self.ui.btn_manual_control_eload_set_B_4.setFont(font4)
+    self.ui.btn_manual_control_eload_set_B_4.setStyleSheet(u"QPushButton {\n"
     "	border: 2px solid rgb(52, 59, 72);\n"
     "	border-radius: 5px;	\n"
     "	background-color: rgb(52, 59, 72);\n"
@@ -2351,16 +2356,16 @@ def inject_ui(self):
     "	border: 2px solid rgb(33, 40, 51);\n"
     "	color: rgb(71, 71, 71);\n"
     "}")
-    self.btn_manual_control_eload_set_B.setCheckable(False)
-    self.btn_manual_control_eload_set_B.setChecked(False)
+    self.ui.btn_manual_control_eload_set_B_4.setCheckable(False)
+    self.ui.btn_manual_control_eload_set_B_4.setChecked(False)
     
-    self.ui.horizontalLayout_39_4.addWidget(self.btn_manual_control_eload_set_B)
+    self.ui.horizontalLayout_39_4.addWidget(self.ui.btn_manual_control_eload_set_B_4)
     
     
     self.verticalLayout_70.addWidget(self.ui.frame_manual_control_eload_4_b)
     
     
-    self.horizontalLayout_46.addWidget(self.ui.frame_manual_control_eload_4_level)
+    self.ui.horizontalLayout_46_4.addWidget(self.ui.frame_manual_control_eload_4_level)
     
     self.ui.frame_manual_control_eload_4_slew = QFrame(self.ui.frame_manual_control_eload_4_center)
     self.ui.frame_manual_control_eload_4_slew.setObjectName(u"frame_manual_control_eload_slew_4")
@@ -2390,13 +2395,13 @@ def inject_ui(self):
     
     self.ui.horizontalLayout_38_4.addWidget(self.label_manual_control_electronic_load_fall)
     
-    self.lineedit_manual_control_eload_slew_fall = QLineEdit(self.ui.frame_manual_control_eload_4_slew_fall)
-    self.lineedit_manual_control_eload_slew_fall.setObjectName(u"lineedit_manual_control_eload_slew_fall")
-    sizePolicy21.setHeightForWidth(self.lineedit_manual_control_eload_slew_fall.sizePolicy().hasHeightForWidth())
-    self.lineedit_manual_control_eload_slew_fall.setSizePolicy(sizePolicy21)
-    self.lineedit_manual_control_eload_slew_fall.setMinimumSize(QtCore.QSize(0, 40))
-    self.lineedit_manual_control_eload_slew_fall.setFont(font10)
-    self.lineedit_manual_control_eload_slew_fall.setStyleSheet(u"QLineEdit {\n"
+    self.ui.lineedit_manual_control_eload_slew_fall_4 = QLineEdit(self.ui.frame_manual_control_eload_4_slew_fall)
+    self.ui.lineedit_manual_control_eload_slew_fall_4.setObjectName(u"lineedit_manual_control_eload_slew_fall")
+    sizePolicy21.setHeightForWidth(self.ui.lineedit_manual_control_eload_slew_fall_4.sizePolicy().hasHeightForWidth())
+    self.ui.lineedit_manual_control_eload_slew_fall_4.setSizePolicy(sizePolicy21)
+    self.ui.lineedit_manual_control_eload_slew_fall_4.setMinimumSize(QtCore.QSize(0, 40))
+    self.ui.lineedit_manual_control_eload_slew_fall_4.setFont(font10)
+    self.ui.lineedit_manual_control_eload_slew_fall_4.setStyleSheet(u"QLineEdit {\n"
     "	background-color: rgb(27, 29, 35);\n"
     "	border-radius: 5px;\n"
     "	border: 2px solid rgb(27, 29, 35);\n"
@@ -2417,7 +2422,7 @@ def inject_ui(self):
     "	padding-left: 10px;\n"
     "}")
     
-    self.ui.horizontalLayout_38_4.addWidget(self.lineedit_manual_control_eload_slew_fall)
+    self.ui.horizontalLayout_38_4.addWidget(self.ui.lineedit_manual_control_eload_slew_fall_4)
     
     self.ui.label_manual_control_eload_4_slew_fall_unit = QLabel(self.ui.frame_manual_control_eload_4_slew_fall)
     self.ui.label_manual_control_eload_4_slew_fall_unit.setObjectName(u"label_manual_control_eload_slew_fall_unit")
@@ -2459,13 +2464,13 @@ def inject_ui(self):
     
     self.ui.horizontalLayout_36_4.addWidget(self.label_manual_control_electronic_load_rise)
     
-    self.lineedit_manual_control_eload_slew_rise = QLineEdit(self.ui.frame_manual_control_eload_4_slew_rise)
-    self.lineedit_manual_control_eload_slew_rise.setObjectName(u"lineedit_manual_control_eload_slew_rise")
-    sizePolicy21.setHeightForWidth(self.lineedit_manual_control_eload_slew_rise.sizePolicy().hasHeightForWidth())
-    self.lineedit_manual_control_eload_slew_rise.setSizePolicy(sizePolicy21)
-    self.lineedit_manual_control_eload_slew_rise.setMinimumSize(QtCore.QSize(0, 40))
-    self.lineedit_manual_control_eload_slew_rise.setFont(font10)
-    self.lineedit_manual_control_eload_slew_rise.setStyleSheet(u"QLineEdit {\n"
+    self.ui.lineedit_manual_control_eload_slew_rise_4 = QLineEdit(self.ui.frame_manual_control_eload_4_slew_rise)
+    self.ui.lineedit_manual_control_eload_slew_rise_4.setObjectName(u"lineedit_manual_control_eload_slew_rise")
+    sizePolicy21.setHeightForWidth(self.ui.lineedit_manual_control_eload_slew_rise_4.sizePolicy().hasHeightForWidth())
+    self.ui.lineedit_manual_control_eload_slew_rise_4.setSizePolicy(sizePolicy21)
+    self.ui.lineedit_manual_control_eload_slew_rise_4.setMinimumSize(QtCore.QSize(0, 40))
+    self.ui.lineedit_manual_control_eload_slew_rise_4.setFont(font10)
+    self.ui.lineedit_manual_control_eload_slew_rise_4.setStyleSheet(u"QLineEdit {\n"
     "	background-color: rgb(27, 29, 35);\n"
     "	border-radius: 5px;\n"
     "	border: 2px solid rgb(27, 29, 35);\n"
@@ -2486,7 +2491,7 @@ def inject_ui(self):
     "	padding-left: 10px;\n"
     "}")
     
-    self.ui.horizontalLayout_36_4.addWidget(self.lineedit_manual_control_eload_slew_rise)
+    self.ui.horizontalLayout_36_4.addWidget(self.ui.lineedit_manual_control_eload_slew_rise_4)
     
     self.ui.label_manual_control_eload_4_slew_rise_unit = QLabel(self.ui.frame_manual_control_eload_4_slew_rise)
     self.ui.label_manual_control_eload_4_slew_rise_unit.setObjectName(u"label_manual_control_eload_slew_rise_unit")
@@ -2507,13 +2512,13 @@ def inject_ui(self):
     
     self.gridLayout_29.addWidget(self.ui.frame_manual_control_eload_4_slew_rise, 0, 0, 1, 1)
     
-    self.btn_manual_control_eload_set_slew = QPushButton(self.ui.frame_manual_control_eload_4_slew)
-    self.btn_manual_control_eload_set_slew.setObjectName(u"btn_manual_control_eload_set_slew")
-    sizePolicy19.setHeightForWidth(self.btn_manual_control_eload_set_slew.sizePolicy().hasHeightForWidth())
-    self.btn_manual_control_eload_set_slew.setSizePolicy(sizePolicy19)
-    self.btn_manual_control_eload_set_slew.setMinimumSize(QtCore.QSize(50, 60))
-    self.btn_manual_control_eload_set_slew.setFont(font4)
-    self.btn_manual_control_eload_set_slew.setStyleSheet(u"QPushButton {\n"
+    self.ui.btn_manual_control_eload_set_slew_4 = QPushButton(self.ui.frame_manual_control_eload_4_slew)
+    self.ui.btn_manual_control_eload_set_slew_4.setObjectName(u"btn_manual_control_eload_set_slew")
+    sizePolicy19.setHeightForWidth(self.ui.btn_manual_control_eload_set_slew_4.sizePolicy().hasHeightForWidth())
+    self.ui.btn_manual_control_eload_set_slew_4.setSizePolicy(sizePolicy19)
+    self.ui.btn_manual_control_eload_set_slew_4.setMinimumSize(QtCore.QSize(50, 60))
+    self.ui.btn_manual_control_eload_set_slew_4.setFont(font4)
+    self.ui.btn_manual_control_eload_set_slew_4.setStyleSheet(u"QPushButton {\n"
     "	border: 2px solid rgb(52, 59, 72);\n"
     "	border-radius: 5px;	\n"
     "	background-color: rgb(52, 59, 72);\n"
@@ -2531,13 +2536,13 @@ def inject_ui(self):
     "	border: 2px solid rgb(33, 40, 51);\n"
     "	color: rgb(71, 71, 71);\n"
     "}")
-    self.btn_manual_control_eload_set_slew.setCheckable(False)
-    self.btn_manual_control_eload_set_slew.setChecked(False)
+    self.ui.btn_manual_control_eload_set_slew_4.setCheckable(False)
+    self.ui.btn_manual_control_eload_set_slew_4.setChecked(False)
     
-    self.gridLayout_29.addWidget(self.btn_manual_control_eload_set_slew, 0, 1, 2, 1)
+    self.gridLayout_29.addWidget(self.ui.btn_manual_control_eload_set_slew_4, 0, 1, 2, 1)
     
     
-    self.horizontalLayout_46.addWidget(self.ui.frame_manual_control_eload_4_slew)
+    self.ui.horizontalLayout_46_4.addWidget(self.ui.frame_manual_control_eload_4_slew)
     
     
     self.verticalLayout_77.addWidget(self.ui.frame_manual_control_eload_4_center)
@@ -2546,13 +2551,13 @@ def inject_ui(self):
     self.ui.frame_manual_control_eload_4_bottom.setObjectName(u"frame_manual_control_eload_bottom_4")
     self.ui.frame_manual_control_eload_4_bottom.setFrameShape(QFrame.StyledPanel)
     self.ui.frame_manual_control_eload_4_bottom.setFrameShadow(QFrame.Raised)
-    self.horizontalLayout_56 = QHBoxLayout(self.ui.frame_manual_control_eload_4_bottom)
-    self.horizontalLayout_56.setObjectName(u"horizontalLayout_56")
-    self.btn_manual_control_eload_turn_on = QPushButton(self.ui.frame_manual_control_eload_4_bottom)
-    self.btn_manual_control_eload_turn_on.setObjectName(u"btn_manual_control_eload_turn_on")
-    self.btn_manual_control_eload_turn_on.setMinimumSize(QtCore.QSize(120, 40))
-    self.btn_manual_control_eload_turn_on.setFont(font13)
-    self.btn_manual_control_eload_turn_on.setStyleSheet(u"QPushButton {\n"
+    self.ui.horizontalLayout_56_4 = QHBoxLayout(self.ui.frame_manual_control_eload_4_bottom)
+    self.ui.horizontalLayout_56_4.setObjectName(u"horizontalLayout_56")
+    self.ui.btn_manual_control_eload_turn_on_4 = QPushButton(self.ui.frame_manual_control_eload_4_bottom)
+    self.ui.btn_manual_control_eload_turn_on_4.setObjectName(u"btn_manual_control_eload_turn_on")
+    self.ui.btn_manual_control_eload_turn_on_4.setMinimumSize(QtCore.QSize(120, 40))
+    self.ui.btn_manual_control_eload_turn_on_4.setFont(font13)
+    self.ui.btn_manual_control_eload_turn_on_4.setStyleSheet(u"QPushButton {\n"
     "	border: 2px solid rgb(52, 59, 72);\n"
     "	border-radius: 5px;	\n"
     "	background-color: rgb(52, 59, 72);\n"
@@ -2570,17 +2575,17 @@ def inject_ui(self):
     "	border: 2px solid rgb(33, 40, 51);\n"
     "	color: rgb(71, 71, 71);\n"
     "}")
-    self.btn_manual_control_eload_turn_on.setIcon(icon8)
-    self.btn_manual_control_eload_turn_on.setCheckable(False)
-    self.btn_manual_control_eload_turn_on.setChecked(False)
+    self.ui.btn_manual_control_eload_turn_on_4.setIcon(icon8)
+    self.ui.btn_manual_control_eload_turn_on_4.setCheckable(False)
+    self.ui.btn_manual_control_eload_turn_on_4.setChecked(False)
     
-    self.horizontalLayout_56.addWidget(self.btn_manual_control_eload_turn_on)
+    self.ui.horizontalLayout_56_4.addWidget(self.ui.btn_manual_control_eload_turn_on_4)
     
-    self.btn_manual_control_eload_turn_off = QPushButton(self.ui.frame_manual_control_eload_4_bottom)
-    self.btn_manual_control_eload_turn_off.setObjectName(u"btn_manual_control_eload_turn_off")
-    self.btn_manual_control_eload_turn_off.setMinimumSize(QtCore.QSize(120, 40))
-    self.btn_manual_control_eload_turn_off.setFont(font13)
-    self.btn_manual_control_eload_turn_off.setStyleSheet(u"QPushButton {\n"
+    self.ui.btn_manual_control_eload_turn_off_4 = QPushButton(self.ui.frame_manual_control_eload_4_bottom)
+    self.ui.btn_manual_control_eload_turn_off_4.setObjectName(u"btn_manual_control_eload_turn_off")
+    self.ui.btn_manual_control_eload_turn_off_4.setMinimumSize(QtCore.QSize(120, 40))
+    self.ui.btn_manual_control_eload_turn_off_4.setFont(font13)
+    self.ui.btn_manual_control_eload_turn_off_4.setStyleSheet(u"QPushButton {\n"
     "	border: 2px solid rgb(52, 59, 72);\n"
     "	border-radius: 5px;	\n"
     "	background-color: rgb(52, 59, 72);\n"
@@ -2598,11 +2603,11 @@ def inject_ui(self):
     "	border: 2px solid rgb(33, 40, 51);\n"
     "	color: rgb(71, 71, 71);\n"
     "}")
-    self.btn_manual_control_eload_turn_off.setIcon(icon9)
-    self.btn_manual_control_eload_turn_off.setCheckable(False)
-    self.btn_manual_control_eload_turn_off.setChecked(False)
+    self.ui.btn_manual_control_eload_turn_off_4.setIcon(icon9)
+    self.ui.btn_manual_control_eload_turn_off_4.setCheckable(False)
+    self.ui.btn_manual_control_eload_turn_off_4.setChecked(False)
     
-    self.horizontalLayout_56.addWidget(self.btn_manual_control_eload_turn_off)
+    self.ui.horizontalLayout_56_4.addWidget(self.ui.btn_manual_control_eload_turn_off_4)
     
     
     self.verticalLayout_77.addWidget(self.ui.frame_manual_control_eload_4_bottom)
@@ -2627,18 +2632,18 @@ def inject_ui(self):
     self.ui.frame_manual_control_pml_4.setFrameShadow(QFrame.Sunken)
     self.ui.verticalLayout_19_4 = QVBoxLayout(self.ui.frame_manual_control_pml_4)
     self.ui.verticalLayout_19_4.setObjectName(u"verticalLayout_19_4")
-    self.label_load_power_meter = QLabel(self.ui.frame_manual_control_pml_4)
-    self.label_load_power_meter.setObjectName(u"label_load_power_meter")
-    self.label_load_power_meter.setMaximumSize(QtCore.QSize(16777215, 30))
-    self.label_load_power_meter.setFont(font1)
-    self.label_load_power_meter.setCursor(QCursor(Qt.ArrowCursor))
-    self.label_load_power_meter.setStyleSheet(u"QLabel{border:none;}\n"
+    self.ui.label_load_power_meter_4 = QLabel(self.ui.frame_manual_control_pml_4)
+    self.ui.label_load_power_meter_4.setObjectName(u"label_load_power_meter")
+    self.ui.label_load_power_meter_4.setMaximumSize(QtCore.QSize(16777215, 30))
+    self.ui.label_load_power_meter_4.setFont(font1)
+    self.ui.label_load_power_meter_4.setCursor(QCursor(Qt.ArrowCursor))
+    self.ui.label_load_power_meter_4.setStyleSheet(u"QLabel{border:none;}\n"
     "QLabel:disabled{\n"
     "	color: rgb(71, 71, 71)\n"
     "}")
-    self.label_load_power_meter.setAlignment(Qt.AlignCenter)
+    self.ui.label_load_power_meter_4.setAlignment(Qt.AlignCenter)
     
-    self.ui.verticalLayout_19_4.addWidget(self.label_load_power_meter)
+    self.ui.verticalLayout_19_4.addWidget(self.ui.label_load_power_meter_4)
     
     self.ui.frame_pml_contents_4 = QFrame(self.ui.frame_manual_control_pml_4)
     self.ui.frame_pml_contents_4.setObjectName(u"frame_pml_contents_4")
@@ -2752,33 +2757,33 @@ def inject_ui(self):
     "}")
     self.ui.frame_pml_display_4_select.setFrameShape(QFrame.StyledPanel)
     self.ui.frame_pml_display_4_select.setFrameShadow(QFrame.Raised)
-    self.verticalLayout_21 = QVBoxLayout(self.ui.frame_pml_display_4_select)
-    self.verticalLayout_21.setSpacing(0)
-    self.verticalLayout_21.setObjectName(u"verticalLayout_21")
-    self.verticalLayout_21.setContentsMargins(0, 0, 0, 0)
-    self.cbx_pml_display_a = QComboBox(self.ui.frame_pml_display_4_select)
-    self.cbx_pml_display_a.setObjectName(u"cbx_pml_display_a")
-    self.cbx_pml_display_a.setMaximumSize(QtCore.QSize(16777215, 54))
+    self.ui.verticalLayout_21_4 = QVBoxLayout(self.ui.frame_pml_display_4_select)
+    self.ui.verticalLayout_21_4.setSpacing(0)
+    self.ui.verticalLayout_21_4.setObjectName(u"verticalLayout_21")
+    self.ui.verticalLayout_21_4.setContentsMargins(0, 0, 0, 0)
+    self.ui.cbx_pml_display_a_4 = QComboBox(self.ui.frame_pml_display_4_select)
+    self.ui.cbx_pml_display_a_4.setObjectName(u"cbx_pml_display_a")
+    self.ui.cbx_pml_display_a_4.setMaximumSize(QtCore.QSize(16777215, 54))
     
-    self.verticalLayout_21.addWidget(self.cbx_pml_display_a)
+    self.ui.verticalLayout_21_4.addWidget(self.ui.cbx_pml_display_a_4)
     
-    self.cbx_pml_display_b = QComboBox(self.ui.frame_pml_display_4_select)
-    self.cbx_pml_display_b.setObjectName(u"cbx_pml_display_b")
-    self.cbx_pml_display_b.setMaximumSize(QtCore.QSize(16777215, 54))
+    self.ui.cbx_pml_display_b_4 = QComboBox(self.ui.frame_pml_display_4_select)
+    self.ui.cbx_pml_display_b_4.setObjectName(u"cbx_pml_display_b")
+    self.ui.cbx_pml_display_b_4.setMaximumSize(QtCore.QSize(16777215, 54))
     
-    self.verticalLayout_21.addWidget(self.cbx_pml_display_b)
+    self.ui.verticalLayout_21_4.addWidget(self.ui.cbx_pml_display_b_4)
     
-    self.cbx_pml_display_c = QComboBox(self.ui.frame_pml_display_4_select)
-    self.cbx_pml_display_c.setObjectName(u"cbx_pml_display_c")
-    self.cbx_pml_display_c.setMaximumSize(QtCore.QSize(16777215, 54))
+    self.ui.cbx_pml_display_c_4 = QComboBox(self.ui.frame_pml_display_4_select)
+    self.ui.cbx_pml_display_c_4.setObjectName(u"cbx_pml_display_c")
+    self.ui.cbx_pml_display_c_4.setMaximumSize(QtCore.QSize(16777215, 54))
     
-    self.verticalLayout_21.addWidget(self.cbx_pml_display_c)
+    self.ui.verticalLayout_21_4.addWidget(self.ui.cbx_pml_display_c_4)
     
-    self.cbx_pml_display_d = QComboBox(self.ui.frame_pml_display_4_select)
-    self.cbx_pml_display_d.setObjectName(u"cbx_pml_display_d")
-    self.cbx_pml_display_d.setMaximumSize(QtCore.QSize(16777215, 54))
+    self.ui.cbx_pml_display_d_4 = QComboBox(self.ui.frame_pml_display_4_select)
+    self.ui.cbx_pml_display_d_4.setObjectName(u"cbx_pml_display_d")
+    self.ui.cbx_pml_display_d_4.setMaximumSize(QtCore.QSize(16777215, 54))
     
-    self.verticalLayout_21.addWidget(self.cbx_pml_display_d)
+    self.ui.verticalLayout_21_4.addWidget(self.ui.cbx_pml_display_d_4)
     
     
     self.ui.horizontalLayout_15_4.addWidget(self.ui.frame_pml_display_4_select)
@@ -2791,50 +2796,50 @@ def inject_ui(self):
     "")
     self.ui.frame_pml_control_4.setFrameShape(QFrame.StyledPanel)
     self.ui.frame_pml_control_4.setFrameShadow(QFrame.Raised)
-    self.verticalLayout_29 = QVBoxLayout(self.ui.frame_pml_control_4)
-    self.verticalLayout_29.setSpacing(0)
-    self.verticalLayout_29.setObjectName(u"verticalLayout_29")
-    self.verticalLayout_29.setContentsMargins(0, 0, 0, 0)
+    self.ui.verticalLayout_29_4 = QVBoxLayout(self.ui.frame_pml_control_4)
+    self.ui.verticalLayout_29_4.setSpacing(0)
+    self.ui.verticalLayout_29_4.setObjectName(u"verticalLayout_29")
+    self.ui.verticalLayout_29_4.setContentsMargins(0, 0, 0, 0)
     self.ui.frame_pml_control_4__range = QFrame(self.ui.frame_pml_control_4)
     self.ui.frame_pml_control_4__range.setObjectName(u"frame_pml_control__range")
     self.ui.frame_pml_control_4__range.setFrameShape(QFrame.StyledPanel)
     self.ui.frame_pml_control_4__range.setFrameShadow(QFrame.Raised)
-    self.formLayout_2 = QFormLayout(self.ui.frame_pml_control_4__range)
-    self.formLayout_2.setObjectName(u"formLayout_2")
-    self.label_pml_voltage_range = QLabel(self.ui.frame_pml_control_4__range)
-    self.label_pml_voltage_range.setObjectName(u"label_pml_voltage_range")
-    self.label_pml_voltage_range.setFont(font10)
-    self.label_pml_voltage_range.setStyleSheet(u"border:none;")
+    self.ui.formLayout_2_4 = QFormLayout(self.ui.frame_pml_control_4__range)
+    self.ui.formLayout_2_4.setObjectName(u"formLayout_2")
+    self.ui.label_pml_voltage_range_4 = QLabel(self.ui.frame_pml_control_4__range)
+    self.ui.label_pml_voltage_range_4.setObjectName(u"label_pml_voltage_range")
+    self.ui.label_pml_voltage_range_4.setFont(font10)
+    self.ui.label_pml_voltage_range_4.setStyleSheet(u"border:none;")
     
-    self.formLayout_2.setWidget(0, QFormLayout.LabelRole, self.label_pml_voltage_range)
+    self.ui.formLayout_2_4.setWidget(0, QFormLayout.LabelRole, self.ui.label_pml_voltage_range_4)
     
-    self.cbx_pml_voltage_range = QComboBox(self.ui.frame_pml_control_4__range)
-    self.cbx_pml_voltage_range.addItem("")
-    self.cbx_pml_voltage_range.addItem("")
-    self.cbx_pml_voltage_range.setObjectName(u"cbx_pml_voltage_range")
-    self.cbx_pml_voltage_range.setMaximumSize(QtCore.QSize(16777215, 54))
-    self.cbx_pml_voltage_range.setFont(font10)
+    self.ui.cbx_pml_voltage_range_4 = QComboBox(self.ui.frame_pml_control_4__range)
+    self.ui.cbx_pml_voltage_range_4.addItem("")
+    self.ui.cbx_pml_voltage_range_4.addItem("")
+    self.ui.cbx_pml_voltage_range_4.setObjectName(u"cbx_pml_voltage_range")
+    self.ui.cbx_pml_voltage_range_4.setMaximumSize(QtCore.QSize(16777215, 54))
+    self.ui.cbx_pml_voltage_range_4.setFont(font10)
     
-    self.formLayout_2.setWidget(0, QFormLayout.FieldRole, self.cbx_pml_voltage_range)
+    self.ui.formLayout_2_4.setWidget(0, QFormLayout.FieldRole, self.ui.cbx_pml_voltage_range_4)
     
-    self.label_pml_current_range = QLabel(self.ui.frame_pml_control_4__range)
-    self.label_pml_current_range.setObjectName(u"label_pml_current_range")
-    self.label_pml_current_range.setFont(font10)
-    self.label_pml_current_range.setStyleSheet(u"border:none;")
+    self.ui.label_pml_current_range_4 = QLabel(self.ui.frame_pml_control_4__range)
+    self.ui.label_pml_current_range_4.setObjectName(u"label_pml_current_range")
+    self.ui.label_pml_current_range_4.setFont(font10)
+    self.ui.label_pml_current_range_4.setStyleSheet(u"border:none;")
     
-    self.formLayout_2.setWidget(1, QFormLayout.LabelRole, self.label_pml_current_range)
+    self.ui.formLayout_2_4.setWidget(1, QFormLayout.LabelRole, self.ui.label_pml_current_range_4)
     
-    self.cbx_pml_current_range = QComboBox(self.ui.frame_pml_control_4__range)
-    self.cbx_pml_current_range.addItem("")
-    self.cbx_pml_current_range.addItem("")
-    self.cbx_pml_current_range.setObjectName(u"cbx_pml_current_range")
-    self.cbx_pml_current_range.setMaximumSize(QtCore.QSize(16777215, 54))
-    self.cbx_pml_current_range.setFont(font10)
+    self.ui.cbx_pml_current_range_4 = QComboBox(self.ui.frame_pml_control_4__range)
+    self.ui.cbx_pml_current_range_4.addItem("")
+    self.ui.cbx_pml_current_range_4.addItem("")
+    self.ui.cbx_pml_current_range_4.setObjectName(u"cbx_pml_current_range")
+    self.ui.cbx_pml_current_range_4.setMaximumSize(QtCore.QSize(16777215, 54))
+    self.ui.cbx_pml_current_range_4.setFont(font10)
     
-    self.formLayout_2.setWidget(1, QFormLayout.FieldRole, self.cbx_pml_current_range)
+    self.ui.formLayout_2_4.setWidget(1, QFormLayout.FieldRole, self.ui.cbx_pml_current_range_4)
     
     
-    self.verticalLayout_29.addWidget(self.ui.frame_pml_control_4__range)
+    self.ui.verticalLayout_29_4.addWidget(self.ui.frame_pml_control_4__range)
     
     self.ui.frame_pml_control_4_lower = QFrame(self.ui.frame_pml_control_4)
     self.ui.frame_pml_control_4_lower.setObjectName(u"frame_pml_control_lower")
@@ -2845,26 +2850,26 @@ def inject_ui(self):
     self.ui.horizontalLayout_19_4.setSpacing(0)
     self.ui.horizontalLayout_19_4.setObjectName(u"horizontalLayout_19_4")
     self.ui.horizontalLayout_19_4.setContentsMargins(0, 0, 0, 0)
-    self.frame_pml_integration = QFrame(self.ui.frame_pml_control_4_lower)
-    self.frame_pml_integration.setObjectName(u"frame_pml_integration")
-    self.frame_pml_integration.setStyleSheet(u"border: 2px solid black;\n"
+    self.ui.frame_pml_integration_4 = QFrame(self.ui.frame_pml_control_4_lower)
+    self.ui.frame_pml_integration_4.setObjectName(u"frame_pml_integration")
+    self.ui.frame_pml_integration_4.setStyleSheet(u"border: 2px solid black;\n"
     "border-radius: 10px;")
-    self.frame_pml_integration.setFrameShape(QFrame.StyledPanel)
-    self.frame_pml_integration.setFrameShadow(QFrame.Raised)
-    self.verticalLayout_30 = QVBoxLayout(self.frame_pml_integration)
+    self.ui.frame_pml_integration_4.setFrameShape(QFrame.StyledPanel)
+    self.ui.frame_pml_integration_4.setFrameShadow(QFrame.Raised)
+    self.verticalLayout_30 = QVBoxLayout(self.ui.frame_pml_integration_4)
     self.verticalLayout_30.setObjectName(u"verticalLayout_30")
-    self.label_pml_integration = QLabel(self.frame_pml_integration)
-    self.label_pml_integration.setObjectName(u"label_pml_integration")
-    sizePolicy.setHeightForWidth(self.label_pml_integration.sizePolicy().hasHeightForWidth())
-    self.label_pml_integration.setSizePolicy(sizePolicy)
-    self.label_pml_integration.setMinimumSize(QtCore.QSize(0, 20))
-    self.label_pml_integration.setMaximumSize(QtCore.QSize(16777215, 20))
-    self.label_pml_integration.setFont(font10)
-    self.label_pml_integration.setStyleSheet(u"border:none;")
+    self.ui.label_pml_integration_4 = QLabel(self.ui.frame_pml_integration_4)
+    self.ui.label_pml_integration_4.setObjectName(u"label_pml_integration")
+    sizePolicy.setHeightForWidth(self.ui.label_pml_integration_4.sizePolicy().hasHeightForWidth())
+    self.ui.label_pml_integration_4.setSizePolicy(sizePolicy)
+    self.ui.label_pml_integration_4.setMinimumSize(QtCore.QSize(0, 20))
+    self.ui.label_pml_integration_4.setMaximumSize(QtCore.QSize(16777215, 20))
+    self.ui.label_pml_integration_4.setFont(font10)
+    self.ui.label_pml_integration_4.setStyleSheet(u"border:none;")
     
-    self.verticalLayout_30.addWidget(self.label_pml_integration)
+    self.verticalLayout_30.addWidget(self.ui.label_pml_integration_4)
     
-    self.btn_pml_integration_start = QPushButton(self.frame_pml_integration)
+    self.btn_pml_integration_start = QPushButton(self.ui.frame_pml_integration_4)
     self.btn_pml_integration_start.setObjectName(u"btn_pml_integration_start")
     self.btn_pml_integration_start.setFont(font10)
     self.btn_pml_integration_start.setStyleSheet(u"QPushButton {\n"
@@ -2883,7 +2888,7 @@ def inject_ui(self):
     
     self.verticalLayout_30.addWidget(self.btn_pml_integration_start)
     
-    self.btn_pml_integration_stop = QPushButton(self.frame_pml_integration)
+    self.btn_pml_integration_stop = QPushButton(self.ui.frame_pml_integration_4)
     self.btn_pml_integration_stop.setObjectName(u"btn_pml_integration_stop")
     self.btn_pml_integration_stop.setFont(font10)
     self.btn_pml_integration_stop.setStyleSheet(u"QPushButton {\n"
@@ -2902,7 +2907,7 @@ def inject_ui(self):
     
     self.verticalLayout_30.addWidget(self.btn_pml_integration_stop)
     
-    self.btn_pml_integration_reset = QPushButton(self.frame_pml_integration)
+    self.btn_pml_integration_reset = QPushButton(self.ui.frame_pml_integration_4)
     self.btn_pml_integration_reset.setObjectName(u"btn_pml_integration_reset")
     self.btn_pml_integration_reset.setFont(font10)
     self.btn_pml_integration_reset.setStyleSheet(u"QPushButton {\n"
@@ -2922,30 +2927,30 @@ def inject_ui(self):
     self.verticalLayout_30.addWidget(self.btn_pml_integration_reset)
     
     
-    self.ui.horizontalLayout_19_4.addWidget(self.frame_pml_integration)
+    self.ui.horizontalLayout_19_4.addWidget(self.ui.frame_pml_integration_4)
     
-    self.frame_pml_averaging = QFrame(self.ui.frame_pml_control_4_lower)
-    self.frame_pml_averaging.setObjectName(u"frame_pml_averaging")
-    self.frame_pml_averaging.setStyleSheet(u"border: 2px solid black;\n"
+    self.ui.frame_pml_averaging_4 = QFrame(self.ui.frame_pml_control_4_lower)
+    self.ui.frame_pml_averaging_4.setObjectName(u"frame_pml_averaging")
+    self.ui.frame_pml_averaging_4.setStyleSheet(u"border: 2px solid black;\n"
     "border-radius: 10px;")
-    self.frame_pml_averaging.setFrameShape(QFrame.StyledPanel)
-    self.frame_pml_averaging.setFrameShadow(QFrame.Raised)
-    self.verticalLayout_31 = QVBoxLayout(self.frame_pml_averaging)
+    self.ui.frame_pml_averaging_4.setFrameShape(QFrame.StyledPanel)
+    self.ui.frame_pml_averaging_4.setFrameShadow(QFrame.Raised)
+    self.verticalLayout_31 = QVBoxLayout(self.ui.frame_pml_averaging_4)
     self.verticalLayout_31.setSpacing(2)
     self.verticalLayout_31.setObjectName(u"verticalLayout_31")
     self.verticalLayout_31.setContentsMargins(-1, 5, -1, 5)
-    self.label_pml_averaging = QLabel(self.frame_pml_averaging)
-    self.label_pml_averaging.setObjectName(u"label_pml_averaging")
-    sizePolicy.setHeightForWidth(self.label_pml_averaging.sizePolicy().hasHeightForWidth())
-    self.label_pml_averaging.setSizePolicy(sizePolicy)
-    self.label_pml_averaging.setMinimumSize(QtCore.QSize(0, 20))
-    self.label_pml_averaging.setMaximumSize(QtCore.QSize(16777215, 20))
-    self.label_pml_averaging.setFont(font10)
-    self.label_pml_averaging.setStyleSheet(u"border:none;")
+    self.ui.label_pml_averaging_4 = QLabel(self.ui.frame_pml_averaging_4)
+    self.ui.label_pml_averaging_4.setObjectName(u"label_pml_averaging")
+    sizePolicy.setHeightForWidth(self.ui.label_pml_averaging_4.sizePolicy().hasHeightForWidth())
+    self.ui.label_pml_averaging_4.setSizePolicy(sizePolicy)
+    self.ui.label_pml_averaging_4.setMinimumSize(QtCore.QSize(0, 20))
+    self.ui.label_pml_averaging_4.setMaximumSize(QtCore.QSize(16777215, 20))
+    self.ui.label_pml_averaging_4.setFont(font10)
+    self.ui.label_pml_averaging_4.setStyleSheet(u"border:none;")
     
-    self.verticalLayout_31.addWidget(self.label_pml_averaging)
+    self.verticalLayout_31.addWidget(self.ui.label_pml_averaging_4)
     
-    self.btn_pml_averaging_toggle = QPushButton(self.frame_pml_averaging)
+    self.btn_pml_averaging_toggle = QPushButton(self.ui.frame_pml_averaging_4)
     self.btn_pml_averaging_toggle.setObjectName(u"btn_pml_averaging_toggle")
     self.btn_pml_averaging_toggle.setFont(font10)
     self.btn_pml_averaging_toggle.setStyleSheet(u"QPushButton {\n"
@@ -2964,7 +2969,7 @@ def inject_ui(self):
     
     self.verticalLayout_31.addWidget(self.btn_pml_averaging_toggle)
     
-    self.cbx_pml_averaging_count = QComboBox(self.frame_pml_averaging)
+    self.cbx_pml_averaging_count = QComboBox(self.ui.frame_pml_averaging_4)
     self.cbx_pml_averaging_count.addItem("")
     self.cbx_pml_averaging_count.addItem("")
     self.cbx_pml_averaging_count.addItem("")
@@ -2974,7 +2979,7 @@ def inject_ui(self):
     
     self.verticalLayout_31.addWidget(self.cbx_pml_averaging_count)
     
-    self.cbx_pml_averaging_mode = QComboBox(self.frame_pml_averaging)
+    self.cbx_pml_averaging_mode = QComboBox(self.ui.frame_pml_averaging_4)
     self.cbx_pml_averaging_mode.addItem("")
     self.cbx_pml_averaging_mode.addItem("")
     self.cbx_pml_averaging_mode.setObjectName(u"cbx_pml_averaging_mode")
@@ -2984,32 +2989,32 @@ def inject_ui(self):
     self.verticalLayout_31.addWidget(self.cbx_pml_averaging_mode)
     
     
-    self.ui.horizontalLayout_19_4.addWidget(self.frame_pml_averaging)
+    self.ui.horizontalLayout_19_4.addWidget(self.ui.frame_pml_averaging_4)
     
-    self.frame_pml_measure_mode = QFrame(self.ui.frame_pml_control_4_lower)
-    self.frame_pml_measure_mode.setObjectName(u"frame_pml_measure_mode")
-    self.frame_pml_measure_mode.setStyleSheet(u"border: 2px solid black;\n"
+    self.ui.frame_pml_measure_mode_4 = QFrame(self.ui.frame_pml_control_4_lower)
+    self.ui.frame_pml_measure_mode_4.setObjectName(u"frame_pml_measure_mode")
+    self.ui.frame_pml_measure_mode_4.setStyleSheet(u"border: 2px solid black;\n"
     "border-radius: 10px;")
-    self.frame_pml_measure_mode.setFrameShape(QFrame.StyledPanel)
-    self.frame_pml_measure_mode.setFrameShadow(QFrame.Raised)
-    self.verticalLayout_32 = QVBoxLayout(self.frame_pml_measure_mode)
-    self.verticalLayout_32.setSpacing(13)
-    self.verticalLayout_32.setObjectName(u"verticalLayout_32")
-    self.verticalLayout_32.setContentsMargins(13, 13, 13, 13)
-    self.label_pml_measure_mode = QLabel(self.frame_pml_measure_mode)
-    self.label_pml_measure_mode.setObjectName(u"label_pml_measure_mode")
-    sizePolicy.setHeightForWidth(self.label_pml_measure_mode.sizePolicy().hasHeightForWidth())
-    self.label_pml_measure_mode.setSizePolicy(sizePolicy)
-    self.label_pml_measure_mode.setMaximumSize(QtCore.QSize(16777215, 20))
-    self.label_pml_measure_mode.setFont(font10)
-    self.label_pml_measure_mode.setStyleSheet(u"border:none;")
+    self.ui.frame_pml_measure_mode_4.setFrameShape(QFrame.StyledPanel)
+    self.ui.frame_pml_measure_mode_4.setFrameShadow(QFrame.Raised)
+    self.ui.verticalLayout_32_4 = QVBoxLayout(self.ui.frame_pml_measure_mode_4)
+    self.ui.verticalLayout_32_4.setSpacing(13)
+    self.ui.verticalLayout_32_4.setObjectName(u"verticalLayout_32")
+    self.ui.verticalLayout_32_4.setContentsMargins(13, 13, 13, 13)
+    self.ui.label_pml_measure_mode_4 = QLabel(self.ui.frame_pml_measure_mode_4)
+    self.ui.label_pml_measure_mode_4.setObjectName(u"label_pml_measure_mode")
+    sizePolicy.setHeightForWidth(self.ui.label_pml_measure_mode_4.sizePolicy().hasHeightForWidth())
+    self.ui.label_pml_measure_mode_4.setSizePolicy(sizePolicy)
+    self.ui.label_pml_measure_mode_4.setMaximumSize(QtCore.QSize(16777215, 20))
+    self.ui.label_pml_measure_mode_4.setFont(font10)
+    self.ui.label_pml_measure_mode_4.setStyleSheet(u"border:none;")
     
-    self.verticalLayout_32.addWidget(self.label_pml_measure_mode)
+    self.ui.verticalLayout_32_4.addWidget(self.ui.label_pml_measure_mode_4)
     
-    self.btn_pml_measure_mode = QPushButton(self.frame_pml_measure_mode)
-    self.btn_pml_measure_mode.setObjectName(u"btn_pml_measure_mode")
-    self.btn_pml_measure_mode.setFont(font10)
-    self.btn_pml_measure_mode.setStyleSheet(u"QPushButton {\n"
+    self.ui.btn_pml_measure_mode_4 = QPushButton(self.ui.frame_pml_measure_mode_4)
+    self.ui.btn_pml_measure_mode_4.setObjectName(u"btn_pml_measure_mode")
+    self.ui.btn_pml_measure_mode_4.setFont(font10)
+    self.ui.btn_pml_measure_mode_4.setStyleSheet(u"QPushButton {\n"
     "	border: 2px solid rgb(52, 59, 72);\n"
     "	border-radius: 5px;	\n"
     "	background-color: rgb(52, 59, 72);\n"
@@ -3023,13 +3028,13 @@ def inject_ui(self):
     "	border: 2px solid rgb(43, 50, 61);\n"
     "}")
     
-    self.verticalLayout_32.addWidget(self.btn_pml_measure_mode)
+    self.ui.verticalLayout_32_4.addWidget(self.ui.btn_pml_measure_mode_4)
     
     
-    self.ui.horizontalLayout_19_4.addWidget(self.frame_pml_measure_mode)
+    self.ui.horizontalLayout_19_4.addWidget(self.ui.frame_pml_measure_mode_4)
     
     
-    self.verticalLayout_29.addWidget(self.ui.frame_pml_control_4_lower)
+    self.ui.verticalLayout_29_4.addWidget(self.ui.frame_pml_control_4_lower)
     
     
     self.ui.horizontalLayout_15_4.addWidget(self.ui.frame_pml_control_4)
