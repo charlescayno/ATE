@@ -11300,6 +11300,11 @@ class Ui_MainWindow(object):
         self.gridLayout_17.addWidget(self.frame_i2c_controls_command_list, 2, 1, 1, 1)
 
         self.stackedWidget.addWidget(self.page_i2c_controls)
+
+        self.page_oscilloscope_control = QWidget()
+        self.page_oscilloscope_control.setObjectName(u"page_oscilloscope_control")
+        self.stackedWidget.addWidget(self.page_oscilloscope_control)
+
         self.page_view_logs = QWidget()
         self.page_view_logs.setObjectName(u"page_view_logs")
         self.stackedWidget.addWidget(self.page_view_logs)
