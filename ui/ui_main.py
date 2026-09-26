@@ -3709,6 +3709,27 @@ class Ui_MainWindow(object):
 
         self.horizontalLayout_38.addWidget(self.label_manual_control_eload_slew_fall_unit)
 
+        self.btn_manual_control_eload_slew_fall_max = QPushButton(self.frame_manual_control_eload_slew_fall)
+        self.btn_manual_control_eload_slew_fall_max.setObjectName(u"btn_manual_control_eload_slew_fall_max")
+        self.btn_manual_control_eload_slew_fall_max.setMinimumSize(QSize(0, 30))
+        self.btn_manual_control_eload_slew_fall_max.setFont(font10)
+        self.btn_manual_control_eload_slew_fall_max.setText(QCoreApplication.translate("MainWindow", u"MAX", None))
+        self.btn_manual_control_eload_slew_fall_max.setStyleSheet(u"QPushButton {\n"
+"	border: 2px solid rgb(52, 59, 72);\n"
+"	border-radius: 5px;	\n"
+"	background-color: rgb(52, 59, 72);\n"
+"}\n"
+"QPushButton:hover {\n"
+"	background-color: rgb(57, 65, 80);\n"
+"	border: 2px solid rgb(61, 70, 86);\n"
+"}\n"
+"QPushButton:pressed {	\n"
+"	background-color: rgb(35, 40, 49);\n"
+"	border: 2px solid rgb(43, 50, 61);\n"
+"}")
+        self.horizontalLayout_38.addWidget(self.btn_manual_control_eload_slew_fall_max)
+
+
 
         self.gridLayout_29.addWidget(self.frame_manual_control_eload_slew_fall, 1, 0, 1, 1)
 
@@ -3777,6 +3798,27 @@ class Ui_MainWindow(object):
 "}")
 
         self.horizontalLayout_36.addWidget(self.label_manual_control_eload_slew_rise_unit)
+
+        self.btn_manual_control_eload_slew_rise_max = QPushButton(self.frame_manual_control_eload_slew_rise)
+        self.btn_manual_control_eload_slew_rise_max.setObjectName(u"btn_manual_control_eload_slew_rise_max")
+        self.btn_manual_control_eload_slew_rise_max.setMinimumSize(QSize(0, 30))
+        self.btn_manual_control_eload_slew_rise_max.setFont(font10)
+        self.btn_manual_control_eload_slew_rise_max.setText(QCoreApplication.translate("MainWindow", u"MAX", None))
+        self.btn_manual_control_eload_slew_rise_max.setStyleSheet(u"QPushButton {\n"
+"	border: 2px solid rgb(52, 59, 72);\n"
+"	border-radius: 5px;	\n"
+"	background-color: rgb(52, 59, 72);\n"
+"}\n"
+"QPushButton:hover {\n"
+"	background-color: rgb(57, 65, 80);\n"
+"	border: 2px solid rgb(61, 70, 86);\n"
+"}\n"
+"QPushButton:pressed {	\n"
+"	background-color: rgb(35, 40, 49);\n"
+"	border: 2px solid rgb(43, 50, 61);\n"
+"}")
+        self.horizontalLayout_36.addWidget(self.btn_manual_control_eload_slew_rise_max)
+
 
 
         self.gridLayout_29.addWidget(self.frame_manual_control_eload_slew_rise, 0, 0, 1, 1)

@@ -501,6 +501,27 @@ def inject_ui(self):
     "}")
     
     self.ui.horizontalLayout_38_2.addWidget(self.ui.label_manual_control_eload_2_slew_fall_unit)
+
+    self.ui.btn_manual_control_eload_slew_fall_max_2 = QPushButton(self.ui.frame_manual_control_eload_2_slew_fall)
+    self.ui.btn_manual_control_eload_slew_fall_max_2.setObjectName(u"btn_manual_control_eload_slew_fall_max_2")
+    self.ui.btn_manual_control_eload_slew_fall_max_2.setMinimumSize(QtCore.QSize(0, 30))
+    self.ui.btn_manual_control_eload_slew_fall_max_2.setFont(font10)
+    self.ui.btn_manual_control_eload_slew_fall_max_2.setText("MAX")
+    self.ui.btn_manual_control_eload_slew_fall_max_2.setStyleSheet(u"QPushButton {\n"
+"	border: 2px solid rgb(52, 59, 72);\n"
+"	border-radius: 5px;	\n"
+"	background-color: rgb(52, 59, 72);\n"
+"}\n"
+"QPushButton:hover {\n"
+"	background-color: rgb(57, 65, 80);\n"
+"	border: 2px solid rgb(61, 70, 86);\n"
+"}\n"
+"QPushButton:pressed {	\n"
+"	background-color: rgb(35, 40, 49);\n"
+"	border: 2px solid rgb(43, 50, 61);\n"
+"}")
+    self.ui.horizontalLayout_38_2.addWidget(self.ui.btn_manual_control_eload_slew_fall_max_2)
+
     
     
     self.gridLayout_29_2.addWidget(self.ui.frame_manual_control_eload_2_slew_fall, 1, 0, 1, 1)
@@ -571,6 +592,27 @@ def inject_ui(self):
     "}")
     
     self.ui.horizontalLayout_36_2.addWidget(self.ui.label_manual_control_eload_2_slew_rise_unit)
+
+    self.ui.btn_manual_control_eload_slew_rise_max_2 = QPushButton(self.ui.frame_manual_control_eload_2_slew_rise)
+    self.ui.btn_manual_control_eload_slew_rise_max_2.setObjectName(u"btn_manual_control_eload_slew_rise_max_2")
+    self.ui.btn_manual_control_eload_slew_rise_max_2.setMinimumSize(QtCore.QSize(0, 30))
+    self.ui.btn_manual_control_eload_slew_rise_max_2.setFont(font10)
+    self.ui.btn_manual_control_eload_slew_rise_max_2.setText("MAX")
+    self.ui.btn_manual_control_eload_slew_rise_max_2.setStyleSheet(u"QPushButton {\n"
+"	border: 2px solid rgb(52, 59, 72);\n"
+"	border-radius: 5px;	\n"
+"	background-color: rgb(52, 59, 72);\n"
+"}\n"
+"QPushButton:hover {\n"
+"	background-color: rgb(57, 65, 80);\n"
+"	border: 2px solid rgb(61, 70, 86);\n"
+"}\n"
+"QPushButton:pressed {	\n"
+"	background-color: rgb(35, 40, 49);\n"
+"	border: 2px solid rgb(43, 50, 61);\n"
+"}")
+    self.ui.horizontalLayout_36_2.addWidget(self.ui.btn_manual_control_eload_slew_rise_max_2)
+
     
     
     self.gridLayout_29_2.addWidget(self.ui.frame_manual_control_eload_2_slew_rise, 0, 0, 1, 1)
@@ -1490,6 +1532,27 @@ def inject_ui(self):
     "}")
     
     self.ui.horizontalLayout_38_3.addWidget(self.ui.label_manual_control_eload_3_slew_fall_unit)
+
+    self.ui.btn_manual_control_eload_slew_fall_max_3 = QPushButton(self.ui.frame_manual_control_eload_3_slew_fall)
+    self.ui.btn_manual_control_eload_slew_fall_max_3.setObjectName(u"btn_manual_control_eload_slew_fall_max_3")
+    self.ui.btn_manual_control_eload_slew_fall_max_3.setMinimumSize(QtCore.QSize(0, 30))
+    self.ui.btn_manual_control_eload_slew_fall_max_3.setFont(font10)
+    self.ui.btn_manual_control_eload_slew_fall_max_3.setText("MAX")
+    self.ui.btn_manual_control_eload_slew_fall_max_3.setStyleSheet(u"QPushButton {\n"
+"	border: 2px solid rgb(52, 59, 72);\n"
+"	border-radius: 5px;	\n"
+"	background-color: rgb(52, 59, 72);\n"
+"}\n"
+"QPushButton:hover {\n"
+"	background-color: rgb(57, 65, 80);\n"
+"	border: 2px solid rgb(61, 70, 86);\n"
+"}\n"
+"QPushButton:pressed {	\n"
+"	background-color: rgb(35, 40, 49);\n"
+"	border: 2px solid rgb(43, 50, 61);\n"
+"}")
+    self.ui.horizontalLayout_38_3.addWidget(self.ui.btn_manual_control_eload_slew_fall_max_3)
+
     
     
     self.gridLayout_29_3.addWidget(self.ui.frame_manual_control_eload_3_slew_fall, 1, 0, 1, 1)
@@ -1560,6 +1623,27 @@ def inject_ui(self):
     "}")
     
     self.ui.horizontalLayout_36_3.addWidget(self.ui.label_manual_control_eload_3_slew_rise_unit)
+
+    self.ui.btn_manual_control_eload_slew_rise_max_3 = QPushButton(self.ui.frame_manual_control_eload_3_slew_rise)
+    self.ui.btn_manual_control_eload_slew_rise_max_3.setObjectName(u"btn_manual_control_eload_slew_rise_max_3")
+    self.ui.btn_manual_control_eload_slew_rise_max_3.setMinimumSize(QtCore.QSize(0, 30))
+    self.ui.btn_manual_control_eload_slew_rise_max_3.setFont(font10)
+    self.ui.btn_manual_control_eload_slew_rise_max_3.setText("MAX")
+    self.ui.btn_manual_control_eload_slew_rise_max_3.setStyleSheet(u"QPushButton {\n"
+"	border: 2px solid rgb(52, 59, 72);\n"
+"	border-radius: 5px;	\n"
+"	background-color: rgb(52, 59, 72);\n"
+"}\n"
+"QPushButton:hover {\n"
+"	background-color: rgb(57, 65, 80);\n"
+"	border: 2px solid rgb(61, 70, 86);\n"
+"}\n"
+"QPushButton:pressed {	\n"
+"	background-color: rgb(35, 40, 49);\n"
+"	border: 2px solid rgb(43, 50, 61);\n"
+"}")
+    self.ui.horizontalLayout_36_3.addWidget(self.ui.btn_manual_control_eload_slew_rise_max_3)
+
     
     
     self.gridLayout_29_3.addWidget(self.ui.frame_manual_control_eload_3_slew_rise, 0, 0, 1, 1)
@@ -2479,6 +2563,27 @@ def inject_ui(self):
     "}")
     
     self.ui.horizontalLayout_38_4.addWidget(self.ui.label_manual_control_eload_4_slew_fall_unit)
+
+    self.ui.btn_manual_control_eload_slew_fall_max_4 = QPushButton(self.ui.frame_manual_control_eload_4_slew_fall)
+    self.ui.btn_manual_control_eload_slew_fall_max_4.setObjectName(u"btn_manual_control_eload_slew_fall_max_4")
+    self.ui.btn_manual_control_eload_slew_fall_max_4.setMinimumSize(QtCore.QSize(0, 30))
+    self.ui.btn_manual_control_eload_slew_fall_max_4.setFont(font10)
+    self.ui.btn_manual_control_eload_slew_fall_max_4.setText("MAX")
+    self.ui.btn_manual_control_eload_slew_fall_max_4.setStyleSheet(u"QPushButton {\n"
+"	border: 2px solid rgb(52, 59, 72);\n"
+"	border-radius: 5px;	\n"
+"	background-color: rgb(52, 59, 72);\n"
+"}\n"
+"QPushButton:hover {\n"
+"	background-color: rgb(57, 65, 80);\n"
+"	border: 2px solid rgb(61, 70, 86);\n"
+"}\n"
+"QPushButton:pressed {	\n"
+"	background-color: rgb(35, 40, 49);\n"
+"	border: 2px solid rgb(43, 50, 61);\n"
+"}")
+    self.ui.horizontalLayout_38_4.addWidget(self.ui.btn_manual_control_eload_slew_fall_max_4)
+
     
     
     self.gridLayout_29_4.addWidget(self.ui.frame_manual_control_eload_4_slew_fall, 1, 0, 1, 1)
@@ -2549,6 +2654,27 @@ def inject_ui(self):
     "}")
     
     self.ui.horizontalLayout_36_4.addWidget(self.ui.label_manual_control_eload_4_slew_rise_unit)
+
+    self.ui.btn_manual_control_eload_slew_rise_max_4 = QPushButton(self.ui.frame_manual_control_eload_4_slew_rise)
+    self.ui.btn_manual_control_eload_slew_rise_max_4.setObjectName(u"btn_manual_control_eload_slew_rise_max_4")
+    self.ui.btn_manual_control_eload_slew_rise_max_4.setMinimumSize(QtCore.QSize(0, 30))
+    self.ui.btn_manual_control_eload_slew_rise_max_4.setFont(font10)
+    self.ui.btn_manual_control_eload_slew_rise_max_4.setText("MAX")
+    self.ui.btn_manual_control_eload_slew_rise_max_4.setStyleSheet(u"QPushButton {\n"
+"	border: 2px solid rgb(52, 59, 72);\n"
+"	border-radius: 5px;	\n"
+"	background-color: rgb(52, 59, 72);\n"
+"}\n"
+"QPushButton:hover {\n"
+"	background-color: rgb(57, 65, 80);\n"
+"	border: 2px solid rgb(61, 70, 86);\n"
+"}\n"
+"QPushButton:pressed {	\n"
+"	background-color: rgb(35, 40, 49);\n"
+"	border: 2px solid rgb(43, 50, 61);\n"
+"}")
+    self.ui.horizontalLayout_36_4.addWidget(self.ui.btn_manual_control_eload_slew_rise_max_4)
+
     
     
     self.gridLayout_29_4.addWidget(self.ui.frame_manual_control_eload_4_slew_rise, 0, 0, 1, 1)

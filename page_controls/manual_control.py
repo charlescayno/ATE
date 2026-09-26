@@ -1155,11 +1155,18 @@ class ManualControlPageHandler():
         try:
             load_mode = self.ui.cbx_manual_control_eload_type.currentText()
 
-            load_rise_txt = self.ui.lineedit_manual_control_eload_slew_rise.text()
-            load_fall_txt = self.ui.lineedit_manual_control_eload_slew_fall.text()
+            load_rise_txt = self.ui.lineedit_manual_control_eload_slew_rise.text().strip().upper()
+            load_fall_txt = self.ui.lineedit_manual_control_eload_slew_fall.text().strip().upper()
             
-            load_rise = round(float(load_rise_txt)/1000,6)
-            load_fall = round(float(load_fall_txt)/1000,6)
+            if load_rise_txt == "MAX":
+                load_rise = "MAX"
+            else:
+                load_rise = round(float(load_rise_txt)/1000, 6)
+                
+            if load_fall_txt == "MAX":
+                load_fall = "MAX"
+            else:
+                load_fall = round(float(load_fall_txt)/1000, 6)
             
         except Exception as e:
             print(e)
@@ -1426,11 +1433,18 @@ class ManualControlPageHandler():
         try:
             load_mode = self.ui.cbx_manual_control_eload_type_2.currentText()
 
-            load_rise_txt = self.ui.lineedit_manual_control_eload_slew_rise.text()
-            load_fall_txt = self.ui.lineedit_manual_control_eload_slew_fall.text()
+            load_rise_txt = self.ui.lineedit_manual_control_eload_slew_rise.text().strip().upper()
+            load_fall_txt = self.ui.lineedit_manual_control_eload_slew_fall.text().strip().upper()
             
-            load_rise = round(float(load_rise_txt)/1000,6)
-            load_fall = round(float(load_fall_txt)/1000,6)
+            if load_rise_txt == "MAX":
+                load_rise = "MAX"
+            else:
+                load_rise = round(float(load_rise_txt)/1000, 6)
+                
+            if load_fall_txt == "MAX":
+                load_fall = "MAX"
+            else:
+                load_fall = round(float(load_fall_txt)/1000, 6)
             
         except Exception as e:
             print(e)
@@ -1661,11 +1675,18 @@ class ManualControlPageHandler():
         try:
             load_mode = self.ui.cbx_manual_control_eload_type_3.currentText()
 
-            load_rise_txt = self.ui.lineedit_manual_control_eload_slew_rise.text()
-            load_fall_txt = self.ui.lineedit_manual_control_eload_slew_fall.text()
+            load_rise_txt = self.ui.lineedit_manual_control_eload_slew_rise.text().strip().upper()
+            load_fall_txt = self.ui.lineedit_manual_control_eload_slew_fall.text().strip().upper()
             
-            load_rise = round(float(load_rise_txt)/1000,6)
-            load_fall = round(float(load_fall_txt)/1000,6)
+            if load_rise_txt == "MAX":
+                load_rise = "MAX"
+            else:
+                load_rise = round(float(load_rise_txt)/1000, 6)
+                
+            if load_fall_txt == "MAX":
+                load_fall = "MAX"
+            else:
+                load_fall = round(float(load_fall_txt)/1000, 6)
             
         except Exception as e:
             print(e)
@@ -1896,11 +1917,18 @@ class ManualControlPageHandler():
         try:
             load_mode = self.ui.cbx_manual_control_eload_type_4.currentText()
 
-            load_rise_txt = self.ui.lineedit_manual_control_eload_slew_rise.text()
-            load_fall_txt = self.ui.lineedit_manual_control_eload_slew_fall.text()
+            load_rise_txt = self.ui.lineedit_manual_control_eload_slew_rise.text().strip().upper()
+            load_fall_txt = self.ui.lineedit_manual_control_eload_slew_fall.text().strip().upper()
             
-            load_rise = round(float(load_rise_txt)/1000,6)
-            load_fall = round(float(load_fall_txt)/1000,6)
+            if load_rise_txt == "MAX":
+                load_rise = "MAX"
+            else:
+                load_rise = round(float(load_rise_txt)/1000, 6)
+                
+            if load_fall_txt == "MAX":
+                load_fall = "MAX"
+            else:
+                load_fall = round(float(load_fall_txt)/1000, 6)
             
         except Exception as e:
             print(e)
