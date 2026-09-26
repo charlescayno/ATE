@@ -101,7 +101,7 @@ def inject_ui(self):
     sizePolicy20.setVerticalStretch(0)
     sizePolicy20.setHeightForWidth(self.ui.frame_manual_control_eload_2.sizePolicy().hasHeightForWidth())
     self.ui.frame_manual_control_eload_2.setSizePolicy(sizePolicy20)
-    self.ui.frame_manual_control_eload_2.setMinimumSize(QtCore.QSize(400, 0))
+    self.ui.frame_manual_control_eload_2.setMinimumSize(QtCore.QSize(180, 0))
     self.ui.frame_manual_control_eload_2.setStyleSheet(u"QFrame{\n"
     "border: 2px solid black;\n"
     "border-radius: 10px;\n"
@@ -157,7 +157,7 @@ def inject_ui(self):
     
     self.ui.btn_manual_control_eload_a_b_swap_2 = QPushButton(self.ui.frame_manual_control_eload_2_top)
     self.ui.btn_manual_control_eload_a_b_swap_2.setObjectName(u"btn_manual_control_eload_a_b_swap_2")
-    self.ui.btn_manual_control_eload_a_b_swap_2.setMinimumSize(QtCore.QSize(120, 40))
+    self.ui.btn_manual_control_eload_a_b_swap_2.setMinimumSize(QtCore.QSize(80, 40))
     self.ui.btn_manual_control_eload_a_b_swap_2.setFont(font13)
     self.ui.btn_manual_control_eload_a_b_swap_2.setStyleSheet(u"QPushButton {\n"
     "	border: 2px solid rgb(52, 59, 72);\n"
@@ -587,7 +587,7 @@ def inject_ui(self):
     self.ui.horizontalLayout_56_2.setObjectName(u"horizontalLayout_56")
     self.ui.btn_manual_control_eload_turn_on_2 = QPushButton(self.ui.frame_manual_control_eload_2_bottom)
     self.ui.btn_manual_control_eload_turn_on_2.setObjectName(u"btn_manual_control_eload_turn_on")
-    self.ui.btn_manual_control_eload_turn_on_2.setMinimumSize(QtCore.QSize(120, 40))
+    self.ui.btn_manual_control_eload_turn_on_2.setMinimumSize(QtCore.QSize(80, 40))
     self.ui.btn_manual_control_eload_turn_on_2.setFont(font13)
     self.ui.btn_manual_control_eload_turn_on_2.setStyleSheet(u"QPushButton {\n"
     "	border: 2px solid rgb(52, 59, 72);\n"
@@ -615,7 +615,7 @@ def inject_ui(self):
     
     self.ui.btn_manual_control_eload_turn_off_2 = QPushButton(self.ui.frame_manual_control_eload_2_bottom)
     self.ui.btn_manual_control_eload_turn_off_2.setObjectName(u"btn_manual_control_eload_turn_off")
-    self.ui.btn_manual_control_eload_turn_off_2.setMinimumSize(QtCore.QSize(120, 40))
+    self.ui.btn_manual_control_eload_turn_off_2.setMinimumSize(QtCore.QSize(80, 40))
     self.ui.btn_manual_control_eload_turn_off_2.setFont(font13)
     self.ui.btn_manual_control_eload_turn_off_2.setStyleSheet(u"QPushButton {\n"
     "	border: 2px solid rgb(52, 59, 72);\n"
@@ -654,7 +654,7 @@ def inject_ui(self):
     self.ui.frame_manual_control_pml_2 = QFrame(self.ui.frame_manual_control_upper)
     self.ui.frame_manual_control_pml_2.setObjectName(u"frame_manual_control_pml_2")
     self.ui.frame_manual_control_pml_2.setEnabled(True)
-    self.ui.frame_manual_control_pml_2.setMinimumSize(QtCore.QSize(300, 0))
+    self.ui.frame_manual_control_pml_2.setMinimumSize(QtCore.QSize(150, 0))
     self.ui.frame_manual_control_pml_2.setStyleSheet(u"QFrame{\n"
     "border: 2px solid black;\n"
     "border-radius: 10px;\n"
@@ -687,7 +687,7 @@ def inject_ui(self):
     self.ui.frame_pml_display_2 = QFrame(self.ui.frame_pml_contents_2)
     self.ui.frame_pml_display_2.setObjectName(u"frame_pml_display_2")
     self.ui.frame_pml_display_2.setMinimumSize(QtCore.QSize(0, 280))
-    self.ui.frame_pml_display_2.setMaximumSize(QtCore.QSize(300, 16777215))
+    self.ui.frame_pml_display_2.setMaximumSize(QtCore.QSize(150, 16777215))
     self.ui.frame_pml_display_2.setStyleSheet(u"border: 2px solid black;\n"
     "border-radius: 10px;\n"
     "background-color: rgb(29,34, 44);\n"
@@ -1085,7 +1085,7 @@ def inject_ui(self):
     sizePolicy20.setVerticalStretch(0)
     sizePolicy20.setHeightForWidth(self.ui.frame_manual_control_eload_3.sizePolicy().hasHeightForWidth())
     self.ui.frame_manual_control_eload_3.setSizePolicy(sizePolicy20)
-    self.ui.frame_manual_control_eload_3.setMinimumSize(QtCore.QSize(400, 0))
+    self.ui.frame_manual_control_eload_3.setMinimumSize(QtCore.QSize(180, 0))
     self.ui.frame_manual_control_eload_3.setStyleSheet(u"QFrame{\n"
     "border: 2px solid black;\n"
     "border-radius: 10px;\n"
@@ -1141,7 +1141,7 @@ def inject_ui(self):
     
     self.ui.btn_manual_control_eload_a_b_swap_3 = QPushButton(self.ui.frame_manual_control_eload_3_top)
     self.ui.btn_manual_control_eload_a_b_swap_3.setObjectName(u"btn_manual_control_eload_a_b_swap_3")
-    self.ui.btn_manual_control_eload_a_b_swap_3.setMinimumSize(QtCore.QSize(120, 40))
+    self.ui.btn_manual_control_eload_a_b_swap_3.setMinimumSize(QtCore.QSize(80, 40))
     self.ui.btn_manual_control_eload_a_b_swap_3.setFont(font13)
     self.ui.btn_manual_control_eload_a_b_swap_3.setStyleSheet(u"QPushButton {\n"
     "	border: 2px solid rgb(52, 59, 72);\n"
@@ -1571,7 +1571,7 @@ def inject_ui(self):
     self.ui.horizontalLayout_56_3.setObjectName(u"horizontalLayout_56")
     self.ui.btn_manual_control_eload_turn_on_3 = QPushButton(self.ui.frame_manual_control_eload_3_bottom)
     self.ui.btn_manual_control_eload_turn_on_3.setObjectName(u"btn_manual_control_eload_turn_on")
-    self.ui.btn_manual_control_eload_turn_on_3.setMinimumSize(QtCore.QSize(120, 40))
+    self.ui.btn_manual_control_eload_turn_on_3.setMinimumSize(QtCore.QSize(80, 40))
     self.ui.btn_manual_control_eload_turn_on_3.setFont(font13)
     self.ui.btn_manual_control_eload_turn_on_3.setStyleSheet(u"QPushButton {\n"
     "	border: 2px solid rgb(52, 59, 72);\n"
@@ -1599,7 +1599,7 @@ def inject_ui(self):
     
     self.ui.btn_manual_control_eload_turn_off_3 = QPushButton(self.ui.frame_manual_control_eload_3_bottom)
     self.ui.btn_manual_control_eload_turn_off_3.setObjectName(u"btn_manual_control_eload_turn_off")
-    self.ui.btn_manual_control_eload_turn_off_3.setMinimumSize(QtCore.QSize(120, 40))
+    self.ui.btn_manual_control_eload_turn_off_3.setMinimumSize(QtCore.QSize(80, 40))
     self.ui.btn_manual_control_eload_turn_off_3.setFont(font13)
     self.ui.btn_manual_control_eload_turn_off_3.setStyleSheet(u"QPushButton {\n"
     "	border: 2px solid rgb(52, 59, 72);\n"
@@ -1638,7 +1638,7 @@ def inject_ui(self):
     self.ui.frame_manual_control_pml_3 = QFrame(self.ui.frame_manual_control_upper)
     self.ui.frame_manual_control_pml_3.setObjectName(u"frame_manual_control_pml_3")
     self.ui.frame_manual_control_pml_3.setEnabled(True)
-    self.ui.frame_manual_control_pml_3.setMinimumSize(QtCore.QSize(300, 0))
+    self.ui.frame_manual_control_pml_3.setMinimumSize(QtCore.QSize(150, 0))
     self.ui.frame_manual_control_pml_3.setStyleSheet(u"QFrame{\n"
     "border: 2px solid black;\n"
     "border-radius: 10px;\n"
@@ -1671,7 +1671,7 @@ def inject_ui(self):
     self.ui.frame_pml_display_3 = QFrame(self.ui.frame_pml_contents_3)
     self.ui.frame_pml_display_3.setObjectName(u"frame_pml_display_3")
     self.ui.frame_pml_display_3.setMinimumSize(QtCore.QSize(0, 280))
-    self.ui.frame_pml_display_3.setMaximumSize(QtCore.QSize(300, 16777215))
+    self.ui.frame_pml_display_3.setMaximumSize(QtCore.QSize(150, 16777215))
     self.ui.frame_pml_display_3.setStyleSheet(u"border: 2px solid black;\n"
     "border-radius: 10px;\n"
     "background-color: rgb(29,34, 44);\n"
@@ -2069,7 +2069,7 @@ def inject_ui(self):
     sizePolicy20.setVerticalStretch(0)
     sizePolicy20.setHeightForWidth(self.ui.frame_manual_control_eload_4.sizePolicy().hasHeightForWidth())
     self.ui.frame_manual_control_eload_4.setSizePolicy(sizePolicy20)
-    self.ui.frame_manual_control_eload_4.setMinimumSize(QtCore.QSize(400, 0))
+    self.ui.frame_manual_control_eload_4.setMinimumSize(QtCore.QSize(180, 0))
     self.ui.frame_manual_control_eload_4.setStyleSheet(u"QFrame{\n"
     "border: 2px solid black;\n"
     "border-radius: 10px;\n"
@@ -2125,7 +2125,7 @@ def inject_ui(self):
     
     self.ui.btn_manual_control_eload_a_b_swap_4 = QPushButton(self.ui.frame_manual_control_eload_4_top)
     self.ui.btn_manual_control_eload_a_b_swap_4.setObjectName(u"btn_manual_control_eload_a_b_swap_4")
-    self.ui.btn_manual_control_eload_a_b_swap_4.setMinimumSize(QtCore.QSize(120, 40))
+    self.ui.btn_manual_control_eload_a_b_swap_4.setMinimumSize(QtCore.QSize(80, 40))
     self.ui.btn_manual_control_eload_a_b_swap_4.setFont(font13)
     self.ui.btn_manual_control_eload_a_b_swap_4.setStyleSheet(u"QPushButton {\n"
     "	border: 2px solid rgb(52, 59, 72);\n"
@@ -2555,7 +2555,7 @@ def inject_ui(self):
     self.ui.horizontalLayout_56_4.setObjectName(u"horizontalLayout_56")
     self.ui.btn_manual_control_eload_turn_on_4 = QPushButton(self.ui.frame_manual_control_eload_4_bottom)
     self.ui.btn_manual_control_eload_turn_on_4.setObjectName(u"btn_manual_control_eload_turn_on")
-    self.ui.btn_manual_control_eload_turn_on_4.setMinimumSize(QtCore.QSize(120, 40))
+    self.ui.btn_manual_control_eload_turn_on_4.setMinimumSize(QtCore.QSize(80, 40))
     self.ui.btn_manual_control_eload_turn_on_4.setFont(font13)
     self.ui.btn_manual_control_eload_turn_on_4.setStyleSheet(u"QPushButton {\n"
     "	border: 2px solid rgb(52, 59, 72);\n"
@@ -2583,7 +2583,7 @@ def inject_ui(self):
     
     self.ui.btn_manual_control_eload_turn_off_4 = QPushButton(self.ui.frame_manual_control_eload_4_bottom)
     self.ui.btn_manual_control_eload_turn_off_4.setObjectName(u"btn_manual_control_eload_turn_off")
-    self.ui.btn_manual_control_eload_turn_off_4.setMinimumSize(QtCore.QSize(120, 40))
+    self.ui.btn_manual_control_eload_turn_off_4.setMinimumSize(QtCore.QSize(80, 40))
     self.ui.btn_manual_control_eload_turn_off_4.setFont(font13)
     self.ui.btn_manual_control_eload_turn_off_4.setStyleSheet(u"QPushButton {\n"
     "	border: 2px solid rgb(52, 59, 72);\n"
@@ -2622,7 +2622,7 @@ def inject_ui(self):
     self.ui.frame_manual_control_pml_4 = QFrame(self.ui.frame_manual_control_upper)
     self.ui.frame_manual_control_pml_4.setObjectName(u"frame_manual_control_pml_4")
     self.ui.frame_manual_control_pml_4.setEnabled(True)
-    self.ui.frame_manual_control_pml_4.setMinimumSize(QtCore.QSize(300, 0))
+    self.ui.frame_manual_control_pml_4.setMinimumSize(QtCore.QSize(150, 0))
     self.ui.frame_manual_control_pml_4.setStyleSheet(u"QFrame{\n"
     "border: 2px solid black;\n"
     "border-radius: 10px;\n"
@@ -2655,7 +2655,7 @@ def inject_ui(self):
     self.ui.frame_pml_display_4 = QFrame(self.ui.frame_pml_contents_4)
     self.ui.frame_pml_display_4.setObjectName(u"frame_pml_display_4")
     self.ui.frame_pml_display_4.setMinimumSize(QtCore.QSize(0, 280))
-    self.ui.frame_pml_display_4.setMaximumSize(QtCore.QSize(300, 16777215))
+    self.ui.frame_pml_display_4.setMaximumSize(QtCore.QSize(150, 16777215))
     self.ui.frame_pml_display_4.setStyleSheet(u"border: 2px solid black;\n"
     "border-radius: 10px;\n"
     "background-color: rgb(29,34, 44);\n"
