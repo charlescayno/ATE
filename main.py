@@ -454,6 +454,7 @@ class MainWindow(QMainWindow):
 
         self.msg_box.setTextFormat(Qt.RichText)
         self.msg_box.setTextInteractionFlags(Qt.TextBrowserInteraction)
+        self.msg_box.setIcon(QMessageBox.Warning)
         self.msg_box.setText(message)
         self.msg_box.setWindowTitle(title)
         self.msg_box.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)

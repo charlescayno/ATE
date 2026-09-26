@@ -142,7 +142,7 @@ def inject_ui(self):
     
     self.ui.frame_manual_control_eload_2_contents = QFrame(self.ui.frame_manual_control_eload_2)
     self.ui.frame_manual_control_eload_2_contents.setObjectName(u"frame_manual_control_eload_contents_2")
-        self.ui.frame_manual_control_eload_2_contents.setFrameShape(QFrame.StyledPanel)
+    self.ui.frame_manual_control_eload_2_contents.setFrameShape(QFrame.StyledPanel)
     self.ui.frame_manual_control_eload_2_contents.setFrameShadow(QFrame.Raised)
     self.verticalLayout_77 = QVBoxLayout(self.ui.frame_manual_control_eload_2_contents)
     self.verticalLayout_77.setObjectName(u"verticalLayout_77")
@@ -694,7 +694,7 @@ def inject_ui(self):
     
     self.ui.frame_pml_contents_2 = QFrame(self.ui.frame_manual_control_pml_2)
     self.ui.frame_pml_contents_2.setObjectName(u"frame_pml_contents_2")
-        self.ui.frame_pml_contents_2.setFrameShape(QFrame.StyledPanel)
+    self.ui.frame_pml_contents_2.setFrameShape(QFrame.StyledPanel)
     self.ui.frame_pml_contents_2.setFrameShadow(QFrame.Raised)
     self.ui.horizontalLayout_15_2 = QHBoxLayout(self.ui.frame_pml_contents_2)
     self.ui.horizontalLayout_15_2.setObjectName(u"horizontalLayout_15_2")
@@ -887,7 +887,7 @@ def inject_ui(self):
     
     self.ui.frame_pml_control_2_lower = QFrame(self.ui.frame_pml_control_2)
     self.ui.frame_pml_control_2_lower.setObjectName(u"frame_pml_control_lower")
-        self.ui.frame_pml_control_2_lower.setFrameShape(QFrame.StyledPanel)
+    self.ui.frame_pml_control_2_lower.setFrameShape(QFrame.StyledPanel)
     self.ui.frame_pml_control_2_lower.setFrameShadow(QFrame.Raised)
     self.ui.horizontalLayout_19_2 = QHBoxLayout(self.ui.frame_pml_control_2_lower)
     self.ui.horizontalLayout_19_2.setSpacing(0)
@@ -1118,7 +1118,7 @@ def inject_ui(self):
     
     self.ui.frame_manual_control_eload_3_contents = QFrame(self.ui.frame_manual_control_eload_3)
     self.ui.frame_manual_control_eload_3_contents.setObjectName(u"frame_manual_control_eload_contents_3")
-        self.ui.frame_manual_control_eload_3_contents.setFrameShape(QFrame.StyledPanel)
+    self.ui.frame_manual_control_eload_3_contents.setFrameShape(QFrame.StyledPanel)
     self.ui.frame_manual_control_eload_3_contents.setFrameShadow(QFrame.Raised)
     self.verticalLayout_77 = QVBoxLayout(self.ui.frame_manual_control_eload_3_contents)
     self.verticalLayout_77.setObjectName(u"verticalLayout_77")
@@ -1670,7 +1670,7 @@ def inject_ui(self):
     
     self.ui.frame_pml_contents_3 = QFrame(self.ui.frame_manual_control_pml_3)
     self.ui.frame_pml_contents_3.setObjectName(u"frame_pml_contents_3")
-        self.ui.frame_pml_contents_3.setFrameShape(QFrame.StyledPanel)
+    self.ui.frame_pml_contents_3.setFrameShape(QFrame.StyledPanel)
     self.ui.frame_pml_contents_3.setFrameShadow(QFrame.Raised)
     self.ui.horizontalLayout_15_3 = QHBoxLayout(self.ui.frame_pml_contents_3)
     self.ui.horizontalLayout_15_3.setObjectName(u"horizontalLayout_15_3")
@@ -1863,7 +1863,7 @@ def inject_ui(self):
     
     self.ui.frame_pml_control_3_lower = QFrame(self.ui.frame_pml_control_3)
     self.ui.frame_pml_control_3_lower.setObjectName(u"frame_pml_control_lower")
-        self.ui.frame_pml_control_3_lower.setFrameShape(QFrame.StyledPanel)
+    self.ui.frame_pml_control_3_lower.setFrameShape(QFrame.StyledPanel)
     self.ui.frame_pml_control_3_lower.setFrameShadow(QFrame.Raised)
     self.ui.horizontalLayout_19_3 = QHBoxLayout(self.ui.frame_pml_control_3_lower)
     self.ui.horizontalLayout_19_3.setSpacing(0)
@@ -2094,7 +2094,7 @@ def inject_ui(self):
     
     self.ui.frame_manual_control_eload_4_contents = QFrame(self.ui.frame_manual_control_eload_4)
     self.ui.frame_manual_control_eload_4_contents.setObjectName(u"frame_manual_control_eload_contents_4")
-        self.ui.frame_manual_control_eload_4_contents.setFrameShape(QFrame.StyledPanel)
+    self.ui.frame_manual_control_eload_4_contents.setFrameShape(QFrame.StyledPanel)
     self.ui.frame_manual_control_eload_4_contents.setFrameShadow(QFrame.Raised)
     self.verticalLayout_77 = QVBoxLayout(self.ui.frame_manual_control_eload_4_contents)
     self.verticalLayout_77.setObjectName(u"verticalLayout_77")
@@ -2646,7 +2646,7 @@ def inject_ui(self):
     
     self.ui.frame_pml_contents_4 = QFrame(self.ui.frame_manual_control_pml_4)
     self.ui.frame_pml_contents_4.setObjectName(u"frame_pml_contents_4")
-        self.ui.frame_pml_contents_4.setFrameShape(QFrame.StyledPanel)
+    self.ui.frame_pml_contents_4.setFrameShape(QFrame.StyledPanel)
     self.ui.frame_pml_contents_4.setFrameShadow(QFrame.Raised)
     self.ui.horizontalLayout_15_4 = QHBoxLayout(self.ui.frame_pml_contents_4)
     self.ui.horizontalLayout_15_4.setObjectName(u"horizontalLayout_15_4")
@@ -2839,7 +2839,7 @@ def inject_ui(self):
     
     self.ui.frame_pml_control_4_lower = QFrame(self.ui.frame_pml_control_4)
     self.ui.frame_pml_control_4_lower.setObjectName(u"frame_pml_control_lower")
-        self.ui.frame_pml_control_4_lower.setFrameShape(QFrame.StyledPanel)
+    self.ui.frame_pml_control_4_lower.setFrameShape(QFrame.StyledPanel)
     self.ui.frame_pml_control_4_lower.setFrameShadow(QFrame.Raised)
     self.ui.horizontalLayout_19_4 = QHBoxLayout(self.ui.frame_pml_control_4_lower)
     self.ui.horizontalLayout_19_4.setSpacing(0)

@@ -990,7 +990,7 @@ class ManualControlPageHandler():
             # Prompt user to disengage discharge resistor
             res = self.parent.msg_box_pick(
                 title="Discharge Resistor Check",
-                message="Is the discharge resistor disengaged? Please disengage before powering up."
+                message="<h2>⚠️ ATTENTION</h2><br><span style='font-size: 14pt; font-weight: bold;'>Is the discharge resistor disengaged?</span><br><br><span style='font-size: 12pt; color: #cc0000;'>Please disengage it before powering up.</span>"
             )
             if res != 1024: # QMessageBox.Ok
                 return
