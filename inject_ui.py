@@ -4,6 +4,23 @@ from PySide2.QtGui import *
 from PySide2.QtWidgets import *
 
 def inject_ui(self):
+
+    # --- SETUP TAB WIDGETS ---
+    if not hasattr(self.ui, 'tabWidget_pml'):
+        self.ui.tabWidget_pml = QTabWidget(self.ui.frame_manual_control_upper)
+        self.ui.tabWidget_pml.setStyleSheet("QTabBar::tab { height: 30px; width: 100px; font-weight: bold; }")
+        idx_pml = self.ui.horizontalLayout_9.indexOf(self.ui.frame_manual_control_pml)
+        self.ui.horizontalLayout_9.insertWidget(idx_pml, self.ui.tabWidget_pml)
+        self.ui.tabWidget_pml.addTab(self.ui.frame_manual_control_pml, "CH 1")
+
+    if not hasattr(self.ui, 'tabWidget_eload'):
+        self.ui.tabWidget_eload = QTabWidget(self.ui.frame_manual_control_lower)
+        self.ui.tabWidget_eload.setStyleSheet("QTabBar::tab { height: 30px; width: 100px; font-weight: bold; }")
+        idx_eload = self.ui.horizontalLayout_13.indexOf(self.ui.frame_manual_control_eload)
+        self.ui.horizontalLayout_13.insertWidget(idx_eload, self.ui.tabWidget_eload)
+        self.ui.tabWidget_eload.addTab(self.ui.frame_manual_control_eload, "CH 1")
+    # -------------------------
+
     icon8 = QIcon()
     icon9 = QIcon()
     sizePolicy = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
@@ -92,8 +109,7 @@ def inject_ui(self):
     font22.setPointSize(12)
     font22.setBold(True)
     font22.setWeight(75)
-
-    # ELOAD 2
+# ELOAD 2
     self.ui.frame_manual_control_eload_2 = QFrame(self.ui.frame_manual_control_lower)
     self.ui.frame_manual_control_eload_2.setObjectName(u"frame_manual_control_eload_2")
     sizePolicy20 = QSizePolicy(QSizePolicy.Maximum, QSizePolicy.Preferred)
@@ -101,7 +117,7 @@ def inject_ui(self):
     sizePolicy20.setVerticalStretch(0)
     sizePolicy20.setHeightForWidth(self.ui.frame_manual_control_eload_2.sizePolicy().hasHeightForWidth())
     self.ui.frame_manual_control_eload_2.setSizePolicy(sizePolicy20)
-    self.ui.frame_manual_control_eload_2.setMinimumSize(QtCore.QSize(180, 0))
+    self.ui.frame_manual_control_eload_2.setMinimumSize(QtCore.QSize(300, 0))
     self.ui.frame_manual_control_eload_2.setStyleSheet(u"QFrame{\n"
     "border: 2px solid black;\n"
     "border-radius: 10px;\n"
@@ -648,13 +664,13 @@ def inject_ui(self):
     self.ui.verticalLayout_23_2.addWidget(self.ui.frame_manual_control_eload_2_contents)
     
     
-    self.ui.horizontalLayout_13.addWidget(self.ui.frame_manual_control_eload_2)
+    self.ui.tabWidget_eload.addTab(self.ui.frame_manual_control_eload_2, 'CH 2')
 
     # PML 2
     self.ui.frame_manual_control_pml_2 = QFrame(self.ui.frame_manual_control_upper)
     self.ui.frame_manual_control_pml_2.setObjectName(u"frame_manual_control_pml_2")
     self.ui.frame_manual_control_pml_2.setEnabled(True)
-    self.ui.frame_manual_control_pml_2.setMinimumSize(QtCore.QSize(150, 0))
+    self.ui.frame_manual_control_pml_2.setMinimumSize(QtCore.QSize(300, 0))
     self.ui.frame_manual_control_pml_2.setStyleSheet(u"QFrame{\n"
     "border: 2px solid black;\n"
     "border-radius: 10px;\n"
@@ -1075,7 +1091,7 @@ def inject_ui(self):
     self.ui.verticalLayout_19_2.addWidget(self.ui.frame_pml_contents_2)
     
     
-    self.ui.horizontalLayout_9.addWidget(self.ui.frame_manual_control_pml_2)
+    self.ui.tabWidget_pml.addTab(self.ui.frame_manual_control_pml_2, 'CH 2')
 
     # ELOAD 3
     self.ui.frame_manual_control_eload_3 = QFrame(self.ui.frame_manual_control_lower)
@@ -1085,7 +1101,7 @@ def inject_ui(self):
     sizePolicy20.setVerticalStretch(0)
     sizePolicy20.setHeightForWidth(self.ui.frame_manual_control_eload_3.sizePolicy().hasHeightForWidth())
     self.ui.frame_manual_control_eload_3.setSizePolicy(sizePolicy20)
-    self.ui.frame_manual_control_eload_3.setMinimumSize(QtCore.QSize(180, 0))
+    self.ui.frame_manual_control_eload_3.setMinimumSize(QtCore.QSize(300, 0))
     self.ui.frame_manual_control_eload_3.setStyleSheet(u"QFrame{\n"
     "border: 2px solid black;\n"
     "border-radius: 10px;\n"
@@ -1632,13 +1648,13 @@ def inject_ui(self):
     self.ui.verticalLayout_23_3.addWidget(self.ui.frame_manual_control_eload_3_contents)
     
     
-    self.ui.horizontalLayout_13.addWidget(self.ui.frame_manual_control_eload_3)
+    self.ui.tabWidget_eload.addTab(self.ui.frame_manual_control_eload_3, 'CH 3')
 
     # PML 3
     self.ui.frame_manual_control_pml_3 = QFrame(self.ui.frame_manual_control_upper)
     self.ui.frame_manual_control_pml_3.setObjectName(u"frame_manual_control_pml_3")
     self.ui.frame_manual_control_pml_3.setEnabled(True)
-    self.ui.frame_manual_control_pml_3.setMinimumSize(QtCore.QSize(150, 0))
+    self.ui.frame_manual_control_pml_3.setMinimumSize(QtCore.QSize(300, 0))
     self.ui.frame_manual_control_pml_3.setStyleSheet(u"QFrame{\n"
     "border: 2px solid black;\n"
     "border-radius: 10px;\n"
@@ -2059,7 +2075,7 @@ def inject_ui(self):
     self.ui.verticalLayout_19_3.addWidget(self.ui.frame_pml_contents_3)
     
     
-    self.ui.horizontalLayout_9.addWidget(self.ui.frame_manual_control_pml_3)
+    self.ui.tabWidget_pml.addTab(self.ui.frame_manual_control_pml_3, 'CH 3')
 
     # ELOAD 4
     self.ui.frame_manual_control_eload_4 = QFrame(self.ui.frame_manual_control_lower)
@@ -2069,7 +2085,7 @@ def inject_ui(self):
     sizePolicy20.setVerticalStretch(0)
     sizePolicy20.setHeightForWidth(self.ui.frame_manual_control_eload_4.sizePolicy().hasHeightForWidth())
     self.ui.frame_manual_control_eload_4.setSizePolicy(sizePolicy20)
-    self.ui.frame_manual_control_eload_4.setMinimumSize(QtCore.QSize(180, 0))
+    self.ui.frame_manual_control_eload_4.setMinimumSize(QtCore.QSize(300, 0))
     self.ui.frame_manual_control_eload_4.setStyleSheet(u"QFrame{\n"
     "border: 2px solid black;\n"
     "border-radius: 10px;\n"
@@ -2616,13 +2632,13 @@ def inject_ui(self):
     self.ui.verticalLayout_23_4.addWidget(self.ui.frame_manual_control_eload_4_contents)
     
     
-    self.ui.horizontalLayout_13.addWidget(self.ui.frame_manual_control_eload_4)
+    self.ui.tabWidget_eload.addTab(self.ui.frame_manual_control_eload_4, 'CH 4')
 
     # PML 4
     self.ui.frame_manual_control_pml_4 = QFrame(self.ui.frame_manual_control_upper)
     self.ui.frame_manual_control_pml_4.setObjectName(u"frame_manual_control_pml_4")
     self.ui.frame_manual_control_pml_4.setEnabled(True)
-    self.ui.frame_manual_control_pml_4.setMinimumSize(QtCore.QSize(150, 0))
+    self.ui.frame_manual_control_pml_4.setMinimumSize(QtCore.QSize(300, 0))
     self.ui.frame_manual_control_pml_4.setStyleSheet(u"QFrame{\n"
     "border: 2px solid black;\n"
     "border-radius: 10px;\n"
@@ -3043,7 +3059,7 @@ def inject_ui(self):
     self.ui.verticalLayout_19_4.addWidget(self.ui.frame_pml_contents_4)
     
     
-    self.ui.horizontalLayout_9.addWidget(self.ui.frame_manual_control_pml_4)
+    self.ui.tabWidget_pml.addTab(self.ui.frame_manual_control_pml_4, 'CH 4')
 
     # --- AUTOMATIC TEXT INJECTION ---
     from PySide2.QtCore import QCoreApplication
