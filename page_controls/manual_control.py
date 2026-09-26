@@ -445,6 +445,8 @@ class ManualControlPageHandler():
     
     def ui_powermeter_update(self):
         self.ui_power_meter_load_2_update()
+        self.ui_power_meter_load_3_update()
+        self.ui_power_meter_load_4_update()
         self.ui_power_meter_source_update()
         self.ui_power_meter_load_update()
 
@@ -510,7 +512,6 @@ class ManualControlPageHandler():
     def ui_acsource_update(self):
         pass
     def ui_eload_update(self):
-        self.ui_eload_3_update()
         pass
 
 

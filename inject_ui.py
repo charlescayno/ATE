@@ -3044,3 +3044,63 @@ def inject_ui(self):
     
     
     self.ui.horizontalLayout_9.addWidget(self.ui.frame_manual_control_pml_4)
+
+    # --- AUTOMATIC TEXT INJECTION ---
+    from PySide2.QtCore import QCoreApplication
+
+    for ch in [2, 3, 4]:
+        # Combo boxes
+        cbx_type = getattr(self.ui, f'cbx_manual_control_eload_type_{ch}')
+        cbx_type.clear()
+        cbx_type.addItem(QCoreApplication.translate("MainWindow", "CC", None))
+        cbx_type.addItem(QCoreApplication.translate("MainWindow", "CV", None))
+        cbx_type.addItem(QCoreApplication.translate("MainWindow", "CR", None))
+        cbx_type.addItem(QCoreApplication.translate("MainWindow", "CP", None))
+        
+        cbx_v_range = getattr(self.ui, f'cbx_pml_voltage_range_{ch}')
+        cbx_v_range.clear()
+        cbx_v_range.addItem(QCoreApplication.translate("MainWindow", "AUTO", None))
+        cbx_v_range.addItem(QCoreApplication.translate("MainWindow", "300V", None))
+        
+        cbx_c_range = getattr(self.ui, f'cbx_pml_current_range_{ch}')
+        cbx_c_range.clear()
+        cbx_c_range.addItem(QCoreApplication.translate("MainWindow", "AUTO", None))
+        cbx_c_range.addItem(QCoreApplication.translate("MainWindow", "20A", None))
+        
+        # Labels and Buttons for PML
+        getattr(self.ui, f'label_pml_display_a_{ch}').setText("None")
+        getattr(self.ui, f'label_pml_display_b_{ch}').setText("None")
+        getattr(self.ui, f'label_pml_display_c_{ch}').setText("None")
+        getattr(self.ui, f'label_pml_display_d_{ch}').setText("None")
+        
+        getattr(self.ui, f'label_pml_voltage_range_{ch}').setText(QCoreApplication.translate("MainWindow", "Voltage Range", None))
+        getattr(self.ui, f'label_pml_current_range_{ch}').setText(QCoreApplication.translate("MainWindow", "Current Range", None))
+        getattr(self.ui, f'label_pml_integration_{ch}').setText(QCoreApplication.translate("MainWindow", "Integration", None))
+        getattr(self.ui, f'label_pml_averaging_{ch}').setText(QCoreApplication.translate("MainWindow", "Averaging", None))
+        getattr(self.ui, f'label_pml_measure_mode_{ch}').setText(QCoreApplication.translate("MainWindow", "Mode", None))
+        getattr(self.ui, f'btn_pml_measure_mode_{ch}').setText(QCoreApplication.translate("MainWindow", "RMS", None))
+        
+        # Adding labels for Load power meters
+        getattr(self.ui, f'label_load_power_meter_{ch}').setText(QCoreApplication.translate("MainWindow", f"LOAD POWER METER {ch}", None))
+
+        # Labels and Buttons for E-Load
+        getattr(self.ui, f'label_manual_control_eload_{ch}').setText(QCoreApplication.translate("MainWindow", f"ELECTRONIC LOAD {ch}", None))
+        getattr(self.ui, f'btn_manual_control_eload_a_b_swap_{ch}').setText(QCoreApplication.translate("MainWindow", "A / B", None))
+        
+        getattr(self.ui, f'label_manual_control_eload_{ch}_a').setText(QCoreApplication.translate("MainWindow", "Level A", None))
+        getattr(self.ui, f'label_manual_control_eload_{ch}_a_level_unit').setText(QCoreApplication.translate("MainWindow", "A", None))
+        getattr(self.ui, f'btn_manual_control_eload_set_A_{ch}').setText(QCoreApplication.translate("MainWindow", "Set", None))
+        
+        getattr(self.ui, f'label_manual_control_eload_{ch}_b').setText(QCoreApplication.translate("MainWindow", "Level B", None))
+        getattr(self.ui, f'label_manual_control_eload_{ch}_b_level_unit').setText(QCoreApplication.translate("MainWindow", "A", None))
+        getattr(self.ui, f'btn_manual_control_eload_set_B_{ch}').setText(QCoreApplication.translate("MainWindow", "Set", None))
+        
+        # Missing label_manual_control_eload_{ch}_slew_rise
+        # I'll just set unit labels
+        getattr(self.ui, f'label_manual_control_eload_{ch}_slew_fall_unit').setText(QCoreApplication.translate("MainWindow", "A / µs", None))
+        getattr(self.ui, f'label_manual_control_eload_{ch}_slew_rise_unit').setText(QCoreApplication.translate("MainWindow", "A / µs", None))
+        getattr(self.ui, f'btn_manual_control_eload_set_slew_{ch}').setText(QCoreApplication.translate("MainWindow", "Set", None))
+        
+        getattr(self.ui, f'btn_manual_control_eload_turn_on_{ch}').setText(QCoreApplication.translate("MainWindow", "Load ON", None))
+        getattr(self.ui, f'btn_manual_control_eload_turn_off_{ch}').setText(QCoreApplication.translate("MainWindow", "Load OFF", None))
+        
