@@ -84,7 +84,7 @@ import pyqtgraph as pg
 
 # Local Imports
 from page_controls import (
-    manual_control, add_test, equipment_setup, test_results, i2c_controls)
+    manual_control, add_test, equipment_setup, test_results, i2c_controls, oscilloscope_control)
 
 from psu_tests.tests import TestPlan
 from psu_tests.definitions import (
@@ -288,6 +288,7 @@ class MainWindow(QMainWindow):
             = equipment_setup.EquipmentSetupPageHandler(self)
         self.manual_control_handler \
             = manual_control.ManualControlPageHandler(self)
+        self.oscilloscope_control_handler = oscilloscope_control.OscilloscopeControlPageHandler(self)
         self.add_test_pagehandler = add_test.AddTestPageHandler(self)
         self.test_results_page_handler \
             = test_results.TestResultsPageHandler(self)
@@ -347,6 +348,9 @@ class MainWindow(QMainWindow):
         UIFunctions.addNewMenu(
             self, "Test Results", "btn_test_results", 
             "url(:/20x20/icons/20x20/cil-library.png)", True)
+        UIFunctions.addNewMenu(
+            self, "Oscilloscope", "btn_oscilloscope_control", 
+            "url(:/20x20/icons/20x20/cil-chart-line.png)", True)
         # UIFunctions.addNewMenu(
         #     self, "I2C Controls", "btn_i2c_controls", 
         #     "url(:/20x20/icons/20x20/cil-lightbulb.png)", True)
@@ -517,6 +521,14 @@ class MainWindow(QMainWindow):
         #     UIFunctions.labelPage(self, "I2C Controls")
         #     btnWidget.setStyleSheet(
         #         UIFunctions.selectMenu(btnWidget.styleSheet()))
+        
+        # PAGE OSCILLOSCOPE CONTROL
+        elif btnWidget.objectName() in ["btn_oscilloscope_control","btn_page_oscilloscope_control"]:
+            self.ui.stackedWidget.setCurrentWidget(self.ui.page_oscilloscope_control)
+            UIFunctions.resetStyle(self, "btn_oscilloscope_control")
+            UIFunctions.labelPage(self, "Oscilloscope Control")
+            btnWidget.setStyleSheet(
+                UIFunctions.selectMenu(btnWidget.styleSheet()))
         
         # PAGE VIEW LOGS
         elif btnWidget.objectName() == "btn_view_logs":
