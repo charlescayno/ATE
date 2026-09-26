@@ -279,7 +279,8 @@ class ManualControlPageHandler():
         self.ui.lineedit_manual_control_eload_b_level_3.setValidator(self.validator)
         self.ui.lineedit_manual_control_eload_slew_fall_3.setValidator(self.validator)
 
-        from PySide2.QtWidgets import QCheckBox, QLabel, QLineEdit
+        from PySide2.QtWidgets import QCheckBox, QLabel, QLineEdit, QSpacerItem, QSizePolicy
+        from PySide2.QtCore import Qt
         # Create DC Source Ramp controls
         self.ui.chkbox_manual_control_dc_source_ramp_enable = QCheckBox(self.ui.frame_manual_control_ac_source_params)
         self.ui.chkbox_manual_control_dc_source_ramp_enable.setObjectName(u"chkbox_manual_control_dc_source_ramp_enable")
@@ -299,10 +300,13 @@ class ManualControlPageHandler():
         self.ui.lineedit_manual_control_dc_source_slew_rate.setVisible(False)
         self.ui.label_manual_control_dc_source_estimated_time = QLabel(self.ui.frame_manual_control_ac_source_params)
         self.ui.label_manual_control_dc_source_estimated_time.setText("Estimated Time: N/A")
-        self.ui.label_manual_control_dc_source_estimated_time.setStyleSheet("color: white;")
+        self.ui.label_manual_control_dc_source_estimated_time.setStyleSheet("color: white; border: none; padding-top: 5px;")
+        self.ui.label_manual_control_dc_source_estimated_time.setAlignment(Qt.AlignLeft | Qt.AlignTop)
         self.ui.label_manual_control_dc_source_estimated_time.setVisible(False)
         self.ui.gridLayout_3.addWidget(self.ui.lineedit_manual_control_dc_source_slew_rate, 4, 1, 1, 1)
         self.ui.gridLayout_3.addWidget(self.ui.label_manual_control_dc_source_estimated_time, 5, 0, 1, 2)
+        spacer = QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding)
+        self.ui.gridLayout_3.addItem(spacer, 6, 0, 1, 2)
         self.ui.lineedit_manual_control_dc_source_slew_rate.textChanged.connect(self.update_estimated_ramp_time)
         self.ui.lineedit_manual_control_ac_source_voltage.textChanged.connect(self.update_estimated_ramp_time)
 
