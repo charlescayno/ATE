@@ -820,11 +820,26 @@ class ManualControlPageHandler():
 
     
     def gpib_update(self):
-        self.power_meter_load_update()
-        self.power_meter_source_update()
+        # Update the AC source (which handles DC software ramping as well)
         self.ac_source_update()
+        
+        # If we are actively software-ramping the DC source, skip polling other
+        # equipment on the GPIB bus to avoid VisaIOError timeouts from bus flooding.
+        if getattr(self, 'is_ramping', False):
+            return
+            
+        self.power_meter_load_update()
+        if hasattr(self, 'power_meter_load_2_update'): self.power_meter_load_2_update()
+        if hasattr(self, 'power_meter_load_3_update'): self.power_meter_load_3_update()
+        if hasattr(self, 'power_meter_load_4_update'): self.power_meter_load_4_update()
+        
+        self.power_meter_source_update()
+        
         self.eload_update()
-    
+        if hasattr(self, 'eload_2_update'): self.eload_2_update()
+        if hasattr(self, 'eload_3_update'): self.eload_3_update()
+        if hasattr(self, 'eload_4_update'): self.eload_4_update()
+
     def initialize_equipment_ui_frames(self):
         """Set the frames of the equipment to normal"""
         ui = self.ui
