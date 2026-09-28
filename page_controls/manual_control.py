@@ -232,6 +232,10 @@ class ManualControlPageHandler():
 
         # Inject multi-channel UI components
         inject_ui.inject_ui(self)
+        self.ui.frame_manual_control_eload_2.setVisible(True)
+        self.ui.frame_manual_control_eload_4.setVisible(False)
+        self.ui.frame_manual_control_pml_3.setVisible(False)
+        self.ui.frame_manual_control_pml_4.setVisible(False)
 
         # Bind UI elements to functionss
         self.bind_ui_elements()
@@ -266,6 +270,20 @@ class ManualControlPageHandler():
         self.validator = QDoubleValidator(0, 16777215, 6)
 
         # Channel 3 binds
+
+        self.ui.btn_manual_control_eload_turn_on_2.clicked.connect(self.eload_2_turn_on)
+        self.ui.btn_manual_control_eload_set_A_2.clicked.connect(self.eload_2_set_level_A)
+        self.ui.btn_manual_control_eload_set_B_2.clicked.connect(self.eload_2_set_level_B)
+        self.ui.btn_manual_control_eload_set_slew_2.clicked.connect(self.eload_2_set_slew)
+        self.ui.btn_manual_control_eload_turn_off_2.clicked.connect(self.eload_2_turn_off)
+        self.ui.btn_manual_control_eload_a_b_swap_2.clicked.connect(self.eload_2_swap_active_level)
+        self.ui.cbx_manual_control_eload_type_2.currentIndexChanged.connect(self.update_eload_2_settings)
+        
+        self.ui.lineedit_manual_control_eload_a_level_2.setValidator(self.validator)
+        self.ui.lineedit_manual_control_eload_slew_rise_2.setValidator(self.validator)
+        self.ui.lineedit_manual_control_eload_b_level_2.setValidator(self.validator)
+        self.ui.lineedit_manual_control_eload_slew_fall_2.setValidator(self.validator)
+
         self.ui.btn_manual_control_eload_turn_on_3.clicked.connect(self.eload_3_turn_on)
         self.ui.btn_manual_control_eload_set_A_3.clicked.connect(self.eload_3_set_level_A)
         self.ui.btn_manual_control_eload_set_B_3.clicked.connect(self.eload_3_set_level_B)
