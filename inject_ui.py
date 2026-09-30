@@ -29,7 +29,9 @@ def inject_ui(self):
     # -------------------------
 
     icon8 = QIcon()
+    icon8.addFile(u":/20x20/icons/20x20/cil-power-standby-green.png", QSize(), QIcon.Normal, QIcon.Off)
     icon9 = QIcon()
+    icon9.addFile(u":/20x20/icons/20x20/cil-power-standby-red.png", QSize(), QIcon.Normal, QIcon.Off)
     sizePolicy = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
     sizePolicy11 = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
     sizePolicy19 = QSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
