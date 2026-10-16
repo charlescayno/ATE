@@ -6,6 +6,8 @@
 
 A Python-based automated testing and validation suite designed for Power Integrations power supply designs. PI ATE automates bench instrument control, data acquisition, USB-PD profile sequencing, and real-time data plotting.
 
+**Repository:** [github.com/charlescayno/ATE](https://github.com/charlescayno/ATE)
+
 ---
 
 ## Table of Contents
@@ -14,10 +16,11 @@ A Python-based automated testing and validation suite designed for Power Integra
 3. [Supported Instruments](#supported-instruments)
 4. [Quick Start](#quick-start)
 5. [Installation & Setup](#installation--setup)
-6. [VS Code Configuration](#vs-code-configuration)
-7. [Architecture & System Design](architecture.md)
-8. [Project Structure](#project-structure)
-9. [Troubleshooting](#troubleshooting)
+6. [Manual Equipment Control](#manual-equipment-control)
+7. [VS Code Configuration](#vs-code-configuration)
+8. [Architecture & System Design](architecture.md)
+9. [Project Structure](#project-structure)
+10. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -28,6 +31,8 @@ A Python-based automated testing and validation suite designed for Power Integra
 * **Interactive Data & Plots**: Real-time graphing (Efficiency, Voltage/Current curves) and dynamic data tables with export capabilities.
 * **Dual Logging**: Console output and persistent execution logging (`app_log.txt`) for diagnostics and traceability.
 * **Instrument Abstraction Layer**: Resilient SCPI communication with automatic retries and safe data conversion.
+* **Manual Equipment Control**: Direct control of DC/AC sources, up to four electronic load channels, and live power meter readouts from the bench tab.
+* **Persistent Manual Control UI**: Input fields on the Manual Equipment Control tab are saved to `manual_control_settings.json` and restored on the next launch.
 
 ---
 
@@ -60,7 +65,32 @@ If your environment is already set up, simply double-click:
 ```bat
 run.bat
 ```
-*(Or run `python main.py` in your activated conda environment).*
+
+From a terminal (without activating conda manually):
+```bat
+conda run -p .\conda_env python main.py
+```
+
+Or activate the project environment and run:
+```bat
+setup\activate_env.bat
+python main.py
+```
+
+---
+
+## Manual Equipment Control
+
+The **Manual Equipment Control** tab (`page_controls/manual_control.py`) is for interactive bench work outside automated test plans.
+
+| Area | Behavior |
+|------|----------|
+| **Electronic load** | Channels 1–4 support Load ON / Load OFF with consistent styling and SCPI control when roles are assigned in Equipment Setup. |
+| **DC source ramping** | Long voltage ramps temporarily pause GPIB polling so VISA timeouts are less likely during slow slews. |
+| **Power meters (PML / PMS)** | Live V, A, W, and efficiency update when the mapped instrument is connected and responding. |
+| **Settings file** | `manual_control_settings.json` in the project root stores line edits, combo indices, and checkboxes under the manual control page. Delete this file to reset to UI defaults. |
+
+Configure hardware roles (Source, PML 1–4, Electronic Load 1–4, etc.) on the **Equipment Setup** tab before using manual control. Unassigned or disconnected power meter load slots show **None** on the displays and may leave related dropdowns empty until a device is mapped and online.
 
 ---
 
@@ -123,11 +153,14 @@ To enable smooth debugging without stepping into external libraries, add the fol
 ## Project Structure
 
 ```
-├── main.py                  # Application entry point and main window event loop
-├── run.bat                  # Shortcut to launch application in conda environment
-├── setup.bat                # Automated fresh install script
-├── install_dependencies.bat # Updates packages in existing environment
-├── requirements.txt         # Python package dependencies
+├── main.py                       # Application entry point and main window event loop
+├── run.bat                       # Shortcut to launch application in conda environment
+├── setup.bat                     # Automated fresh install script
+├── install_dependencies.bat      # Updates packages in existing environment
+├── requirements.txt              # Python package dependencies
+├── conda_env/                    # Local conda environment (created by setup)
+├── manual_control_settings.json  # Auto-saved Manual Equipment Control UI state (runtime)
+├── app_log.txt                   # DualLogger stdout/stderr capture (runtime)
 │
 ├── equipment/               # Instrument drivers (AC Source, E-Load, Power Meter)
 │   ├── equipment.py         # VISA I/O decorator and base hardware classes
@@ -163,5 +196,10 @@ To enable smooth debugging without stepping into external libraries, add the fol
 * **VISA / Instrument Not Found**:
   * Ensure [NI-VISA](https://www.ni.com/en-us/support/downloads/drivers/download.ni-visa.html) runtime is installed.
   * Verify USB / GPIB / RS232 connections and check device addresses in **Equipment Setup**.
+* **Power meter load shows "None" or empty dropdowns**:
+  * Assign the instrument to the correct **Power Meter Load** role in Equipment Setup and confirm the session opens without VISA errors.
+  * Efficiency reads **None** when input power is zero or either meter reading is invalid.
+* **Manual control values wrong after upgrade**:
+  * Remove or edit `manual_control_settings.json` if widget names changed between releases.
 * **Logs & Error Details**:
   * All stdout, stderr, and uncaught exceptions are automatically captured in `app_log.txt` in the root folder.
