@@ -309,6 +309,9 @@ class AddTestPageHandler(QObject):
             self.update_load_range_table)
         self.ui.lineedit_add_tests_nominal_output_voltage.textChanged.connect(
             self.update_load_range_table)
+
+        self.ui.table_add_tests_load_range.itemChanged.connect(
+            self.load_range_table_item_changed)
         
         self.ui.table_add_tests_source_caps.itemSelectionChanged.connect(
             self.source_caps_table_selected)
@@ -412,7 +415,10 @@ class AddTestPageHandler(QObject):
         ui.table_add_tests_line_range.horizontalHeader().setVisible(True)
         ui.table_add_tests_line_ramp.horizontalHeader().setVisible(True)
         ui.table_add_tests_load_range.horizontalHeader().setVisible(True)
-        
+        ui.table_add_tests_load_range.setEditTriggers(
+            QtWidgets.QAbstractItemView.DoubleClicked
+            | QtWidgets.QAbstractItemView.EditKeyPressed)
+
         # Hide the lineedit_add_tests_line_range_voltage_2 (only for spacing)
         ui.lineedit_add_tests_line_range_voltage_2.setVisible(False)
 
@@ -729,9 +735,82 @@ class AddTestPageHandler(QObject):
             self.ui.frame_add_tests_line_ramp_buttons.setEnabled(False) 
             self.ui.btn_add_tests_line_ramp_remove_setting.setEnabled(False)   
 
+    @staticmethod
+    def _editable_load_range_table_item(text: str) -> QtWidgets.QTableWidgetItem:
+        item = QtWidgets.QTableWidgetItem(text)
+        item.setFlags(item.flags() | QtCore.Qt.ItemIsEditable)
+        return item
+
+    def load_range_table_item_changed(self, item: QtWidgets.QTableWidgetItem) -> None:
+        if getattr(self, '_suppress_load_range_item_changed', False):
+            return
+        if not hasattr(self, 'selected_load_range') or self.selected_load_range is None:
+            return
+
+        row = item.row()
+        col = item.column()
+        if row < 0 or row >= len(self.selected_load_range.load_range_pct):
+            return
+        if not is_numeric(item.text()):
+            return
+
+        value = rounded_float(item.text())
+        is_light_load = TestTypes[self.test_type_index] in [LightLoad]
+
+        if col == 0:
+            self.selected_load_range.load_range_pct[row] = value
+        elif col == 1:
+            if is_light_load:
+                if not is_numeric(self.ui.lineedit_add_tests_nominal_output_voltage.text()):
+                    return
+                v_nom = rounded_float(self.ui.lineedit_add_tests_nominal_output_voltage.text())
+                if v_nom <= 0:
+                    return
+                self.selected_load_range.load_range_pct[row] = value * v_nom
+            else:
+                if not is_numeric(self.ui.lineedit_add_tests_nominal_output_current.text()):
+                    return
+                i_nom = rounded_float(self.ui.lineedit_add_tests_nominal_output_current.text())
+                if i_nom <= 0:
+                    return
+                self.selected_load_range.load_range_pct[row] = value / i_nom * 100.0
+        else:
+            return
+
+        self._suppress_load_range_item_changed = True
+        try:
+            pct = self.selected_load_range.load_range_pct[row]
+            current_item = self.ui.table_add_tests_load_range.item(row, 1)
+            if col == 1:
+                pct_item = self.ui.table_add_tests_load_range.item(row, 0)
+                if pct_item is not None:
+                    pct_item.setText(f'{round(pct, 6):g}')
+            elif col == 0 and current_item is not None:
+                if is_light_load:
+                    if is_numeric(self.ui.lineedit_add_tests_nominal_output_voltage.text()):
+                        v_nom = rounded_float(self.ui.lineedit_add_tests_nominal_output_voltage.text())
+                        if v_nom > 0:
+                            current_item.setText(f'{round(pct / v_nom, 6):g}')
+                elif is_numeric(self.ui.lineedit_add_tests_nominal_output_current.text()):
+                    i_nom = rounded_float(self.ui.lineedit_add_tests_nominal_output_current.text())
+                    if i_nom > 0:
+                        current_item.setText(f'{round(i_nom * pct / 100.0, 6):g}')
+        finally:
+            self._suppress_load_range_item_changed = False
+
+        if self.selected_load_range.custom:
+            self.load_settings.write_user_settings()
+
     def update_load_range_table(self):
         if self.ongoing_load_range_update:
             return
+        self._suppress_load_range_item_changed = True
+        try:
+            self._update_load_range_table_body()
+        finally:
+            self._suppress_load_range_item_changed = False
+
+    def _update_load_range_table_body(self):
         # Get index of selected load voltage range
         load_range_index = \
             self.ui.cbx_add_tests_load_range_type.currentIndex()
@@ -847,17 +926,19 @@ class AddTestPageHandler(QObject):
         for i, item in enumerate(self.selected_load_range.load_range_pct):
             
             self.ui.table_add_tests_load_range.setItem(
-                i, 0, QtWidgets.QTableWidgetItem(f'{round(item,6):g}'))
+                i, 0, self._editable_load_range_table_item(f'{round(item,6):g}'))
             
             if TestTypes[self.test_type_index] in [LightLoad]:
                 if output_voltage_available:
                     self.ui.table_add_tests_load_range.setItem(
-                        i, 1, QtWidgets.QTableWidgetItem(f'{round(item/nominal_output_voltage_V,6):g}'))
+                        i, 1, self._editable_load_range_table_item(
+                            f'{round(item/nominal_output_voltage_V,6):g}'))
             else:
                  if load_current_available:   
                     self.ui.table_add_tests_load_range.setItem(
-                        i, 1, QtWidgets.QTableWidgetItem(f'{round(nominal_load_current_A*item/100,6):g}'))
-            
+                        i, 1, self._editable_load_range_table_item(
+                            f'{round(nominal_load_current_A*item/100,6):g}'))
+
         self.ui.frame_add_tests_load_range_params_options.setEnabled(True)
         # Only enable the add/remove entry function if 
         # the line range is CUSTOM
