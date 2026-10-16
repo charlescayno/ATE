@@ -1,4 +1,5 @@
 @Echo off
+cd /d "%~dp0"
 set PATH=%PATH%;%USERPROFILE%\Anaconda3
 set PATH=%PATH%;%USERPROFILE%\Anaconda3\Scripts
 set PATH=%PATH%;%USERPROFILE%\Anaconda3\Library\bin

@@ -390,8 +390,24 @@ class AddTestPageHandler(QObject):
         self.update_line_range_table()
         self.update_cbx_soaktime_settings()
         self.load_default_configs()
+        self.update_load_range_table()
 
+    def _configure_load_range_table_editing(self) -> None:
+        """Override Designer defaults (NoEditTriggers / SelectRows) so cells can be edited."""
+        table = self.ui.table_add_tests_load_range
+        table.setEnabled(True)
+        table.setFocusPolicy(QtCore.Qt.StrongFocus)
+        table.setEditTriggers(QtWidgets.QAbstractItemView.AllEditTriggers)
+        table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectItems)
+        if not getattr(self, '_load_range_edit_hooks_bound', False):
+            table.cellDoubleClicked.connect(self._edit_load_range_table_cell)
+            self._load_range_edit_hooks_bound = True
+            print('[PI ATE] Load range table: in-cell editing enabled (double-click a cell or press F2)')
 
+    def _edit_load_range_table_cell(self, row: int, column: int) -> None:
+        item = self.ui.table_add_tests_load_range.item(row, column)
+        if item is not None:
+            self.ui.table_add_tests_load_range.editItem(item)
 
     def initialize_ui_element_settings(self):
         ui = self.ui
@@ -415,9 +431,7 @@ class AddTestPageHandler(QObject):
         ui.table_add_tests_line_range.horizontalHeader().setVisible(True)
         ui.table_add_tests_line_ramp.horizontalHeader().setVisible(True)
         ui.table_add_tests_load_range.horizontalHeader().setVisible(True)
-        ui.table_add_tests_load_range.setEditTriggers(
-            QtWidgets.QAbstractItemView.DoubleClicked
-            | QtWidgets.QAbstractItemView.EditKeyPressed)
+        self._configure_load_range_table_editing()
 
         # Hide the lineedit_add_tests_line_range_voltage_2 (only for spacing)
         ui.lineedit_add_tests_line_range_voltage_2.setVisible(False)
@@ -738,7 +752,10 @@ class AddTestPageHandler(QObject):
     @staticmethod
     def _editable_load_range_table_item(text: str) -> QtWidgets.QTableWidgetItem:
         item = QtWidgets.QTableWidgetItem(text)
-        item.setFlags(item.flags() | QtCore.Qt.ItemIsEditable)
+        item.setFlags(
+            QtCore.Qt.ItemIsSelectable
+            | QtCore.Qt.ItemIsEnabled
+            | QtCore.Qt.ItemIsEditable)
         return item
 
     def load_range_table_item_changed(self, item: QtWidgets.QTableWidgetItem) -> None:
@@ -939,6 +956,7 @@ class AddTestPageHandler(QObject):
                         i, 1, self._editable_load_range_table_item(
                             f'{round(nominal_load_current_A*item/100,6):g}'))
 
+        self._configure_load_range_table_editing()
         self.ui.frame_add_tests_load_range_params_options.setEnabled(True)
         # Only enable the add/remove entry function if 
         # the line range is CUSTOM
@@ -2163,6 +2181,8 @@ class AddTestPageHandler(QObject):
         # Button 2
         ui.btn_add_tests_option_2.setVisible(ui_def.add_test_button_2_visible)
         ui.btn_add_tests_option_2.setText(ui_def.add_test_button_2_txt)
+
+        self._configure_load_range_table_editing()
                   
         # CVCC multiple setpoints button
         self.ui.chkbox_add_tests_cvcc_multi_setpoints.setEnabled(ui_def.multiple_cvcc_setpoints_enable)
