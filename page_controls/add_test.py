@@ -38,6 +38,10 @@ from psu_tests.test_type import *
 
 from misc_functions.misc_functions import *
 
+EFFICIENCY_2PORT_WAVEFORM_TITLE = "Efficiency 2 Port (Waveform)"
+EFFICIENCY_2PORT_TITLES = ("Efficiency 2 Port", EFFICIENCY_2PORT_WAVEFORM_TITLE)
+STEADY_STATE_TITLES = ("Steady-State Waveform Capture", "Primary Vds & Ids Steady-State")
+
 import user_settings.save_load as configs
 from user_settings.keys import SaveFileKeys
 
@@ -1743,9 +1747,11 @@ class AddTestPageHandler(QObject):
             if not content is None:
                 cbx.addItems(content)
 
-        if self.selected_test_class.title == "Efficiency 2 Port":
+        if self.selected_test_class.title in EFFICIENCY_2PORT_TITLES:
+            # The waveform variant uses all 4 dropdowns, so Dual Load Mode cannot span both columns.
+            is_waveform_variant = self.selected_test_class.title == EFFICIENCY_2PORT_WAVEFORM_TITLE
             self.ui.gridLayout_12.removeWidget(self.ui.frame_add_tests_i2c_cbxparam_1)
-            self.ui.gridLayout_12.addWidget(self.ui.frame_add_tests_i2c_cbxparam_1, 5, 0, 1, 2)
+            self.ui.gridLayout_12.addWidget(self.ui.frame_add_tests_i2c_cbxparam_1, 5, 0, 1, 1 if is_waveform_variant else 2)
             self.ui.horizontalLayout_81.setStretch(0, 0)
             self.ui.horizontalLayout_81.setStretch(1, 1)
             self.ui.label_add_tests_i2c_cbxparam_1.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Preferred)
@@ -1754,7 +1760,7 @@ class AddTestPageHandler(QObject):
             self.ui.cbx_add_tests_i2c_cbxparam_1.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
             self.ui.cbx_add_tests_i2c_cbxparam_1.setMaximumSize(QSize(16777215, 35))
             self.ui.cbx_add_tests_i2c_cbxparam_1.setMaximumWidth(16777215)
-            self.ui.cbx_add_tests_i2c_cbxparam_1.setMinimumWidth(320)
+            self.ui.cbx_add_tests_i2c_cbxparam_1.setMinimumWidth(120 if is_waveform_variant else 320)
             self.ui.cbx_add_tests_i2c_cbxparam_1.setSizeAdjustPolicy(QComboBox.AdjustToContents)
             if hasattr(self.ui.cbx_add_tests_i2c_cbxparam_1, 'view') and self.ui.cbx_add_tests_i2c_cbxparam_1.view():
                 self.ui.cbx_add_tests_i2c_cbxparam_1.view().setMinimumWidth(450)
@@ -1768,7 +1774,8 @@ class AddTestPageHandler(QObject):
                 self.label_dual_load_mode_desc = QLabel()
                 self.label_dual_load_mode_desc.setStyleSheet("color: rgb(0, 190, 255); font-size: 11px; padding-left: 5px;")
                 self.label_dual_load_mode_desc.setWordWrap(True)
-                self.ui.gridLayout_12.addWidget(self.label_dual_load_mode_desc, 6, 0, 1, 2)
+            self.ui.gridLayout_12.removeWidget(self.label_dual_load_mode_desc)
+            self.ui.gridLayout_12.addWidget(self.label_dual_load_mode_desc, 7 if is_waveform_variant else 6, 0, 1, 2)
             self.label_dual_load_mode_desc.setVisible(True)
 
             def on_dual_mode_change(index):
@@ -1841,7 +1848,8 @@ class AddTestPageHandler(QObject):
         
         # Unit ID Visibility (only for Steady-State)
         if hasattr(self, 'frame_unit_id'):
-            self.frame_unit_id.setVisible(test_class.__name__ == 'TestVdsIdsSteadyState')
+            self.frame_unit_id.setVisible(
+                test_class.title in STEADY_STATE_TITLES or test_class.title == EFFICIENCY_2PORT_WAVEFORM_TITLE)
 
         # Test Time Parameters
         ui.label_add_tests_testtime_param1.setText(ui_def.test_time_param1_label)
@@ -1876,10 +1884,19 @@ class AddTestPageHandler(QObject):
         ui.frame_add_tests_nominal_output_voltage.setVisible(ui_def.nominal_vout_visible)
         ui.frame_add_tests_nominal_output_voltage.setEnabled(ui_def.nominal_vout_enable)
 
-        if test_class.title == "Efficiency 2 Port":
+        if test_class.title in EFFICIENCY_2PORT_TITLES:
             ui.label_add_tests_nominal_output_voltage.setText("Nominal Vout 1 (V)")
             ui.label_add_tests_nominal_output_current.setText("Nominal Iout 1 (A)")
-            ui.label_add_tests_i2c_settings.setText("Output 2 Settings")
+            if test_class.title == EFFICIENCY_2PORT_WAVEFORM_TITLE:
+                ui.label_add_tests_i2c_settings.setText("Output 2 / Scope & Trigger Settings")
+                self._ensure_scope_channels_frame()
+                ui.gridLayout_12.removeWidget(self.frame_scope_channels)
+                ui.gridLayout_12.addWidget(self.frame_scope_channels, 8, 0, 1, 2)
+                self.frame_scope_channels.setVisible(True)
+            else:
+                ui.label_add_tests_i2c_settings.setText("Output 2 Settings")
+                if hasattr(self, 'frame_scope_channels'):
+                    self.frame_scope_channels.setVisible(False)
             if hasattr(self, 'label_nominal_ratings_header'):
                 self.label_nominal_ratings_header.setVisible(False)
             if hasattr(self, 'frame_add_tests_max_output_current'):
@@ -1991,119 +2008,9 @@ class AddTestPageHandler(QObject):
             ui.gridLayout_12.setColumnStretch(1, 4)
 
             # 4-Channel Matrix inside gridLayout_12 at row 3 (spanning 2 columns)
-            if not hasattr(self, 'frame_scope_channels'):
-                self.frame_scope_channels = QFrame(ui.frame_28)
-                self.frame_scope_channels.setObjectName("frame_scope_channels")
-                grid_ch = QGridLayout(self.frame_scope_channels)
-                grid_ch.setObjectName("gridLayout_scope_channels")
-                grid_ch.setContentsMargins(0, 4, 0, 4)
-                grid_ch.setHorizontalSpacing(10)
-                grid_ch.setVerticalSpacing(4)
-
-                cb_style = "QCheckBox { color: rgb(210, 210, 210); font-weight: bold; } QCheckBox:disabled { color: rgb(71, 71, 71); }"
-
-                # CH1
-                f_ch1 = QFrame(self.frame_scope_channels)
-                h_ch1 = QHBoxLayout(f_ch1)
-                h_ch1.setContentsMargins(0, 0, 0, 0)
-                h_ch1.setSpacing(4)
-                self.ch1_checkbox = QCheckBox("CH1:", f_ch1)
-                self.ch1_checkbox.setFont(ui.label_add_tests_nominal_output_voltage.font())
-                self.ch1_checkbox.setStyleSheet(cb_style)
-                self.ch1_checkbox.setChecked(True)
-                self.ch1_lineedit = QLineEdit("Vds", f_ch1)
-                self.ch1_lineedit.setFont(ui.lineedit_add_tests_nominal_output_voltage.font())
-                self.ch1_lineedit.setStyleSheet(ui.lineedit_add_tests_nominal_output_voltage.styleSheet())
-                self.ch1_lineedit.setFixedHeight(28)
-                self.ch1_settings_btn = QToolButton(f_ch1)
-                self.ch1_settings_btn.setText("⚙")
-                self.ch1_settings_btn.setFixedSize(28, 28)
-                self.ch1_settings_btn.clicked.connect(lambda c=1: self.open_measurement_settings(1))
-                h_ch1.addWidget(self.ch1_checkbox)
-                h_ch1.addWidget(self.ch1_lineedit)
-                h_ch1.addWidget(self.ch1_settings_btn)
-                grid_ch.addWidget(f_ch1, 0, 0)
-
-                # CH2
-                f_ch2 = QFrame(self.frame_scope_channels)
-                h_ch2 = QHBoxLayout(f_ch2)
-                h_ch2.setContentsMargins(0, 0, 0, 0)
-                h_ch2.setSpacing(4)
-                self.ch2_checkbox = QCheckBox("CH2:", f_ch2)
-                self.ch2_checkbox.setFont(ui.label_add_tests_nominal_output_voltage.font())
-                self.ch2_checkbox.setStyleSheet(cb_style)
-                self.ch2_checkbox.setChecked(True)
-                self.ch2_lineedit = QLineEdit("Ids", f_ch2)
-                self.ch2_lineedit.setFont(ui.lineedit_add_tests_nominal_output_voltage.font())
-                self.ch2_lineedit.setStyleSheet(ui.lineedit_add_tests_nominal_output_voltage.styleSheet())
-                self.ch2_lineedit.setFixedHeight(28)
-                self.ch2_settings_btn = QToolButton(f_ch2)
-                self.ch2_settings_btn.setText("⚙")
-                self.ch2_settings_btn.setFixedSize(28, 28)
-                self.ch2_settings_btn.clicked.connect(lambda c=2: self.open_measurement_settings(2))
-                h_ch2.addWidget(self.ch2_checkbox)
-                h_ch2.addWidget(self.ch2_lineedit)
-                h_ch2.addWidget(self.ch2_settings_btn)
-                grid_ch.addWidget(f_ch2, 0, 1)
-
-                # CH3
-                f_ch3 = QFrame(self.frame_scope_channels)
-                h_ch3 = QHBoxLayout(f_ch3)
-                h_ch3.setContentsMargins(0, 0, 0, 0)
-                h_ch3.setSpacing(4)
-                self.ch3_checkbox = QCheckBox("CH3:", f_ch3)
-                self.ch3_checkbox.setFont(ui.label_add_tests_nominal_output_voltage.font())
-                self.ch3_checkbox.setStyleSheet(cb_style)
-                self.ch3_checkbox.setChecked(False)
-                self.ch3_lineedit = QLineEdit("", f_ch3)
-                self.ch3_lineedit.setFont(ui.lineedit_add_tests_nominal_output_voltage.font())
-                self.ch3_lineedit.setStyleSheet(ui.lineedit_add_tests_nominal_output_voltage.styleSheet())
-                self.ch3_lineedit.setFixedHeight(28)
-                self.ch3_lineedit.setEnabled(False)
-                self.ch3_settings_btn = QToolButton(f_ch3)
-                self.ch3_settings_btn.setText("⚙")
-                self.ch3_settings_btn.setFixedSize(28, 28)
-                self.ch3_settings_btn.clicked.connect(lambda c=3: self.open_measurement_settings(3))
-                h_ch3.addWidget(self.ch3_checkbox)
-                h_ch3.addWidget(self.ch3_lineedit)
-                h_ch3.addWidget(self.ch3_settings_btn)
-                grid_ch.addWidget(f_ch3, 1, 0)
-
-                # CH4
-                f_ch4 = QFrame(self.frame_scope_channels)
-                h_ch4 = QHBoxLayout(f_ch4)
-                h_ch4.setContentsMargins(0, 0, 0, 0)
-                h_ch4.setSpacing(4)
-                self.ch4_checkbox = QCheckBox("CH4:", f_ch4)
-                self.ch4_checkbox.setFont(ui.label_add_tests_nominal_output_voltage.font())
-                self.ch4_checkbox.setStyleSheet(cb_style)
-                self.ch4_checkbox.setChecked(False)
-                self.ch4_lineedit = QLineEdit("", f_ch4)
-                self.ch4_lineedit.setFont(ui.lineedit_add_tests_nominal_output_voltage.font())
-                self.ch4_lineedit.setStyleSheet(ui.lineedit_add_tests_nominal_output_voltage.styleSheet())
-                self.ch4_lineedit.setFixedHeight(28)
-                self.ch4_lineedit.setEnabled(False)
-                self.ch4_settings_btn = QToolButton(f_ch4)
-                self.ch4_settings_btn.setText("⚙")
-                self.ch4_settings_btn.setFixedSize(28, 28)
-                self.ch4_settings_btn.clicked.connect(lambda c=4: self.open_measurement_settings(4))
-                h_ch4.addWidget(self.ch4_checkbox)
-                h_ch4.addWidget(self.ch4_lineedit)
-                h_ch4.addWidget(self.ch4_settings_btn)
-                grid_ch.addWidget(f_ch4, 1, 1)
-
-                # Signal connections
-                self.ch1_checkbox.stateChanged.connect(lambda s: (self.ch1_lineedit.setEnabled(s != 0), self.update_vds_ids_trigger_channels(), self.sync_scope_channels_to_selected_test_item()))
-                self.ch2_checkbox.stateChanged.connect(lambda s: (self.ch2_lineedit.setEnabled(s != 0), self.update_vds_ids_trigger_channels(), self.sync_scope_channels_to_selected_test_item()))
-                self.ch3_checkbox.stateChanged.connect(lambda s: (self.ch3_lineedit.setEnabled(s != 0), self.update_vds_ids_trigger_channels(), self.sync_scope_channels_to_selected_test_item()))
-                self.ch4_checkbox.stateChanged.connect(lambda s: (self.ch4_lineedit.setEnabled(s != 0), self.update_vds_ids_trigger_channels(), self.sync_scope_channels_to_selected_test_item()))
-
-                self.ch1_lineedit.textChanged.connect(lambda _: self.sync_scope_channels_to_selected_test_item())
-                self.ch2_lineedit.textChanged.connect(lambda _: self.sync_scope_channels_to_selected_test_item())
-                self.ch3_lineedit.textChanged.connect(lambda _: self.sync_scope_channels_to_selected_test_item())
-                self.ch4_lineedit.textChanged.connect(lambda _: self.sync_scope_channels_to_selected_test_item())
-
-                ui.gridLayout_12.addWidget(self.frame_scope_channels, 3, 0, 1, 2)
+            self._ensure_scope_channels_frame()
+            ui.gridLayout_12.removeWidget(self.frame_scope_channels)
+            ui.gridLayout_12.addWidget(self.frame_scope_channels, 3, 0, 1, 2)
 
             self.frame_scope_channels.setVisible(True)
             self.update_vds_ids_trigger_channels()
@@ -2190,7 +2097,128 @@ class AddTestPageHandler(QObject):
         
         # I2C parameters
         
+    def _ensure_scope_channels_frame(self):
+        """Build the 4-channel scope matrix once. Callers position it in gridLayout_12."""
+        if hasattr(self, 'frame_scope_channels'):
+            return
+        ui = self.ui
+        self.frame_scope_channels = QFrame(ui.frame_28)
+        self.frame_scope_channels.setObjectName("frame_scope_channels")
+        grid_ch = QGridLayout(self.frame_scope_channels)
+        grid_ch.setObjectName("gridLayout_scope_channels")
+        grid_ch.setContentsMargins(0, 4, 0, 4)
+        grid_ch.setHorizontalSpacing(10)
+        grid_ch.setVerticalSpacing(4)
+
+        cb_style = "QCheckBox { color: rgb(210, 210, 210); font-weight: bold; } QCheckBox:disabled { color: rgb(71, 71, 71); }"
+
+        # CH1
+        f_ch1 = QFrame(self.frame_scope_channels)
+        h_ch1 = QHBoxLayout(f_ch1)
+        h_ch1.setContentsMargins(0, 0, 0, 0)
+        h_ch1.setSpacing(4)
+        self.ch1_checkbox = QCheckBox("CH1:", f_ch1)
+        self.ch1_checkbox.setFont(ui.label_add_tests_nominal_output_voltage.font())
+        self.ch1_checkbox.setStyleSheet(cb_style)
+        self.ch1_checkbox.setChecked(True)
+        self.ch1_lineedit = QLineEdit("Vds", f_ch1)
+        self.ch1_lineedit.setFont(ui.lineedit_add_tests_nominal_output_voltage.font())
+        self.ch1_lineedit.setStyleSheet(ui.lineedit_add_tests_nominal_output_voltage.styleSheet())
+        self.ch1_lineedit.setFixedHeight(28)
+        self.ch1_settings_btn = QToolButton(f_ch1)
+        self.ch1_settings_btn.setText("⚙")
+        self.ch1_settings_btn.setFixedSize(28, 28)
+        self.ch1_settings_btn.clicked.connect(lambda c=1: self.open_measurement_settings(1))
+        h_ch1.addWidget(self.ch1_checkbox)
+        h_ch1.addWidget(self.ch1_lineedit)
+        h_ch1.addWidget(self.ch1_settings_btn)
+        grid_ch.addWidget(f_ch1, 0, 0)
+
+        # CH2
+        f_ch2 = QFrame(self.frame_scope_channels)
+        h_ch2 = QHBoxLayout(f_ch2)
+        h_ch2.setContentsMargins(0, 0, 0, 0)
+        h_ch2.setSpacing(4)
+        self.ch2_checkbox = QCheckBox("CH2:", f_ch2)
+        self.ch2_checkbox.setFont(ui.label_add_tests_nominal_output_voltage.font())
+        self.ch2_checkbox.setStyleSheet(cb_style)
+        self.ch2_checkbox.setChecked(True)
+        self.ch2_lineedit = QLineEdit("Ids", f_ch2)
+        self.ch2_lineedit.setFont(ui.lineedit_add_tests_nominal_output_voltage.font())
+        self.ch2_lineedit.setStyleSheet(ui.lineedit_add_tests_nominal_output_voltage.styleSheet())
+        self.ch2_lineedit.setFixedHeight(28)
+        self.ch2_settings_btn = QToolButton(f_ch2)
+        self.ch2_settings_btn.setText("⚙")
+        self.ch2_settings_btn.setFixedSize(28, 28)
+        self.ch2_settings_btn.clicked.connect(lambda c=2: self.open_measurement_settings(2))
+        h_ch2.addWidget(self.ch2_checkbox)
+        h_ch2.addWidget(self.ch2_lineedit)
+        h_ch2.addWidget(self.ch2_settings_btn)
+        grid_ch.addWidget(f_ch2, 0, 1)
+
+        # CH3
+        f_ch3 = QFrame(self.frame_scope_channels)
+        h_ch3 = QHBoxLayout(f_ch3)
+        h_ch3.setContentsMargins(0, 0, 0, 0)
+        h_ch3.setSpacing(4)
+        self.ch3_checkbox = QCheckBox("CH3:", f_ch3)
+        self.ch3_checkbox.setFont(ui.label_add_tests_nominal_output_voltage.font())
+        self.ch3_checkbox.setStyleSheet(cb_style)
+        self.ch3_checkbox.setChecked(False)
+        self.ch3_lineedit = QLineEdit("", f_ch3)
+        self.ch3_lineedit.setFont(ui.lineedit_add_tests_nominal_output_voltage.font())
+        self.ch3_lineedit.setStyleSheet(ui.lineedit_add_tests_nominal_output_voltage.styleSheet())
+        self.ch3_lineedit.setFixedHeight(28)
+        self.ch3_lineedit.setEnabled(False)
+        self.ch3_settings_btn = QToolButton(f_ch3)
+        self.ch3_settings_btn.setText("⚙")
+        self.ch3_settings_btn.setFixedSize(28, 28)
+        self.ch3_settings_btn.clicked.connect(lambda c=3: self.open_measurement_settings(3))
+        h_ch3.addWidget(self.ch3_checkbox)
+        h_ch3.addWidget(self.ch3_lineedit)
+        h_ch3.addWidget(self.ch3_settings_btn)
+        grid_ch.addWidget(f_ch3, 1, 0)
+
+        # CH4
+        f_ch4 = QFrame(self.frame_scope_channels)
+        h_ch4 = QHBoxLayout(f_ch4)
+        h_ch4.setContentsMargins(0, 0, 0, 0)
+        h_ch4.setSpacing(4)
+        self.ch4_checkbox = QCheckBox("CH4:", f_ch4)
+        self.ch4_checkbox.setFont(ui.label_add_tests_nominal_output_voltage.font())
+        self.ch4_checkbox.setStyleSheet(cb_style)
+        self.ch4_checkbox.setChecked(False)
+        self.ch4_lineedit = QLineEdit("", f_ch4)
+        self.ch4_lineedit.setFont(ui.lineedit_add_tests_nominal_output_voltage.font())
+        self.ch4_lineedit.setStyleSheet(ui.lineedit_add_tests_nominal_output_voltage.styleSheet())
+        self.ch4_lineedit.setFixedHeight(28)
+        self.ch4_lineedit.setEnabled(False)
+        self.ch4_settings_btn = QToolButton(f_ch4)
+        self.ch4_settings_btn.setText("⚙")
+        self.ch4_settings_btn.setFixedSize(28, 28)
+        self.ch4_settings_btn.clicked.connect(lambda c=4: self.open_measurement_settings(4))
+        h_ch4.addWidget(self.ch4_checkbox)
+        h_ch4.addWidget(self.ch4_lineedit)
+        h_ch4.addWidget(self.ch4_settings_btn)
+        grid_ch.addWidget(f_ch4, 1, 1)
+
+        # Signal connections
+        self.ch1_checkbox.stateChanged.connect(lambda s: (self.ch1_lineedit.setEnabled(s != 0), self.update_vds_ids_trigger_channels(), self.sync_scope_channels_to_selected_test_item()))
+        self.ch2_checkbox.stateChanged.connect(lambda s: (self.ch2_lineedit.setEnabled(s != 0), self.update_vds_ids_trigger_channels(), self.sync_scope_channels_to_selected_test_item()))
+        self.ch3_checkbox.stateChanged.connect(lambda s: (self.ch3_lineedit.setEnabled(s != 0), self.update_vds_ids_trigger_channels(), self.sync_scope_channels_to_selected_test_item()))
+        self.ch4_checkbox.stateChanged.connect(lambda s: (self.ch4_lineedit.setEnabled(s != 0), self.update_vds_ids_trigger_channels(), self.sync_scope_channels_to_selected_test_item()))
+
+        self.ch1_lineedit.textChanged.connect(lambda _: self.sync_scope_channels_to_selected_test_item())
+        self.ch2_lineedit.textChanged.connect(lambda _: self.sync_scope_channels_to_selected_test_item())
+        self.ch3_lineedit.textChanged.connect(lambda _: self.sync_scope_channels_to_selected_test_item())
+        self.ch4_lineedit.textChanged.connect(lambda _: self.sync_scope_channels_to_selected_test_item())
+
+
     def update_vds_ids_trigger_channels(self):
+        # Dropdown 1 is the trigger channel only for Steady-State; other tests (e.g. Dual Load Mode) own it.
+        selected = getattr(self, 'selected_test_class', None)
+        if selected is None or selected.title not in STEADY_STATE_TITLES:
+            return
         enabled = []
         if hasattr(self, 'ch1_checkbox') and self.ch1_checkbox.isChecked():
             enabled.append("CH1")
@@ -2866,7 +2894,7 @@ class AddTestPageHandler(QObject):
             self.ui.lineedit_add_tests_cvcc_min_current.setText('1')
             self.ui.lineedit_add_tests_cvcc_step_size.setText('0.5')
             
-            if self.selected_test_class.title in ["Efficiency 2 Port", "Primary Vds & Ids Steady-State", "Steady-State Waveform Capture"]:
+            if self.selected_test_class.title in EFFICIENCY_2PORT_TITLES + STEADY_STATE_TITLES:
                 self.ui.lineedit_add_tests_nominal_output_voltage.setText(f"{self.selected_test_class.tc_default.nominal_output_voltage_V:g}")
                 self.ui.lineedit_add_tests_nominal_output_current.setText(f"{self.selected_test_class.tc_default.nominal_load_current_A:g}")
                 if hasattr(self, 'lineedit_add_tests_max_output_current'):

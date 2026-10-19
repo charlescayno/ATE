@@ -20,6 +20,8 @@ from psu_tests.test_load_reg_2port import LoadRegulationTest_2Port
 from psu_tests.test_light_load import LightLoad
 from psu_tests.test_vds_ids_steady_state import VdsIdsSteadyStateTest, SteadyStateWaveformCaptureTest
 from psu_tests.test_efficiency_modern import ModernEfficiencyTest
+from psu_tests.test_efficiency_2port_waveform import EfficiencyWaveformTest_2Port
+from psu_tests.test_efficiency_2port_waveform import EfficiencyWaveformTest_2Port
 
 ###############################################################################
 # Add each test to this list to include it in the setup
@@ -57,6 +59,7 @@ TestTypes = [
     InputHarmonicsTest,
     InputLineRampTest,
     VdsIdsSteadyStateTest,
+    EfficiencyWaveformTest_2Port,
     # ModernEfficiencyTest,
     # LoadRegulationTest_2Port,
     # LightLoad,
