@@ -312,11 +312,13 @@ class EfficiencyTest_2Port(BaseTestObject):
             self.test_data_table.add_blank_row()
             
             if self.vin_index > 0:
-                anchor = f"A{5+1+self.vin_index*(len(self.load_pairs)+1)}"
-                eff_anchor = f"N{5+1+self.vin_index*(len(self.load_pairs)+1)}"
+                row = 5 + 1 + self.vin_index * (len(self.load_pairs) + 1)
+                anchor = f"A{row}"
+                # Column N is Vo2/Io2/Po2 — regulatory summary must start after Po_Total & Efficiency (col T)
+                eff_anchor = f"T{row}"
             else:
                 anchor = "A5"
-                eff_anchor = "N5"
+                eff_anchor = "T5"
 
             export_to_excel(
                 self.output_dataframe, self.output_folder_path, 
@@ -606,6 +608,9 @@ class EfficiencyTest_2Port(BaseTestObject):
         self.ws.merge_cells('R4:S4')
         self.ws['R4'] = 'Total Power & Efficiency'
         self.ws['R4'].alignment = Alignment(horizontal='center')
+        self.ws.merge_cells('T4:X4')
+        self.ws['T4'] = 'Average Efficiency Limits'
+        self.ws['T4'].alignment = Alignment(horizontal='center')
         self.wb.save(self.data_file_path)
         self.wb.close()
 

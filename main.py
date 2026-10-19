@@ -303,9 +303,11 @@ class MainWindow(QMainWindow):
         # Print the system and version
         print('System: ' + platform.system())
         print('Version: ' + platform.release())
-        self.ui.label_version.setMaximumSize(QSize(250, 16777215))
-        self.ui.label_version.setText(SOFTWARE_VERSION)
-        self.ui.label_credits.setText("© RN, RRI, CMC")
+        if hasattr(self.ui, 'label_version'):
+            self.ui.label_version.setMaximumSize(QSize(250, 16777215))
+            self.ui.label_version.setText(SOFTWARE_VERSION)
+        if hasattr(self.ui, 'label_credits'):
+            self.ui.label_credits.setText("© RN, RRI, CMC")
 
         # Remove the standard title bar
         UIFunctions.removeTitleBar(True)
