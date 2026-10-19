@@ -99,6 +99,19 @@ Check: **Po_Total ≈ Po1 + Po2**, **Efficiency ≈ Po_Total / Pin × 100**.
 
 ---
 
+## Oscilloscope measurements (optional, below each line-voltage block)
+
+When **Measure Scope Ripple** is enabled on Add Tests (General Options) and an oscilloscope is connected:
+
+1. After each load step soak, the scope is stopped, optional PNG screenshots are saved under the run waveform folder, and active **MEAS** slots are read via `get_measure_all()` (with per-channel fallback).
+2. After the main **A–S** efficiency table and **T–X** summary for that line voltage, a **blank row**, then a titled block **Oscilloscope Measurements**, then a sub-table:
+   - Fixed columns: **Ch1 Load**, **Ch2 Load**
+   - Dynamic columns: one per active measurement (e.g. `CH1 Pk-Pk`, `CH2 Max`, …) depending on scope setup
+3. The same sub-table is appended in **Test Results** (title + header as rows under the efficiency data).
+4. Multi–line-voltage runs use a running Excel row cursor so scope blocks do not overwrite the next line-voltage section.
+
+---
+
 ## Dual-load mode — Ch2 Load column examples
 
 | Mode | Ch1 Load (example) | Ch2 Load (example) |

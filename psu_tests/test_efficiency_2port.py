@@ -22,7 +22,8 @@ class EfficiencyTest_2Port(BaseTestObject):
     
     ui_definitions.load_type_visible = True
     ui_definitions.load_direction_cbx_enabled = False
-    ui_definitions.load_range_selection_enabled = False
+    ui_definitions.load_range_selection_enabled = True
+    ui_definitions.measure_ripple_visible = True
         
     # General UI Update Definitions
     ui_update = General_UI_Update_Definitions()
@@ -34,7 +35,7 @@ class EfficiencyTest_2Port(BaseTestObject):
     ui_update.nominal_output_settings_update = True
     ui_update.usbpd_options_update = True
     ui_update.tracking_pdo_request_update = True
-    ui_update.measure_ripple_update = False
+    ui_update.measure_ripple_update = True
     ui_update.load_direction_update = True
     ui_update.eload_type_update = True
     ui_update.use_eload_data_update = True
@@ -110,7 +111,7 @@ class EfficiencyTest_2Port(BaseTestObject):
         self.update_test_list_text()
 
     def with_waveform_capture(self):
-        return False
+        return bool(getattr(self, 'measure_ripple', False))
 
     def run(self):
         """ Run the test for this TestObject
@@ -275,6 +276,23 @@ class EfficiencyTest_2Port(BaseTestObject):
                 sleep(2)
                 self.correct_source_output()
                 soak.do_soak_per_load()
+
+                scope_measurements = {}
+                if self.measure_ripple and self.oscilloscope is not None:
+                    try:
+                        self.oscilloscope.stop()
+                        if self.waveform_filepath:
+                            waveform_filename = (
+                                f"{self.title}_{self.vin_freq[0]:g}V{self.coupling}_"
+                                f"Ch1_{i1_A:g}A_Ch2_{i2_A:g}A.png"
+                            )
+                            self.oscilloscope.get_screenshot(
+                                waveform_filename, self.waveform_filepath)
+                        scope_measurements = self.query_scope_measurements()
+                        self.oscilloscope.run()
+                        sleep(0.5)
+                    except Exception as exc:
+                        print(f"[Warning] Efficiency 2 Port scope capture: {exc}")
                 
                 if self.power_meter_load and getattr(self.power_meter_load, '_current_auto_range_status', False):
                     self.power_meter_load.auto_range_enable(False)
@@ -302,6 +320,9 @@ class EfficiencyTest_2Port(BaseTestObject):
                 self.output_dataframe.loc[len(self.output_dataframe)] = self.process_data_row() 
                 self.update_output_data()
 
+                if self.measure_ripple and scope_measurements:
+                    self.record_scope_measurement_row(scope_measurements)
+
                 if self.power_meter_load:
                     self.power_meter_load.auto_range_enable()
                 if self.power_meter_load_2:
@@ -310,15 +331,11 @@ class EfficiencyTest_2Port(BaseTestObject):
                     self.power_meter_source.current_auto_range_enable()
             
             self.test_data_table.add_blank_row()
-            
-            if self.vin_index > 0:
-                row = 5 + 1 + self.vin_index * (len(self.load_pairs) + 1)
-                anchor = f"A{row}"
-                # Column N is Vo2/Io2/Po2 — regulatory summary must start after Po_Total & Efficiency (col T)
-                eff_anchor = f"T{row}"
-            else:
-                anchor = "A5"
-                eff_anchor = "T5"
+
+            anchor_row = self.next_excel_data_row
+            anchor = f"A{anchor_row}"
+            eff_anchor = f"T{anchor_row}"
+            main_row_count = len(self.output_dataframe)
 
             export_to_excel(
                 self.output_dataframe, self.output_folder_path, 
@@ -327,6 +344,19 @@ class EfficiencyTest_2Port(BaseTestObject):
             export_to_excel(
                 self.efficiency_dataframe, self.output_folder_path, 
                 self.data_filename, self.sheet_name, eff_anchor)
+
+            self.next_excel_data_row = anchor_row + main_row_count + 1
+
+            if self.measure_ripple:
+                scope_title_row = self.next_excel_data_row
+                self.export_scope_block_to_excel(scope_title_row)
+                self.append_scope_block_to_test_data_table()
+                scope_row_count = (
+                    len(self.scope_output_dataframe)
+                    if self.scope_output_dataframe is not None else 0
+                )
+                self.next_excel_data_row = scope_title_row + scope_row_count + 1
+                self.reset_scope_block_data()
              
             self.output_dataframe = self.output_dataframe[0:0]
             self.efficiency_dataframe = self.efficiency_dataframe[0:0]
@@ -424,6 +454,11 @@ class EfficiencyTest_2Port(BaseTestObject):
             text += "Current Request Tracking: Enabled\n"
         else:
             text += "Current Request Tracking: Disabled\n"
+
+        if getattr(self, 'measure_ripple', False):
+            text += "Oscilloscope Measurement: Enabled\n"
+        else:
+            text += "Oscilloscope Measurement: Disabled\n"
         
         if self.use_eload_data:
             text += "Load Measurement: Electonic Load"
@@ -452,6 +487,7 @@ class EfficiencyTest_2Port(BaseTestObject):
         self.tracking_pdo_requests:bool = self.usbpd_options.tracking_pdo_request
 
         self.general_options:GeneralOptions = self.test_conditions.general_options
+        self.measure_ripple:bool = self.general_options.measure_ripple
         self.eload_type:str = self.general_options.eload_type
         self.use_eload_data:bool = self.general_options.use_eload_data
         self.coupling:str = self.general_options.coupling
@@ -586,6 +622,10 @@ class EfficiencyTest_2Port(BaseTestObject):
             self.ws:Worksheet = self.wb.create_sheet(title=self.sheet_name)
 
         self.prepare_sheet_formatting()
+        self.next_excel_data_row = 5
+        self.reset_scope_block_data()
+        if self.measure_ripple and self.waveform_filepath and not os.path.exists(self.waveform_filepath):
+            os.makedirs(self.waveform_filepath, exist_ok=True)
         self.define_output_data_objects()
         
     def prepare_sheet_formatting(self):
@@ -693,6 +733,128 @@ class EfficiencyTest_2Port(BaseTestObject):
             self.test_data_2.vout_V, self.test_data_2.iout_A, self.test_data_2.pout_W, self.test_data_2.vreg_pct,
             self.po_total_W, self.eff_total_pct]
         return data_row
+
+    def reset_scope_block_data(self):
+        """Clear per line-voltage oscilloscope result buffers."""
+        self.scope_column_order = []
+        self.scope_header_list = ['Ch1 Load', 'Ch2 Load']
+        self.scope_output_dataframe = None
+
+    def query_scope_measurements(self) -> dict:
+        """Read active oscilloscope measurement slots into a flat dict."""
+        meas_dict = {}
+        try:
+            all_meas = self.oscilloscope.get_measure_all()
+            if all_meas:
+                for item in all_meas:
+                    labels = item.get('labels')
+                    values = item.get('values')
+                    ch_idx = item.get('channel', 1)
+                    if not labels or not values:
+                        continue
+                    for lbl_raw, val in zip(labels, values):
+                        if val is None or (isinstance(val, float) and math.isnan(val)):
+                            continue
+                        lbl_upper = lbl_raw.upper()
+                        if "MAX" in lbl_upper:
+                            lbl = "Max"
+                        elif "MIN" in lbl_upper:
+                            lbl = "Min"
+                        elif "MEAN" in lbl_upper:
+                            lbl = "Mean"
+                        elif "RMS" in lbl_upper:
+                            lbl = "RMS"
+                        elif "PDEL" in lbl_upper or "PKPK" in lbl_upper:
+                            lbl = "Pk-Pk"
+                        else:
+                            lbl = lbl_raw.title()
+                        meas_dict[f"CH{ch_idx} {lbl}"] = round(float(val), 3)
+        except Exception as exc:
+            print(f"[Warning] Oscilloscope get_measure_all: {exc}")
+
+        if not meas_dict:
+            for ch_idx in range(1, 5):
+                try:
+                    labels, values = self.oscilloscope.get_measure(ch_idx)
+                    if not labels or not values:
+                        continue
+                    for lbl_raw, val in zip(labels, values):
+                        if val is None or (isinstance(val, float) and math.isnan(val)):
+                            continue
+                        lbl_upper = lbl_raw.upper()
+                        if "MAX" in lbl_upper:
+                            lbl = "Max"
+                        elif "MIN" in lbl_upper:
+                            lbl = "Min"
+                        elif "MEAN" in lbl_upper:
+                            lbl = "Mean"
+                        elif "RMS" in lbl_upper:
+                            lbl = "RMS"
+                        elif "PDEL" in lbl_upper or "PKPK" in lbl_upper:
+                            lbl = "Pk-Pk"
+                        else:
+                            lbl = lbl_raw.title()
+                        meas_dict[f"CH{ch_idx} {lbl}"] = round(float(val), 3)
+                except Exception:
+                    pass
+        return meas_dict
+
+    def _ensure_scope_columns(self, meas_dict: dict):
+        for key in meas_dict.keys():
+            if key not in self.scope_column_order:
+                self.scope_column_order.append(key)
+        self.scope_header_list = ['Ch1 Load', 'Ch2 Load'] + self.scope_column_order
+
+    def record_scope_measurement_row(self, meas_dict: dict):
+        """Accumulate one scope row for the current load step."""
+        self._ensure_scope_columns(meas_dict)
+        if self.scope_output_dataframe is None:
+            self.scope_output_dataframe = dataframe_from_headers(self.scope_header_list)
+        row = [self.current_ch1_lbl, self.current_ch2_lbl]
+        for col in self.scope_column_order:
+            val = meas_dict.get(col)
+            row.append(val if val is not None else '')
+        self.scope_output_dataframe.loc[len(self.scope_output_dataframe)] = row
+
+    def export_scope_block_to_excel(self, title_row: int):
+        """Write oscilloscope table below the efficiency block for this line voltage."""
+        if self.scope_output_dataframe is None or len(self.scope_output_dataframe) <= 1:
+            return
+        try:
+            self.wb = openpyxl.load_workbook(self.data_file_path)
+            self.ws = self.wb[self.sheet_name]
+            title_cell = self.ws.cell(row=title_row, column=1, value="Oscilloscope Measurements")
+            title_cell.alignment = Alignment(horizontal='left')
+            self.wb.save(self.data_file_path)
+            self.wb.close()
+            export_to_excel(
+                self.scope_output_dataframe,
+                self.output_folder_path,
+                self.data_filename,
+                self.sheet_name,
+                f"A{title_row + 1}",
+            )
+        except Exception as exc:
+            print(f"[Warning] Failed to export scope block: {exc}")
+
+    def append_scope_block_to_test_data_table(self):
+        """Append scope rows under the efficiency table in Test Results."""
+        if self.scope_output_dataframe is None or len(self.scope_output_dataframe) <= 1:
+            return
+        self.test_data_table.add_blank_row()
+        ncol = max(len(self.test_data_table.header), len(self.scope_header_list))
+        title_row = ['Oscilloscope Measurements'] + [''] * (ncol - 1)
+        self.test_data_table.data.append(title_row)
+        header_row = list(self.scope_header_list) + [''] * (ncol - len(self.scope_header_list))
+        self.test_data_table.data.append(header_row)
+        for row_idx in range(1, len(self.scope_output_dataframe)):
+            row_vals = list(self.scope_output_dataframe.iloc[row_idx].values)
+            row_vals += [''] * (ncol - len(row_vals))
+            self.test_data_table.data.append(row_vals)
+        self.test_data_update.emit([
+            [self.load_vs_efficiency_plot, self.ch1_vreg_plot, self.ch2_vreg_plot],
+            self.test_data_table,
+        ])
     
     def status_report(self, vin_index, load_index, vin_delays):
         remaining_time_s, remaining_steps = self.estimate_remaining(vin_index, load_index, vin_delays)
@@ -751,6 +913,8 @@ class EfficiencyTest_2Port(BaseTestObject):
                 add_time(soak.soak_per_load)
                 add_time(soak.integration_time)
                 add_time(1.7)
+                if getattr(self, 'measure_ripple', False):
+                    add_time(2.5)
 
             add_time(3)
         
