@@ -475,7 +475,6 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
         print(f"[TEST_STEP] {msg}")
         self.current_status_log = msg
         self.upcoming_event_log = upcoming
-        self.update_test_list_text()
 
     def apply_scope_setup(self):
         """Label channels and push custom measurements/cursors to the scope when supported."""
@@ -1235,15 +1234,32 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
         add_time(self.discharge_pulses * 1.5)
         return remaining_time_s, remaining_steps
 
+    def _waveform_queue_time_line(self) -> str:
+        import datetime
+        total_s = getattr(self, 'total_time', 0) or 0
+        total_txt = str(datetime.timedelta(seconds=round(total_s, 0)))
+        if self.status in [TestStatus.STOPPED, TestStatus.FAILED, TestStatus.COMPLETE, TestStatus.SKIPPED]:
+            return str(self.status)
+        rem_txt = getattr(self, 'estimated_time_txt', '') or str(
+            datetime.timedelta(seconds=round(self.estimated_time_s, 0)))
+        prog = getattr(self, 'progress_txt', '') or '0%'
+        return f"{self.status}: {rem_txt} remaining / {total_txt} total, {prog}"
+
     def update_test_list_text(self):
         super().update_test_list_text()
-        lines = [ln for ln in self.test_list_text.split("\n") if not ln.startswith("Oscilloscope Measurement:")]
+        lines = [
+            ln for ln in self.test_list_text.split("\n")
+            if ln and not ln.startswith("Oscilloscope Measurement:")
+        ]
         extra = [f"Trigger: CH{self.trigger_channel} (Delta: {self.trigger_delta:g}V) | Prompts: {self.user_prompts}"]
-        if getattr(self, 'current_status_log', None):
-            extra.append(f"Status: {self.current_status_log}")
-        if getattr(self, 'upcoming_event_log', None):
-            extra.append(f"Upcoming: {self.upcoming_event_log}")
-        self.test_list_text = "\n".join(lines[:2] + extra + lines[2:])
+        merged = lines[:2] + extra + lines[2:]
+        time_line = self._waveform_queue_time_line()
+        merged = [
+            time_line if ln.startswith(f"{TestStatus.IN_QUEUE}:") or ln.startswith(f"{TestStatus.IN_PROGRESS}:")
+            else ln
+            for ln in merged
+        ]
+        self.test_list_text = "\n".join(merged)
 
     ###########################################################################
     #                         Save / load test items                          #
