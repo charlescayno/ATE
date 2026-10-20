@@ -64,6 +64,9 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
     STOP_DISCHARGE_MIN_PULSES = 2
     use_average_efficiency_limits = False
     reapply_scope_before_capture = True
+    BULK_CAP_RAMP_V_PER_S = 100.0
+    BULK_CAP_RAMP_STEP_S = 0.1
+    BULK_CAP_RAMP_SKIP_FRACTION = 0.01
     excel_section_header_row = 14
     excel_first_data_row = 15
 
@@ -541,6 +544,71 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
             except Exception as e:
                 print(f"[Warning] Cursor readback CH{ch_num}: {e}")
 
+    def _bulk_cap_ramp_applies(self) -> bool:
+        """DC + Magna (TST-326 HVDC) bulk-cap inrush ramp."""
+        if self.coupling != AC_SOURCE_COUPLING.DC:
+            return False
+        return self.input_supply_needs_discharge_resistor_check()
+
+    def _read_input_voltage_for_skip(self):
+        try:
+            if self.power_meter_source:
+                v = self.power_meter_source.voltage
+                if v is not None:
+                    return float(v)
+        except (TypeError, ValueError, AttributeError):
+            pass
+        try:
+            v = getattr(self.input_supply, 'voltage', None)
+            if v is not None:
+                return float(v)
+        except (TypeError, ValueError, AttributeError):
+            pass
+        return None
+
+    def _bulk_cap_ramp_to_voltage(self, target_v: float):
+        """Ramp from 0 V to target_v at BULK_CAP_RAMP_V_PER_S (Magna DC only)."""
+        global test_control_flags
+        target_v = float(target_v)
+        if not self._bulk_cap_ramp_applies():
+            return
+
+        tol = self.BULK_CAP_RAMP_SKIP_FRACTION * max(abs(target_v), 1.0)
+        measured = self._read_input_voltage_for_skip()
+        if measured is not None and abs(measured - target_v) <= tol:
+            print(
+                f"[TEST_STEP] Bulk-cap ramp skipped "
+                f"(within {self.BULK_CAP_RAMP_SKIP_FRACTION * 100:g}% of {target_v:g} V, read {measured:g} V)"
+            )
+            self.input_supply.set_voltage_with_coupling(voltage=target_v, coupling=self.coupling)
+            self.input_supply.turn_on()
+            return
+
+        print(
+            f"[TEST_STEP] Bulk-cap ramp 0 -> {target_v:g} V "
+            f"at {self.BULK_CAP_RAMP_V_PER_S:g} V/s"
+        )
+        try:
+            self.input_supply.turn_off()
+        except Exception:
+            pass
+        sleep(0.2)
+        self.input_supply.set_voltage_with_coupling(voltage=0.0, coupling=self.coupling)
+        self.input_supply.turn_on()
+        sleep(0.1)
+
+        step_v = self.BULK_CAP_RAMP_V_PER_S * self.BULK_CAP_RAMP_STEP_S
+        v = 0.0
+        while v < target_v - step_v * 0.5:
+            if test_control_flags.get('StopTest'):
+                raise TestStopped
+            if test_control_flags.get('SkipTest'):
+                raise TestSkipped
+            v = min(v + step_v, target_v)
+            self.input_supply.set_voltage_with_coupling(voltage=v, coupling=self.coupling)
+            sleep(self.BULK_CAP_RAMP_STEP_S)
+        self.input_supply.set_voltage_with_coupling(voltage=target_v, coupling=self.coupling)
+
     def test_loop(self):
         soak = self.soak_time
 
@@ -570,7 +638,11 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
         for self.vin_index, self.vin_freq in enumerate(self.vin_list):
             vin_set = self.vin_freq[0]
             self.update_status_log(f"Setting Input {vin_set:g} V{self.coupling}", upcoming="Line Soak")
-            self.input_supply.set_voltage_with_coupling(voltage=vin_set, coupling=self.coupling)
+            if self._bulk_cap_ramp_applies():
+                self._bulk_cap_ramp_to_voltage(vin_set)
+            else:
+                self.input_supply.set_voltage_with_coupling(voltage=vin_set, coupling=self.coupling)
+                self.input_supply.turn_on()
             if self.coupling == AC_SOURCE_COUPLING.AC:
                 self.input_supply.frequency = self.vin_freq[1]
             self.source_vout = vin_set
@@ -579,7 +651,6 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
             self.test_data.ac_freq_Hz = self.vin_freq[1]
 
             self.create_new_plot_series()
-            self.input_supply.turn_on()
 
             if self.power_meter_load:
                 self.power_meter_load.auto_range_enable()
@@ -1215,9 +1286,11 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
                 if add_step:
                     remaining_steps += 1
 
-        for vin_index, _ in enumerate(self.vin_list):
+        for vin_index, vin_row in enumerate(self.vin_list):
             load_index = 0
             if vin_delays:
+                if self._bulk_cap_ramp_applies():
+                    add_time(float(vin_row[0]) / self.BULK_CAP_RAMP_V_PER_S + 0.5)
                 add_time(4)
                 if self.usbpd_test:
                     add_time(1)
