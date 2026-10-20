@@ -62,8 +62,9 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
     DISCHARGE_CC_A = 1.0
     STOP_DISCHARGE_MIN_PULSES = 2
     use_average_efficiency_limits = False
-    excel_section_header_row = 10
-    excel_first_data_row = 11
+    reapply_scope_before_capture = True
+    excel_section_header_row = 14
+    excel_first_data_row = 15
 
     ui_definitions = General_UI_Definitions()
     ui_definitions.stack_page_1 = StackWidget1Pages.LineVoltageRange
@@ -361,6 +362,7 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
 
         self.prepare_sheet_formatting()
         self.next_excel_data_row = self.excel_first_data_row
+        self._excel_vin_block_index = 0
         self.define_output_data_objects()
 
     def scope_excel_col(self) -> int:
@@ -368,6 +370,7 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
         return 25 if self.use_average_efficiency_limits else 20
 
     def _write_run_metadata_rows(self, ws):
+        soak = self.soak_time
         meta = [
             ("Unit ID", self.unit_id),
             ("Ambient Temp (°C)", self.ambient_temp),
@@ -376,6 +379,11 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
             ("Mode", self.dual_load_mode),
             ("Probes", self.probe_setup),
             ("Trigger", f"CH{self.trigger_channel}"),
+            ("Soak profile", soak.name),
+            ("Initial soak (s)", soak.initial_soak),
+            ("Soak per line (s)", soak.soak_per_line),
+            ("Soak per load (s)", soak.soak_per_load),
+            ("Integration time (s)", soak.integration_time),
         ]
         for row_offset, (label, value) in enumerate(meta):
             row = 2 + row_offset
@@ -488,12 +496,27 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
                     self.oscilloscope.cursor(channel=ch_num, cursor_set=ch_num, type=ctype_short)
                 except Exception as e:
                     print(f"[Warning] Failed to set cursor on CH{ch_num}: {e}")
+        if custom_meas:
+            print(f"[SCOPE] apply_scope_setup measurements: {custom_meas}")
         if custom_meas and hasattr(self.oscilloscope, 'set_channel_measurements'):
             try:
                 self.oscilloscope.set_channel_measurements(custom_meas)
                 sleep(1)
+                configured = getattr(self.oscilloscope, 'configured_measurements', None)
+                if configured is not None:
+                    print(f"[SCOPE] configured_measurements: {configured}")
             except Exception as e:
                 print(f"[Warning] Failed to set custom measurements on scope: {e}")
+        for ch_num, ch_data in self.scope_channels.items():
+            if not (ch_data.get('cursor') or {}).get('enabled'):
+                continue
+            if not hasattr(self.oscilloscope, 'write'):
+                continue
+            try:
+                state = self.oscilloscope.write(f'CURS{ch_num}:STAT?')
+                print(f"[SCOPE] CH{ch_num} cursor STAT readback: {state!r}")
+            except Exception as e:
+                print(f"[Warning] Cursor readback CH{ch_num}: {e}")
 
     def test_loop(self):
         soak = self.soak_time
@@ -675,23 +698,37 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
         self.po_total_W = self.test_data.pout_W + self.test_data_2.pout_W
         self.eff_total_pct = (self.po_total_W / self.test_data.pin_W * 100) if self.test_data.pin_W > 0 else 0
 
+    def _export_dataframe_slice(self, df, anchor: str):
+        if df is None or len(df) == 0:
+            return 0
+        first_block = self._excel_vin_block_index == 0
+        export_df = df if first_block else df.iloc[1:]
+        if len(export_df) == 0:
+            return 0
+        export_to_excel(export_df, self.output_folder_path,
+                        self.data_filename, self.sheet_name, anchor)
+        return len(export_df)
+
     def _export_line_block(self):
         anchor_row = self.next_excel_data_row
         scope_col = get_column_letter(self.scope_excel_col())
-        export_to_excel(self.output_dataframe, self.output_folder_path,
-                        self.data_filename, self.sheet_name, f"A{anchor_row}")
+        first_block = self._excel_vin_block_index == 0
+        rows_written = self._export_dataframe_slice(
+            self.output_dataframe, f"A{anchor_row}")
         if self.use_average_efficiency_limits and self.efficiency_dataframe is not None:
-            export_to_excel(self.efficiency_dataframe, self.output_folder_path,
-                            self.data_filename, self.sheet_name, f"T{anchor_row}")
-        export_to_excel(self.scope_dataframe, self.output_folder_path,
-                        self.data_filename, self.sheet_name, f"{scope_col}{anchor_row}")
-        self._bold_excel_column_header_row(anchor_row)
-        self.next_excel_data_row = anchor_row + len(self.output_dataframe) + 1
+            self._export_dataframe_slice(
+                self.efficiency_dataframe, f"T{anchor_row}")
+        self._export_dataframe_slice(
+            self.scope_dataframe, f"{scope_col}{anchor_row}")
+        if first_block:
+            self._bold_excel_column_header_row(anchor_row)
+        self.next_excel_data_row = anchor_row + rows_written
+        self._excel_vin_block_index += 1
 
-        self.output_dataframe = self.output_dataframe[0:0]
+        self.output_dataframe = dataframe_from_headers(self.header_list)
         if self.efficiency_dataframe is not None:
-            self.efficiency_dataframe = self.efficiency_dataframe[0:0]
-        self.scope_dataframe = self.scope_dataframe[0:0]
+            self.efficiency_dataframe = dataframe_from_headers(self.efficiency_header)
+        self.scope_dataframe = dataframe_from_headers(self.scope_header_list)
 
     ###########################################################################
     #                          Oscilloscope capture                           #
@@ -708,6 +745,8 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
                 trig_level = self._read_trigger_level()
 
             self.update_status_log("Capturing waveform...", upcoming="Save Screenshot")
+            if self.reapply_scope_before_capture:
+                self.apply_scope_setup()
             self.oscilloscope.run_single()
             sleep(1)
             self.oscilloscope.stop()

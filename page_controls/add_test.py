@@ -2345,7 +2345,7 @@ class AddTestPageHandler(QObject):
         cursor_layout.addWidget(cursor_type_combo)
         layout.addLayout(cursor_layout)
 
-        label = QLabel("Select measurements for R&&S Oscilloscope:")
+        label = QLabel("Select measurements for R&S Oscilloscope:")
         layout.addWidget(label)
         
         meas_options = ["MAXimum", "MINimum", "MEAN", "RMS", "PDELta"]
@@ -2497,6 +2497,26 @@ class AddTestPageHandler(QObject):
         if hasattr(self, 'selected_test_item') and self.selected_test_item and hasattr(self, 'get_scope_channels_from_ui'):
             if hasattr(self.selected_test_item, 'test_conditions'):
                 self.selected_test_item.test_conditions.scope_channels = self.get_scope_channels_from_ui()
+
+    def sync_waveform_scope_channels_before_run(self):
+        """Snapshot scope matrix UI onto queued waveform tests (selected row) before Run."""
+        if not hasattr(self, 'get_scope_channels_from_ui'):
+            return
+        try:
+            wf_idx = TestTypes.index(EfficiencyWaveformTest_2Port)
+        except ValueError:
+            return
+        selected_row = self.ui.table_add_tests_test_list.currentRow()
+        scope_visible = (
+            hasattr(self, 'frame_scope_channels')
+            and self.frame_scope_channels.isVisible()
+        )
+        if selected_row < 0 or not scope_visible:
+            return
+        scope = self.get_scope_channels_from_ui()
+        for idx, item in enumerate(self.test_plan.test_items):
+            if item.test_type_index == wf_idx and idx == selected_row:
+                item.test_conditions.scope_channels = scope
 
     def update_test_list_control_buttons_state(self):
         """Update ui button status for test item control"""
@@ -4400,6 +4420,9 @@ class AddTestPageHandler(QObject):
         """
         # Disable the RUN button
         self.ui.btn_add_tests_run.setEnabled(False)
+
+        self.sync_scope_channels_to_selected_test_item()
+        self.sync_waveform_scope_channels_before_run()
 
         # Do logical checks first
         if self.usbpd_sink is not None:

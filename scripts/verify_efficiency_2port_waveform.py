@@ -49,16 +49,24 @@ def run_case(mode_key: str, out_dir: str) -> list:
         nominal_output_voltage_V=5, nominal_load_current_A=5, max_load_current_A=5,
         line_range=LineRange(name='TEST', vin_freq=vin, custom=True),
         load_range=LoadRange(name='TEST', load_range_pct=loads, custom=True),
-        soak_time=SoakTime(name='TEST', initial=0, line=0, load=0, integration=0),
+        soak_time=SoakTime(name='VERIFY_SOAK', initial=2, line=3, load=4, integration=1),
         general_options=GeneralOptions(coupling='AC'),
         usbpd_options=USBPDOptions(),
         i2c_test_parameters=I2CTestParameters(
             params=[12.0, 2.0, 0.0, "100, 50", 3.0, 0, 0, 25.0, 0, 2],
             cbx_params=[MODES[mode_key], 'Yes', 'None (Fully Automated)', 'No']),
         unit_id='U7', ambient_temp=25.0,
-        scope_channels={1: {'enabled': True, 'name': 'Primary Vds', 'derating': 650},
-                        2: {'enabled': True, 'name': 'Ids'},
-                        3: {'enabled': False, 'name': ''}, 4: {'enabled': False, 'name': ''}})
+        scope_channels={
+            1: {
+                'enabled': True,
+                'name': 'Primary Vds',
+                'derating': 650,
+                'measurements': ['MAXimum', 'MINimum'],
+            },
+            2: {'enabled': True, 'name': 'Ids', 'measurements': ['MAXimum']},
+            3: {'enabled': False, 'name': ''},
+            4: {'enabled': False, 'name': ''},
+        })
 
     statuses = []
     test = EfficiencyWaveformTest_2Port(FakeItem(FakeParent(), conditions))
@@ -90,19 +98,26 @@ def run_case(mode_key: str, out_dir: str) -> list:
         errors.append(f"mode {mode_key}: unexpected Average Efficiency Limits section at column T")
     if ws['A2'].value != 'Unit ID' or ws['B2'].value != 'U7':
         errors.append(f"mode {mode_key}: metadata A2/B2 = {ws['A2'].value!r}/{ws['B2'].value!r}")
-    expected_scope = ['Trig Ch', 'Trig Level (V)', 'Primary Vds Max', 'Primary Vds Derating (%)', 'Ids Max', 'Waveform File']
+    if ws['A9'].value != 'Soak profile' or ws['B9'].value != 'VERIFY_SOAK':
+        errors.append(f"mode {mode_key}: soak profile = {ws['A9'].value!r}/{ws['B9'].value!r}")
+    if ws['B10'].value != 2 or ws['B11'].value != 3 or ws['B12'].value != 4 or ws['B13'].value != 1:
+        errors.append(
+            f"mode {mode_key}: soak times B10-B13 = "
+            f"{ws['B10'].value!r}/{ws['B11'].value!r}/{ws['B12'].value!r}/{ws['B13'].value!r}")
+    expected_scope = [
+        'Trig Ch', 'Trig Level (V)', 'Primary Vds Max', 'Primary Vds Derating (%)',
+        'Primary Vds Min', 'Ids Max', 'Waveform File',
+    ]
     got_scope = [ws.cell(row=col_row, column=scope_section_col + i).value for i in range(len(expected_scope))]
     if got_scope != expected_scope:
         errors.append(f"mode {mode_key}: scope headers {got_scope}")
 
     data_start = col_row + 1
     for vin_idx in range(len(vin)):
-        if ws.cell(row=data_start + n_points, column=1).value not in (None, ''):
-            errors.append(f"mode {mode_key}: expected blank separator at row {data_start + n_points}")
         for r in range(data_start, data_start + n_points):
             eff = ws.cell(row=r, column=19).value
             vds = ws.cell(row=r, column=scope_section_col + 2).value
-            img = ws.cell(row=r, column=scope_section_col + 5).value
+            img = ws.cell(row=r, column=scope_section_col + len(expected_scope) - 1).value
             if not isinstance(eff, (int, float)) or not isinstance(vds, (int, float)):
                 errors.append(f"mode {mode_key}: row {r} eff={eff!r} vds={vds!r}")
             if ws.cell(row=r, column=scope_section_col).value != 'CH2':
@@ -111,7 +126,13 @@ def run_case(mode_key: str, out_dir: str) -> list:
                     f"{ws.cell(row=r, column=scope_section_col).value!r}")
             if not img or not os.path.exists(img):
                 errors.append(f"mode {mode_key}: row {r} missing screenshot {img!r}")
-        data_start += n_points + 1
+        if vin_idx > 0:
+            r0 = data_start
+            if ws.cell(row=r0, column=1).value == 'Ch1 Load':
+                errors.append(f"mode {mode_key}: repeated column header at row {r0} for Vin block {vin_idx}")
+            if ws.cell(row=r0, column=19).value == 'Efficiency (%)':
+                errors.append(f"mode {mode_key}: repeated efficiency header at row {r0}")
+        data_start += n_points
 
     wf_sheet = f"{test.short_title}_Waveforms"
     if wf_sheet not in wb.sheetnames:
@@ -121,7 +142,9 @@ def run_case(mode_key: str, out_dir: str) -> list:
 
     table = test.test_data_table
     if len(table.header) != 19 + len(expected_scope):
-        errors.append(f"mode {mode_key}: results table has {len(table.header)} columns")
+        errors.append(
+            f"mode {mode_key}: results table has {len(table.header)} columns, "
+            f"expected {19 + len(expected_scope)}")
     data_rows = [r for r in table.data if any(v != '' for v in r)]
     if len(data_rows) != n_points * len(vin):
         errors.append(f"mode {mode_key}: results table has {len(data_rows)} data rows")
