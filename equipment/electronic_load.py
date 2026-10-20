@@ -812,7 +812,43 @@ class ElectronicLoadModule(Equipment):
         self.active_channel_status = self.write(f'{self.prog_func.load}?')
         self.active_channel_short = 0
         return self.active_channel_short
-        
+
+    def set_cc_high(self, current:float):
+        '''Constant current in the high range (CCH) regardless of level; used for output discharge.'''
+        self.write(f'{self.prog_func.channel} {self.channel}')
+        self.write(f'{self.prog_func.load} OFF')
+        self.write(f'{self.prog_func.mode} CCH')
+        self.write(f'{self.prog_func.current_static}:L1 {current}')
+        self.active_channel_mode = 'CCH'
+        self._active_level = '1'
+        self._cc = current
+
+    def snapshot_state(self) -> dict:
+        self.write(f'{self.prog_func.channel} {self.channel}')
+        mode = self.write(f'{self.prog_func.mode}?')
+        status = self.write(f'{self.prog_func.load}?')
+        try:
+            cc_l1 = self.cc_static_l1
+        except Exception:
+            cc_l1 = None
+        return {'mode': mode, 'status': status, 'cc_l1': cc_l1,
+                'level': self._active_level, 'cc': self._cc}
+
+    def restore_state(self, state:dict):
+        self.write(f'{self.prog_func.channel} {self.channel}')
+        self.write(f'{self.prog_func.load} OFF')
+        if state.get('mode'):
+            self.write(f"{self.prog_func.mode} {state['mode']}")
+            self.active_channel_mode = state['mode']
+        if state.get('cc_l1') is not None and state.get('mode') in ('CCL', 'CCM', 'CCH'):
+            self.write(f"{self.prog_func.current_static}:L1 {state['cc_l1']}")
+        self._active_level = state.get('level', self._active_level)
+        self._cc = state.get('cc', self._cc)
+        if state.get('status') == EloadStatus.ON:
+            self.turn_on()
+        else:
+            self.active_channel_status = self.write(f'{self.prog_func.load}?')
+
     @visa_io
     def set_load(self, vout_V:float, iout_A:float, mode:str):
         ''' Set eload to defined load and automatically choose the eload type'''
@@ -989,6 +1025,9 @@ class ElectronicLoad(Equipment):
             self.load.write(f'{self.prog_func.channel} {self.channel}')
             self.load.write(f'{self.prog_func.current_static}:L1 {self._cc}')
             self.load.write(f'{self.prog_func.mode} CCH')
+
+        def set_cc_high(self, current):
+            self.cc = current
 
         @cr.setter
         def cr(self, resistance):

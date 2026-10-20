@@ -460,7 +460,7 @@ class VdsIdsSteadyStateTest(BaseTestObject):
                 if hasattr(self.electronic_load, 'channel') and isinstance(self.electronic_load.channel, (dict, list)):
                     for ch in range(1, len(self.electronic_load.channel) + 1):
                         try:
-                            self.electronic_load.channel[ch].short_on()
+                            self.electronic_load.channel[ch].set_cc_high(self.i_max_A)
                             self.electronic_load.channel[ch].turn_on()
                         except Exception:
                             pass
@@ -468,13 +468,12 @@ class VdsIdsSteadyStateTest(BaseTestObject):
                     for ch in range(1, len(self.electronic_load.channel) + 1):
                         try:
                             self.electronic_load.channel[ch].turn_off()
-                            self.electronic_load.channel[ch].short_off()
                         except Exception:
                             pass
                     sleep(0.5)
                 else:
                     try:
-                        self.electronic_load.cc = self.i_max_A
+                        self.electronic_load.set_cc_high(self.i_max_A)
                         self.electronic_load.turn_on()
                         sleep(1)
                         self.electronic_load.turn_off()

@@ -785,7 +785,7 @@ class EquipmentHandler():
             self.dc_source = self.dc_sources[0]
             
     def input_supply_eload_discharge_sequence(self,iout_A,coupling=AC_SOURCE_COUPLING.AC):
-        self.electronic_load_1.cc = iout_A
+        self.electronic_load_1.set_cc_high(iout_A)
         self.electronic_load_1.turn_on()
         if (self.dc_source is not None) and (coupling == AC_SOURCE_COUPLING.DC):
             self.dc_source.turn_off()

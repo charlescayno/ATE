@@ -22,6 +22,7 @@ from equipment.ac_source import *
 from equipment.power_meter import *
 from equipment.electronic_load import *
 import inject_ui
+from page_controls import pml_grid
 from equipment.eload_specs import ELoadTypes
 
 from user_settings.save_load import (write_to_default_config, read_from_default_config) 
@@ -234,8 +235,8 @@ class ManualControlPageHandler():
         inject_ui.inject_ui(self)
         self.ui.frame_manual_control_eload_2.setVisible(True)
         self.ui.frame_manual_control_eload_4.setVisible(False)
-        self.ui.frame_manual_control_pml_3.setVisible(False)
-        self.ui.frame_manual_control_pml_4.setVisible(False)
+        self.pml_grid = pml_grid.PmlGrid(self)
+        self.pml_pout_W = {n: None for n in pml_grid.CHANNELS}
 
         # Bind UI elements to functionss
         self.bind_ui_elements()
@@ -244,6 +245,7 @@ class ManualControlPageHandler():
         self.equipment:EquipmentHandler = parent.equipment
 
         self.setup_update_timer()
+        self.discharge = pml_grid.DischargeSequencer(self.parent, self.get_discharge_loads)
         # Initializations
         self.epr_mode_enabled = False
 
@@ -326,6 +328,29 @@ class ManualControlPageHandler():
         self.ui.gridLayout_3.addWidget(self.ui.label_manual_control_dc_source_estimated_time, 5, 0, 1, 2)
         spacer = QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding)
         self.ui.gridLayout_3.addItem(spacer, 6, 0, 1, 2)
+
+        # Output discharge controls (CCH pulse on every assigned e-load)
+        params = self.ui.frame_manual_control_ac_source_params
+        self.ui.chkbox_manual_control_auto_discharge = QCheckBox(params)
+        self.ui.chkbox_manual_control_auto_discharge.setText("Auto-discharge on source OFF")
+        self.ui.chkbox_manual_control_auto_discharge.setStyleSheet("color: white;")
+        self.ui.chkbox_manual_control_auto_discharge.setChecked(True)
+        self.ui.gridLayout_3.addWidget(self.ui.chkbox_manual_control_auto_discharge, 7, 0, 1, 2)
+        self.ui.label_manual_control_discharge_current = QLabel(params)
+        self.ui.label_manual_control_discharge_current.setText("Discharge CCH (A)")
+        self.ui.gridLayout_3.addWidget(self.ui.label_manual_control_discharge_current, 8, 0, 1, 1)
+        self.ui.lineedit_manual_control_discharge_current = QLineEdit(params)
+        self.ui.lineedit_manual_control_discharge_current.setText("1.0")
+        self.ui.lineedit_manual_control_discharge_current.setValidator(self.validator)
+        self.ui.lineedit_manual_control_discharge_current.setStyleSheet(self.ui.lineedit_manual_control_ac_source_voltage.styleSheet())
+        self.ui.gridLayout_3.addWidget(self.ui.lineedit_manual_control_discharge_current, 8, 1, 1, 1)
+        from PySide2.QtWidgets import QPushButton
+        self.ui.btn_manual_control_discharge = QPushButton(params)
+        self.ui.btn_manual_control_discharge.setText("Discharge")
+        self.ui.btn_manual_control_discharge.setMinimumHeight(32)
+        self.ui.btn_manual_control_discharge.setStyleSheet(self.ui.btn_manual_control_ac_source_turn_off.styleSheet())
+        self.ui.btn_manual_control_discharge.clicked.connect(self.discharge_output_manual)
+        self.ui.gridLayout_3.addWidget(self.ui.btn_manual_control_discharge, 9, 0, 1, 2)
         self.ui.lineedit_manual_control_dc_source_slew_rate.textChanged.connect(self.update_estimated_ramp_time)
         self.ui.lineedit_manual_control_ac_source_voltage.textChanged.connect(self.update_estimated_ramp_time)
 
@@ -472,6 +497,18 @@ class ManualControlPageHandler():
         self.ui_power_meter_load_4_update()
         self.ui_power_meter_source_update()
         self.ui_power_meter_load_update()
+        self.ui_pml_total_update()
+
+    def ui_pml_total_update(self):
+        accessible = {n: getattr(self, 'power_meter_load_accessible' if n == 1 else f'power_meter_load_{n}_accessible', False)
+                      for n in pml_grid.CHANNELS}
+        pouts = {n: p for n, p in self.pml_pout_W.items() if accessible[n] and p is not None}
+        pin = getattr(self, 'Pin_W', None) if getattr(self, 'power_meter_source_accessible', False) else None
+        total, eff, shares = pml_grid.compute_efficiency(pin, pouts)
+        for n in pml_grid.CHANNELS:
+            if accessible[n]:
+                self.pml_grid.set_share(n, shares.get(n))
+        self.pml_grid.set_totals(pin, total, eff, len(pouts))
 
     @power_meter_source_access
     def ui_power_meter_source_update(self):
@@ -502,22 +539,20 @@ class ManualControlPageHandler():
         current = self.power_meter_load._current
         if current < 10e3:
             self.ui.label_pml_display_b.setText(f'{current:.2f} A')
-        self.Pout_W = self.power_meter_load._power
-        if self.Pout_W < 10e3:
-            self.ui.label_pml_display_c.setText(f'{self.Pout_W:.2f} W')
-        if (self.Pin_W > 0) and (self.Pout_W < 10e3) and (self.Pin_W < 10e3):
-            eff = self.Pout_W/self.Pin_W*100
-            self.ui.label_pml_display_d.setText(f'{eff:.2f}% Eff')
-        else:
-            self.ui.label_pml_display_d.setText('None')
+        pout_W = self.power_meter_load._power
+        self.pml_pout_W[1] = pout_W if pout_W < 10e3 else None
+        if pout_W < 10e3:
+            self.ui.label_pml_display_c.setText(f'{pout_W:.2f} W')
             
     def ui_power_meter_load_update_fail(self):
+        self.pml_pout_W[1] = None
         self.ui.label_pml_display_a.setText('None')
         self.ui.label_pml_display_b.setText('None')
         self.ui.label_pml_display_c.setText('None')
         self.ui.label_pml_display_d.setText('None')
     
     def ui_power_meter_source_update_fail(self):
+        self.Pin_W = None
         self.ui.label_pms_display_a.setText('None')
         self.ui.label_pms_display_b.setText('None')
         self.ui.label_pms_display_c.setText('None')
@@ -811,6 +846,7 @@ class ManualControlPageHandler():
         self.electronic_load = None
 
         self.initialize_equipment_ui_frames()
+        self.refresh_pml_assignment()
 
         # TODO: Add a way to configure which equipment is to be used in the GUI
         # Currently the equipment used are based on address order
@@ -830,9 +866,9 @@ class ManualControlPageHandler():
             return
             
         self.power_meter_load_update()
-        if hasattr(self, 'power_meter_load_2_update'): self.power_meter_load_2_update()
-        if hasattr(self, 'power_meter_load_3_update'): self.power_meter_load_3_update()
-        if hasattr(self, 'power_meter_load_4_update'): self.power_meter_load_4_update()
+        self.power_meter_load_2_update()
+        self.power_meter_load_3_update()
+        self.power_meter_load_4_update()
         
         self.power_meter_source_update()
         
@@ -840,6 +876,54 @@ class ManualControlPageHandler():
         if hasattr(self, 'eload_2_update'): self.eload_2_update()
         if hasattr(self, 'eload_3_update'): self.eload_3_update()
         if hasattr(self, 'eload_4_update'): self.eload_4_update()
+
+    def refresh_pml_assignment(self):
+        """Grey out load power meter tiles that have no meter assigned in Equipment Setup."""
+        for n in pml_grid.CHANNELS:
+            assigned = getattr(self.equipment, f'power_meter_load_{n}', None) is not None
+            self.pml_grid.set_assigned(n, assigned)
+            if not assigned:
+                setattr(self, 'power_meter_load_accessible' if n == 1 else f'power_meter_load_{n}_accessible', False)
+                self.pml_pout_W[n] = None
+
+    @power_meter_load_2_access
+    def power_meter_load_2_update(self):
+        self.equipment.power_meter_load_2.update_basic_params()
+
+    @power_meter_load_3_access
+    def power_meter_load_3_update(self):
+        self.equipment.power_meter_load_3.update_basic_params()
+
+    @power_meter_load_4_access
+    def power_meter_load_4_update(self):
+        self.equipment.power_meter_load_4.update_basic_params()
+
+    def get_discharge_loads(self):
+        loads = []
+        for n in (1, 2, 3, 4):
+            ld = getattr(self.equipment, f'electronic_load_{n}', None)
+            if ld is not None:
+                loads.append((f'E-Load CH{n}', ld))
+        return loads
+
+    def discharge_current_A(self):
+        try:
+            return max(0.0, float(self.ui.lineedit_manual_control_discharge_current.text()))
+        except ValueError:
+            return 1.0
+
+    def start_output_discharge(self, reason: str):
+        self.discharge.start(self.discharge_current_A(), reason)
+
+    def discharge_output_manual(self):
+        self.is_ramping = False
+        source = getattr(self, 'ac_source', None)
+        if source is not None:
+            try:
+                source.turn_off()
+            except Exception as e:
+                print(f"[DISCHARGE] source OFF failed: {e}")
+        self.start_output_discharge("Discharge button")
 
     def initialize_equipment_ui_frames(self):
         """Set the frames of the equipment to normal"""
@@ -1001,6 +1085,8 @@ class ManualControlPageHandler():
             case AC_SOURCE_REQUEST.OFF:
                 self.is_ramping = False
                 self.ac_source.turn_off()
+                if self.ui.chkbox_manual_control_auto_discharge.isChecked():
+                    self.start_output_discharge("source OFF")
 
     def ac_source_power_on(self):
         if (self.ui.lineedit_manual_control_ac_source_voltage.text() == ''):
@@ -1531,16 +1617,13 @@ class ManualControlPageHandler():
         current = self.equipment.power_meter_load_2._current
         if current < 10e3:
             self.ui.label_pml_display_b_2.setText(f'{current:.2f} A')
-        self.Pout_W = self.equipment.power_meter_load_2._power
-        if self.Pout_W < 10e3:
-            self.ui.label_pml_display_c_2.setText(f'{self.Pout_W:.2f} W')
-        if (self.Pin_W > 0) and (self.Pout_W < 10e3) and (self.Pin_W < 10e3):
-            eff = self.Pout_W/self.Pin_W*100
-            self.ui.label_pml_display_d_2.setText(f'{eff:.2f}% Eff')
-        else:
-            self.ui.label_pml_display_d_2.setText('None')
+        pout_W = self.equipment.power_meter_load_2._power
+        self.pml_pout_W[2] = pout_W if pout_W < 10e3 else None
+        if pout_W < 10e3:
+            self.ui.label_pml_display_c_2.setText(f'{pout_W:.2f} W')
             
     def ui_power_meter_load_2_update_fail(self):
+        self.pml_pout_W[2] = None
         self.ui.label_pml_display_a_2.setText('None')
         self.ui.label_pml_display_b_2.setText('None')
         self.ui.label_pml_display_c_2.setText('None')
@@ -1773,16 +1856,13 @@ class ManualControlPageHandler():
         current = self.equipment.power_meter_load_3._current
         if current < 10e3:
             self.ui.label_pml_display_b_3.setText(f'{current:.2f} A')
-        self.Pout_W = self.equipment.power_meter_load_3._power
-        if self.Pout_W < 10e3:
-            self.ui.label_pml_display_c_3.setText(f'{self.Pout_W:.2f} W')
-        if (self.Pin_W > 0) and (self.Pout_W < 10e3) and (self.Pin_W < 10e3):
-            eff = self.Pout_W/self.Pin_W*100
-            self.ui.label_pml_display_d_3.setText(f'{eff:.2f}% Eff')
-        else:
-            self.ui.label_pml_display_d_3.setText('None')
+        pout_W = self.equipment.power_meter_load_3._power
+        self.pml_pout_W[3] = pout_W if pout_W < 10e3 else None
+        if pout_W < 10e3:
+            self.ui.label_pml_display_c_3.setText(f'{pout_W:.2f} W')
             
     def ui_power_meter_load_3_update_fail(self):
+        self.pml_pout_W[3] = None
         self.ui.label_pml_display_a_3.setText('None')
         self.ui.label_pml_display_b_3.setText('None')
         self.ui.label_pml_display_c_3.setText('None')
@@ -2015,16 +2095,13 @@ class ManualControlPageHandler():
         current = self.equipment.power_meter_load_4._current
         if current < 10e3:
             self.ui.label_pml_display_b_4.setText(f'{current:.2f} A')
-        self.Pout_W = self.equipment.power_meter_load_4._power
-        if self.Pout_W < 10e3:
-            self.ui.label_pml_display_c_4.setText(f'{self.Pout_W:.2f} W')
-        if (self.Pin_W > 0) and (self.Pout_W < 10e3) and (self.Pin_W < 10e3):
-            eff = self.Pout_W/self.Pin_W*100
-            self.ui.label_pml_display_d_4.setText(f'{eff:.2f}% Eff')
-        else:
-            self.ui.label_pml_display_d_4.setText('None')
+        pout_W = self.equipment.power_meter_load_4._power
+        self.pml_pout_W[4] = pout_W if pout_W < 10e3 else None
+        if pout_W < 10e3:
+            self.ui.label_pml_display_c_4.setText(f'{pout_W:.2f} W')
             
     def ui_power_meter_load_4_update_fail(self):
+        self.pml_pout_W[4] = None
         self.ui.label_pml_display_a_4.setText('None')
         self.ui.label_pml_display_b_4.setText('None')
         self.ui.label_pml_display_c_4.setText('None')

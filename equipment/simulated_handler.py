@@ -267,6 +267,28 @@ class SimulatedElectronicLoadModule:
     def set_cc_static_slew(self, slew): pass
     def short_on(self): pass
     def short_off(self): pass
+    def get_id(self): return self.device_id
+
+    def set_cc_high(self, current: float):
+        print(f"[E_LOAD] Electronic Load Simulated (CH {self.channel}): CCH {current} A")
+        self._ch['load_on'] = False
+        self.active_channel_mode = 'CCH'
+        self._ch['iout'] = float(current)
+
+    def snapshot_state(self) -> dict:
+        return {'mode': getattr(self, 'active_channel_mode', 'CCL'),
+                'status': 1 if self._ch['load_on'] else 0,
+                'cc_l1': self._ch['iout'], 'level': self._active_level, 'cc': self._ch['iout']}
+
+    def restore_state(self, state: dict):
+        self._ch['load_on'] = False
+        self.active_channel_mode = state.get('mode', 'CCL')
+        if state.get('cc_l1') is not None:
+            self._ch['iout'] = float(state['cc_l1'])
+        self._active_level = state.get('level', self._active_level)
+        if state.get('status') == 1:
+            self.turn_on()
+
     def reset_values(self): pass
     def cleanup(self): self.turn_off()
     def close(self): pass
@@ -295,6 +317,8 @@ class SimulatedPowerMeter:
         if self.channel_idx not in self.state.loads:
             self.state.loads[self.channel_idx] = {'target_vout': 12.0, 'iout': 0.0, 'load_on': False}
         return self.state.loads[self.channel_idx]
+
+    def update_basic_params(self): pass
 
     @property
     def voltage(self):
@@ -658,7 +682,7 @@ class SimulatedEquipmentHandler(EquipmentHandler):
         self.electronic_load_4 = self.e_loads[3] if len(self.e_loads) > 3 else None
 
     def input_supply_eload_discharge_sequence(self, iout_A, coupling=AC_SOURCE_COUPLING.AC):
-        self.electronic_load_1.cc = iout_A
+        self.electronic_load_1.set_cc_high(iout_A)
         self.electronic_load_1.turn_on()
         self.ac_source.turn_off()
         self.electronic_load_1.turn_off()

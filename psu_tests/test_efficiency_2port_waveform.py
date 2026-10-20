@@ -767,7 +767,7 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
         for _ in range(times):
             for ld in loads:
                 try:
-                    ld.cc = self.i_max_A
+                    ld.set_cc_high(self.i_max_A)
                     ld.turn_on()
                 except Exception:
                     pass
