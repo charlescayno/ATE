@@ -290,6 +290,53 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
     ###########################################################################
     #                           Data file / headers                           #
     ###########################################################################
+    @staticmethod
+    def _safe_filename_part(text: str) -> str:
+        s = str(text).strip()
+        for ch in '\\/:*?"<>|':
+            s = s.replace(ch, '_')
+        return s or 'Output'
+
+    def _coupling_v_suffix(self) -> str:
+        return 'VDC' if str(self.coupling).upper() == 'DC' else 'VAC'
+
+    def _line_vin_filename_part(self) -> str:
+        suffix = self._coupling_v_suffix()
+        vals = []
+        for row in getattr(self, 'vin_list', None) or []:
+            try:
+                vals.append(float(row[0]))
+            except (TypeError, ValueError, IndexError):
+                continue
+        if not vals:
+            return self._safe_filename_part(getattr(self.line_range, 'name', 'Line'))
+        lo, hi = min(vals), max(vals)
+        if abs(lo - hi) < 0.05:
+            return f"{lo:g}{suffix}"
+        return f"{lo:g}-{hi:g}{suffix}"
+
+    def _scope_names_filename_part(self) -> str:
+        """All enabled scope labels, e.g. VDS_SR or VDS_SR+Ids or CH1+CH3."""
+        parts = []
+        for ch_num in sorted(self.scope_channels or {}):
+            ch = self.scope_channels[ch_num]
+            if not ch.get('enabled'):
+                continue
+            name = str(ch.get('name') or '').strip()
+            parts.append(self._safe_filename_part(name if name else f"CH{ch_num}"))
+        if not parts:
+            return 'Scope'
+        return '+'.join(parts)
+
+    def build_detailed_output_basename(self) -> str:
+        """e.g. SSW 750-860VDC 48V 150Wpt VDS_SR+Ids"""
+        p_total_W = (self.vout_V * self.i_max_A) + (self.vout_2_V * self.i_max_2_A)
+        p_label_W = round(p_total_W / 10) * 10 if p_total_W > 0 else 0
+        return (
+            f"SSW {self._line_vin_filename_part()} {self.vout_V:g}V "
+            f"{p_label_W:g}Wpt {self._scope_names_filename_part()}"
+        )
+
     def define_scope_header(self):
         labels = []
         for ch_idx, ch_data in sorted(self.scope_channels.items()):
@@ -349,7 +396,7 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
             self.waveform_filepath = f"{self.output_folder_path}/waveforms"
         os.makedirs(self.waveform_filepath, exist_ok=True)
 
-        self.data_filename = f'{self.title} Test {self.vout_V:g}V'
+        self.data_filename = self.build_detailed_output_basename()
         self.data_file_path = f'{self.output_folder_path}/{self.data_filename}.xlsx'
         if not os.path.exists(self.data_file_path):
             wb = openpyxl.Workbook()
