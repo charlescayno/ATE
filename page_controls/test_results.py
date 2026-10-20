@@ -142,7 +142,13 @@ class TestResultsPageHandler():
             setVisible(True)
         
         self.ui.table_test_results_test_list.setColumnWidth(0, 50)
-        
+
+        # Plots-only: hide Show Plots / Show Data toggles (chart + grid icons).
+        self.ui.btn_test_results_show_plots.setVisible(False)
+        self.ui.btn_test_results_show_data.setVisible(False)
+        if hasattr(self.ui, 'frame_test_results_left_buttons'):
+            self.ui.frame_test_results_left_buttons.setVisible(False)
+
         self.show_plots_btn_clicked()
     
     ###########################################################################
