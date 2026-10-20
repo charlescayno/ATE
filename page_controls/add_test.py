@@ -6,6 +6,8 @@ from time import sleep
 from app.app_modules import *
 
 from page_controls.manual_control import ManualControlPageHandler
+from page_controls.eff2p_waveform_advanced import Eff2PWaveformAdvancedDialog
+from page_controls.pml_grid import GEAR_STYLE
 from sink_controllers.epr_sink_control import *
 from sink_controllers.definitions import * 
 from sink_controllers.pi_epr_sink import *
@@ -1721,7 +1723,8 @@ class AddTestPageHandler(QObject):
             # Loop through the UI and settings until the setting is undefined
             frame.setVisible(flag)
             label.setText(text)
-        
+
+        self._apply_eff2p_waveform_i2c_visibility()
 
         # Combo boxes
         cbx_frames = self.i2c_ui_cbx_frames
@@ -1827,6 +1830,62 @@ class AddTestPageHandler(QObject):
                     "<b>Ambient Temp:</b> The ambient temperature during the test.")
         msg.setIcon(QMessageBox.Information)
         msg.exec_()
+
+    def _ensure_eff2p_waveform_gear_row(self):
+        ui = self.ui
+        if not hasattr(self, 'frame_eff2p_advanced_gear'):
+            self.frame_eff2p_advanced_gear = QFrame(ui.frame_add_tests_i2c)
+            self.frame_eff2p_advanced_gear.setObjectName("frame_eff2p_advanced_gear")
+            hl = QHBoxLayout(self.frame_eff2p_advanced_gear)
+            hl.setContentsMargins(0, 4, 0, 4)
+            lbl = QLabel("Scope & timing (advanced)")
+            lbl.setStyleSheet("color: rgb(200, 200, 200);")
+            self.btn_eff2p_advanced_gear = QToolButton(self.frame_eff2p_advanced_gear)
+            self.btn_eff2p_advanced_gear.setText("\u2699")
+            self.btn_eff2p_advanced_gear.setToolTip(
+                "Trigger delta, settle time, discharge pulses, ambient temp, post-capture delay, trigger channel")
+            self.btn_eff2p_advanced_gear.setStyleSheet(GEAR_STYLE)
+            self.btn_eff2p_advanced_gear.setCursor(Qt.PointingHandCursor)
+            self.btn_eff2p_advanced_gear.clicked.connect(self._open_eff2p_waveform_advanced_dialog)
+            hl.addWidget(lbl)
+            hl.addWidget(self.btn_eff2p_advanced_gear)
+            hl.addStretch()
+            if not hasattr(self, 'btn_eff2p_scope_faq'):
+                self.btn_eff2p_scope_faq = QPushButton("i", self.frame_eff2p_advanced_gear)
+                self.btn_eff2p_scope_faq.setFixedSize(20, 20)
+                self.btn_eff2p_scope_faq.setStyleSheet(
+                    "QPushButton { border-radius: 10px; background-color: #3B4252; color: #ABB2BF; "
+                    "font-weight: bold; border: 1px solid #5C6370; } QPushButton:hover { background-color: #4C566A; color: white; }")
+                self.btn_eff2p_scope_faq.setToolTip("Scope & trigger terminology")
+                self.btn_eff2p_scope_faq.clicked.connect(self.show_scope_faq)
+                hl.addWidget(self.btn_eff2p_scope_faq)
+
+    def _open_eff2p_waveform_advanced_dialog(self):
+        scope = self.get_scope_channels_from_ui() if hasattr(self, 'get_scope_channels_from_ui') else {}
+        dlg = Eff2PWaveformAdvancedDialog(self.parent, self.i2c_ui_lineedits, scope_channels=scope)
+        if dlg.exec_() == QDialog.Accepted:
+            dlg.apply_to_lineedits()
+
+    def _apply_eff2p_waveform_i2c_visibility(self):
+        selected = getattr(self, 'selected_test_class', None)
+        is_wf = selected is not None and selected.title == EFFICIENCY_2PORT_WAVEFORM_TITLE
+        if is_wf:
+            for i in range(4, 10):
+                self.i2c_ui_lineedit_frames[i].setVisible(False)
+            self._ensure_eff2p_waveform_gear_row()
+            self.frame_eff2p_advanced_gear.setVisible(True)
+            ui = self.ui
+            ui.gridLayout_12.removeWidget(self.frame_eff2p_advanced_gear)
+            ui.gridLayout_12.addWidget(self.frame_eff2p_advanced_gear, 2, 0, 1, 2)
+            if hasattr(self, 'frame_scope_channels'):
+                ui.gridLayout_12.removeWidget(self.frame_scope_channels)
+                ui.gridLayout_12.addWidget(self.frame_scope_channels, 3, 0, 1, 2)
+            if hasattr(self, 'label_dual_load_mode_desc'):
+                ui.gridLayout_12.removeWidget(self.label_dual_load_mode_desc)
+                ui.gridLayout_12.addWidget(self.label_dual_load_mode_desc, 4, 0, 1, 2)
+        elif hasattr(self, 'frame_eff2p_advanced_gear'):
+            self.frame_eff2p_advanced_gear.setVisible(False)
+
     def set_ui_states(self):
         """Change the state of the UI depending on 
         the selected test type"""
@@ -1890,9 +1949,8 @@ class AddTestPageHandler(QObject):
             if test_class.title == EFFICIENCY_2PORT_WAVEFORM_TITLE:
                 ui.label_add_tests_i2c_settings.setText("Output 2 / Scope & Trigger Settings")
                 self._ensure_scope_channels_frame()
-                ui.gridLayout_12.removeWidget(self.frame_scope_channels)
-                ui.gridLayout_12.addWidget(self.frame_scope_channels, 8, 0, 1, 2)
                 self.frame_scope_channels.setVisible(True)
+                self._apply_eff2p_waveform_i2c_visibility()
             else:
                 ui.label_add_tests_i2c_settings.setText("Output 2 Settings")
                 if hasattr(self, 'frame_scope_channels'):

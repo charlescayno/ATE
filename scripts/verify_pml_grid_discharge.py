@@ -132,8 +132,9 @@ def test_psu_discharge():
         mod.sleep = lambda s: None
         cls.discharge_output(t, 2)
         names = [e[1] for e in log]
-        check(f"{mod.__name__.split('.')[-1]}: discharge uses CCH at test current, no SHORT/auto-range",
-              names.count('cch') == 2 and all(e[2] == 3.0 for e in log if e[1] == 'cch')
+        expect_a = 1.0 if cls is ew.EfficiencyWaveformTest_2Port else 3.0
+        check(f"{mod.__name__.split('.')[-1]}: discharge uses CCH at {expect_a:g} A, no SHORT/auto-range",
+              names.count('cch') == 2 and all(e[2] == expect_a for e in log if e[1] == 'cch')
               and 'SHORT' not in names and 'AUTO_RANGE_CC' not in names, log)
 
 

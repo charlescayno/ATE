@@ -59,6 +59,8 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
 
     title = "Efficiency 2 Port (Waveform)"
     short_title = "Eff2P_WF"
+    DISCHARGE_CC_A = 1.0
+    STOP_DISCHARGE_MIN_PULSES = 2
 
     ui_definitions = General_UI_Definitions()
     ui_definitions.stack_page_1 = StackWidget1Pages.LineVoltageRange
@@ -144,6 +146,49 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
 
     def with_waveform_capture(self):
         return True
+
+    def run(self):
+        if self.parent.run_settings['debug']:
+            debugpy.debug_this_thread()
+        global test_control_flags
+        try:
+            self.status_update.emit(TestStatus.IN_PROGRESS)
+            self.setup_equipment()
+            self.prepare_test_conditions()
+            self.setup_data_file()
+            self.test_loop()
+        except TestStopped:
+            self.safe_output_discharge(reason="stopped")
+            self.cleanup_usbpd_pps_operation()
+            self.input_supply_eload_discharge_sequence()
+            print("Test Stopped")
+            self.status_update.emit(TestStatus.STOPPED)
+        except TestSkipped:
+            self.cleanup_usbpd_pps_operation()
+            self.input_supply_eload_discharge_sequence()
+            print("Test Skipped")
+            self.status_update.emit(TestStatus.SKIPPED)
+        except Exception:
+            print(traceback.format_exc())
+            with open('error_log.txt', 'a') as f:
+                f.write(traceback.format_exc() + '\n')
+            self.cleanup_usbpd_pps_operation()
+            if self.usbpd_test and self.usbpd_sink:
+                self.usbpd_sink.usb_pd_initialize()
+            self.input_supply_eload_discharge_sequence()
+            print("Test Failed")
+            self.status_update.emit(TestStatus.FAILED)
+        else:
+            self.cleanup_usbpd_pps_operation()
+            self.input_supply_eload_discharge_sequence()
+            self.estimated_time_s = 0
+            self.status_update.emit(TestStatus.COMPLETE)
+
+    def safe_output_discharge(self, reason: str = ""):
+        """CCH discharge on assigned e-loads; used when the operator stops the test."""
+        pulses = max(int(getattr(self, 'discharge_pulses', 0) or 0), self.STOP_DISCHARGE_MIN_PULSES)
+        print(f"[DISCHARGE] safe output ({reason}): {pulses} pulse(s) at {self.DISCHARGE_CC_A:g} A CCH")
+        self.discharge_output(pulses)
 
     ###########################################################################
     #                         Test item / parameters                          #
@@ -759,6 +804,7 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
         """Discharge the outputs by pulsing the electronic loads with the input off."""
         if times <= 0:
             return
+        i_discharge = float(getattr(self, 'DISCHARGE_CC_A', 1.0))
         try:
             self.input_supply.turn_off()
         except Exception:
@@ -767,7 +813,7 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
         for _ in range(times):
             for ld in loads:
                 try:
-                    ld.set_cc_high(self.i_max_A)
+                    ld.set_cc_high(i_discharge)
                     ld.turn_on()
                 except Exception:
                     pass
