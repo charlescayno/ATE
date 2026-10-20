@@ -5,6 +5,45 @@ class ELoadTypes:
     CV = 'CV'
     CP = 'CP'
     LED = 'LED'
+    # Fixed-range Chroma modes (no automatic range switching)
+    CCL = 'CCL'
+    CCH = 'CCH'
+    CCDL = 'CCDL'
+    CCDH = 'CCDH'
+    CRL = 'CRL'
+    CRH = 'CRH'
+    FIXED_CC = (CCL, CCH)
+    DYNAMIC_CC = (CCDL, CCDH)
+    FIXED_CR = (CRL, CRH)
+
+
+def fixed_range_modes(spec) -> list:
+    """Fixed-range modes offered after the auto modes; dynamic CC only where the model supports it."""
+    modes = [ELoadTypes.CCL, ELoadTypes.CCH]
+    if getattr(spec, 'CCD_T_MAX_S', 0) > 0:
+        modes += [ELoadTypes.CCDL, ELoadTypes.CCDH]
+    return modes + [ELoadTypes.CRL, ELoadTypes.CRH]
+
+
+def fixed_mode_limits(load, mode):
+    """(min, max, unit) allowed for a level in a fixed-range mode; `load` exposes the *_max_a / *_r limits."""
+    if mode in (ELoadTypes.CCL, ELoadTypes.CCDL):
+        return 0.0, load.ccl_max_a, 'A'
+    if mode in (ELoadTypes.CCH, ELoadTypes.CCDH):
+        return 0.0, load.cch_max_a, 'A'
+    if mode == ELoadTypes.CRL:
+        return min(load.crl_min_r, load.crl_max_r), max(load.crl_min_r, load.crl_max_r), 'Ω'
+    if mode == ELoadTypes.CRH:
+        return min(load.crh_min_r, load.crh_max_r), max(load.crh_min_r, load.crh_max_r), 'Ω'
+    raise ValueError(f'{mode} is not a fixed-range mode')
+
+
+def check_fixed_level(load, mode, level):
+    lo, hi, unit = fixed_mode_limits(load, mode)
+    if not (lo <= level <= hi):
+        other = {'CCL': 'CCH', 'CCDL': 'CCDH', 'CRL': 'CRH'}.get(mode)
+        hint = f' Use {other} for higher values.' if other and level > hi else ''
+        raise ValueError(f'{level:g} {unit} is outside the {mode} range ({lo:g} to {hi:g} {unit}).{hint}')
 
 class EloadStatus:
     OFF = '0'

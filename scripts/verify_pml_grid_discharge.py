@@ -147,6 +147,8 @@ def test_ui():
     ui.stackedWidget.setCurrentWidget(ui.page_manual_control)
     app.processEvents()
     mc = window.manual_control_handler
+    import tempfile
+    mc.settings_file = os.path.join(tempfile.gettempdir(), "pi_ate_verify_manual_settings.json")
     grid = mc.pml_grid
 
     check("ui: tab widget removed from layout", not ui.tabWidget_pml.isVisible() and ui.tabWidget_pml.count() == 0)

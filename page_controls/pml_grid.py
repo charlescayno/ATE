@@ -179,6 +179,15 @@ class PmlGrid:
         dlg.raise_()
         dlg.activateWindow()
 
+    def dialog_state_widgets(self):
+        """Widgets moved out of page_manual_control that still need save/restore."""
+        from PySide2.QtWidgets import QCheckBox, QComboBox, QLineEdit
+        found = []
+        for dlg in self.dialogs.values():
+            for t in (QLineEdit, QComboBox, QCheckBox):
+                found += [x for x in dlg.findChildren(t) if x.objectName()]
+        return found
+
     def set_assigned(self, n, assigned: bool):
         self.assigned[n] = assigned
         w = self.widgets[n]

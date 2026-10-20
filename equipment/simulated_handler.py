@@ -7,11 +7,13 @@ import os
 import math
 import random
 import numpy as np
+from types import SimpleNamespace
 from PIL import Image, ImageDraw
 
 from equipment.definitions import EquipmentType
 from equipment.ac_source import AC_SOURCE_COUPLING
 from equipment.handler import EquipmentHandler
+from equipment.eload_specs import fixed_range_modes, check_fixed_level
 
 class VirtualCircuitState:
     """Shared physical state of the simulated Unit Under Test (UUT) and bench instruments."""
@@ -195,9 +197,21 @@ class SimulatedElectronicLoadModule:
         self.details = self.description
         self.address = f'GPIB0::{2 + channel_idx}::INSTR'
         self._active_level = '1'
-        self.active_channel_status = 1
+        self.active_channel_status = '0'
         self.active_channel_short = 0
+        self.active_channel_mode = 'CCL'
         self.crh_max_r = 50000.0
+        # Chroma 63103A-like limits so fixed-range modes behave like the real module
+        self.ccl_max_a, self.cch_max_a = 6.0, 60.0
+        self.crl_min_r, self.crl_max_r = 0.025, 100.0
+        self.crh_min_r = 1.25
+        self.crl_max_v, self.crh_max_v = 16.0, 80.0
+        self.ccd_t_min_s, self.ccd_t_max_s = 25e-6, 50.0
+        self.multi_channel = False
+        self.cr_slew_available = True
+        self.cp_slew_unit = 'W / µs'
+        self.load_modes = ['CC', 'CR', 'CV', 'CP', 'LED'] + fixed_range_modes(SimpleNamespace(CCD_T_MAX_S=self.ccd_t_max_s))
+        self.mode_log = []
 
     @property
     def _ch(self):
@@ -242,10 +256,33 @@ class SimulatedElectronicLoadModule:
     def turn_on(self):
         print(f"[E_LOAD] Electronic Load Simulated (CH {self.channel}): Output ON")
         self._ch['load_on'] = True
+        self.active_channel_status = '1'
 
     def turn_off(self):
         print(f"[E_LOAD] Electronic Load Simulated (CH {self.channel}): Output OFF")
         self._ch['load_on'] = False
+        self.active_channel_status = '0'
+
+    def set_fixed_mode(self, mode, level, level_no=1):
+        check_fixed_level(self, mode, level)
+        self.active_channel_mode = mode
+        self._active_level = str(level_no)
+        if mode in ('CCL', 'CCH'):
+            self._ch['iout'] = float(level)
+        self.mode_log.append(('fixed', mode, level, level_no))
+
+    def set_dynamic(self, mode, l1, l2, t1_ms, t2_ms, rise=None, fall=None):
+        check_fixed_level(self, mode, l1)
+        check_fixed_level(self, mode, l2)
+        for t in (t1_ms, t2_ms):
+            if not (self.ccd_t_min_s * 1e3 <= t <= self.ccd_t_max_s * 1e3):
+                raise ValueError(f'{t:g} ms is outside the dynamic timing range.')
+        self.active_channel_mode = mode
+        self._ch['iout'] = float(l1)
+        self.mode_log.append(('dynamic', mode, l1, l2, t1_ms, t2_ms, rise, fall))
+
+    def set_cr_slew(self, rise=0.15, fall=0.15): return 1
+    def set_cp_slew(self, rise=0.15, fall=0.15): return 1
 
     def turn_on_all(self):
         for ld in self.state.loads.values():
@@ -255,16 +292,19 @@ class SimulatedElectronicLoadModule:
         for ld in self.state.loads.values():
             ld['load_on'] = False
 
-    def set_load(self, vout: float, iout: float, eload_type=None):
-        print(f"[E_LOAD] Electronic Load Simulated (CH {self.channel}): Set Load {iout} A")
-        self._ch['target_vout'] = float(vout)
-        self._ch['iout'] = float(iout)
+    def set_load(self, vout_V: float, iout_A: float = None, mode=None):
+        print(f"[E_LOAD] Electronic Load Simulated (CH {self.channel}): Set Load {iout_A} A")
+        self._ch['target_vout'] = float(vout_V)
+        if iout_A is not None:
+            self._ch['iout'] = float(iout_A)
+        if mode:
+            self.active_channel_mode = mode
 
     def set_current(self, iout: float):
         self._ch['iout'] = float(iout)
 
     def set_active_level(self, level): pass
-    def set_cc_static_slew(self, slew): pass
+    def set_cc_static_slew(self, rise=0.15, fall=0.15): return 1
     def short_on(self): pass
     def short_off(self): pass
     def get_id(self): return self.device_id
