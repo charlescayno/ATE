@@ -328,13 +328,31 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
             return 'Scope'
         return '+'.join(parts)
 
+    @staticmethod
+    def _format_power_label_W(power_W: float) -> str:
+        return f"{round(power_W):g}W"
+
+    def _port_power_W(self, port: int, *, i1_A: float = None, i2_A: float = None) -> float:
+        if port == 1:
+            i_A = i1_A if i1_A is not None else self.i_max_A
+            return self.vout_V * i_A
+        i_A = i2_A if i2_A is not None else self.i_max_2_A
+        return self.vout_2_V * i_A
+
+    def _dual_port_power_filename_part(
+            self, *, i1_A: float = None, i2_A: float = None, png_suffix: bool = False) -> str:
+        """Nameplate P1+P2 for Excel, or _P1_…_P2_… for PNG when i1/i2 are set."""
+        p1 = self._format_power_label_W(self._port_power_W(1, i1_A=i1_A, i2_A=i2_A))
+        p2 = self._format_power_label_W(self._port_power_W(2, i1_A=i1_A, i2_A=i2_A))
+        if png_suffix:
+            return f"_P1_{p1}_P2_{p2}"
+        return f"{p1}+{p2}"
+
     def build_detailed_output_basename(self) -> str:
-        """e.g. SSW 750-860VDC 48V 150Wpt VDS_SR+Ids"""
-        p_total_W = (self.vout_V * self.i_max_A) + (self.vout_2_V * self.i_max_2_A)
-        p_label_W = round(p_total_W / 10) * 10 if p_total_W > 0 else 0
+        """e.g. SSW 750-860VDC 48V 144W+0W VDS_SR+Ids"""
         return (
             f"SSW {self._line_vin_filename_part()} {self.vout_V:g}V "
-            f"{p_label_W:g}Wpt {self._scope_names_filename_part()}"
+            f"{self._dual_port_power_filename_part()} {self._scope_names_filename_part()}"
         )
 
     def define_scope_header(self):
@@ -939,7 +957,9 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
                     return row
 
             prefix = f"{self.unit_id}_" if self.unit_id else ""
-            img_filename = f"{prefix}{vin_set:g}V{self.coupling}_Ch1_{i1_A:g}A_Ch2_{i2_A:g}A.png"
+            pwr = self._dual_port_power_filename_part(i1_A=i1_A, i2_A=i2_A, png_suffix=True)
+            img_filename = (
+                f"{prefix}{vin_set:g}V{self.coupling}_Ch1_{i1_A:g}A_Ch2_{i2_A:g}A{pwr}.png")
             img_path = os.path.join(self.waveform_filepath, img_filename)
             try:
                 self.oscilloscope.get_screenshot(img_filename, self.waveform_filepath)

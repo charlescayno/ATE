@@ -78,6 +78,19 @@ def run_case(mode_key: str, out_dir: str) -> list:
     if TestStatus.COMPLETE not in statuses:
         return [f"mode {mode_key}: test did not complete, statuses={statuses}"]
 
+    expected_basename = (
+        f"SSW 115-230VAC 5V 25W+24W Primary Vds+Ids")
+    if test.data_filename != expected_basename:
+        errors.append(
+            f"mode {mode_key}: data_filename {test.data_filename!r} != {expected_basename!r}")
+    if not os.path.isfile(test.data_file_path):
+        errors.append(f"mode {mode_key}: missing workbook {test.data_file_path!r}")
+    pngs = [
+        rec.get('path') for rec in getattr(test, 'captured_records', [])
+        if rec.get('path')]
+    if pngs and not all('_P1_' in p and '_P2_' in p for p in pngs):
+        errors.append(f"mode {mode_key}: PNG paths missing P1/P2 power suffix: {pngs[:2]!r}")
+
     n_points = len(test.load_pairs)
     wb = openpyxl.load_workbook(test.data_file_path)
     ws = wb[test.sheet_name]
