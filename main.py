@@ -464,6 +464,7 @@ class MainWindow(QMainWindow):
         self.msg_box.setText(message)
         self.msg_box.setWindowTitle(title)
         self.msg_box.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
+        self.msg_box.setWindowFlags(self.msg_box.windowFlags() | Qt.WindowStaysOnTopHint)
         return self.msg_box.exec_()
 
 

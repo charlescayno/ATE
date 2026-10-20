@@ -3,25 +3,25 @@ from PySide2.QtCore import Qt
 
 
 class _DischargeResistorPromptHelper(QObject):
-    """Thread-safe OK/Cancel prompt (same copy as Manual Control Magna/DC turn-on)."""
+    """OK/Cancel discharge-resistor prompt; must live on the GUI thread (see confirm_discharge_resistor_disengaged)."""
 
     show_sig = Signal()
 
-    def __init__(self, main_window):
+    def __init__(self):
         super().__init__()
-        self._main_window = main_window
+        self._main_window = None
         self.confirmed = True
-        self.show_sig.connect(self._prompt, Qt.BlockingQueuedConnection)
 
     @Slot()
     def _prompt(self):
+        from PySide2.QtWidgets import QMessageBox
         message = (
             "<h2>⚠️ ATTENTION</h2><br>"
             "<span style='font-size: 14pt; font-weight: bold;'>Is the discharge resistor disengaged?</span><br><br>"
             "<span style='font-size: 12pt; color: #cc0000;'>Please disengage it before powering up.</span>"
         )
         res = self._main_window.msg_box_pick("Discharge Resistor Check", message)
-        self.confirmed = res == 1024  # QMessageBox.Ok
+        self.confirmed = res == QMessageBox.Ok
 
 
 class EfficiencyTest_2Port(BaseTestObject):
@@ -425,6 +425,7 @@ class EfficiencyTest_2Port(BaseTestObject):
 
     def confirm_discharge_resistor_disengaged(self):
         import os
+        from PySide2.QtWidgets import QApplication
         if os.environ.get('PI_ATE_AUTO_CONFIRM') == '1':
             return
         if getattr(self, '_discharge_resistor_confirmed', False):
@@ -432,12 +433,22 @@ class EfficiencyTest_2Port(BaseTestObject):
         if not self.input_supply_needs_discharge_resistor_check():
             self._discharge_resistor_confirmed = True
             return
+        app = QApplication.instance()
+        if app is None:
+            return
         helper = getattr(self, '_discharge_resistor_prompt_helper', None)
         if helper is None:
-            helper = _DischargeResistorPromptHelper(self.parent)
+            helper = _DischargeResistorPromptHelper()
+            helper.moveToThread(app.thread())
+            helper.show_sig.connect(helper._prompt, Qt.BlockingQueuedConnection)
             self._discharge_resistor_prompt_helper = helper
+        helper._main_window = self.parent
         helper.confirmed = True
-        helper.show_sig.emit()
+        try:
+            helper.show_sig.emit()
+        except Exception as exc:
+            print(f"[Warning] Discharge resistor prompt failed: {exc}")
+            return
         if not helper.confirmed:
             raise TestStopped
         self._discharge_resistor_confirmed = True
