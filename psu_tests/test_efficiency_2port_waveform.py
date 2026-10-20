@@ -592,10 +592,20 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
                 print(f"[Warning] Cursor readback CH{ch_num}: {e}")
 
     def _bulk_cap_ramp_applies(self) -> bool:
-        """DC + Magna (TST-326 HVDC) bulk-cap inrush ramp."""
+        """DC + Magna (TST-326 HVDC) bulk-cap inrush ramp at run time."""
         if self.coupling != AC_SOURCE_COUPLING.DC:
             return False
+        if getattr(self, 'input_supply', None) is None:
+            return False
         return self.input_supply_needs_discharge_resistor_check()
+
+    def _bulk_cap_ramp_in_queue_estimate(self) -> bool:
+        """Include ramp duration in queue time before equipment is bound (Add Test)."""
+        if self.coupling != AC_SOURCE_COUPLING.DC:
+            return False
+        if getattr(self, 'input_supply', None) is not None:
+            return self.input_supply_needs_discharge_resistor_check()
+        return True
 
     def _read_input_voltage_for_skip(self):
         try:
@@ -1336,7 +1346,7 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
         for vin_index, vin_row in enumerate(self.vin_list):
             load_index = 0
             if vin_delays:
-                if self._bulk_cap_ramp_applies():
+                if self._bulk_cap_ramp_in_queue_estimate():
                     add_time(float(vin_row[0]) / self.BULK_CAP_RAMP_V_PER_S + 0.5)
                 add_time(4)
                 if self.usbpd_test:

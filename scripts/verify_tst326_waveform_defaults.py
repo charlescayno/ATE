@@ -10,6 +10,8 @@ os.chdir(ROOT)
 from psu_tests.definitions import TestConditionSettings  # noqa: E402 — anchor psu_tests to this repo
 from psu_tests.test_type import TestTypes, get_test_title_list  # noqa: E402
 from psu_tests.test_efficiency_2port_waveform import EfficiencyWaveformTest_2Port  # noqa: E402
+from psu_tests.tests import TestItem  # noqa: E402
+from equipment.simulated_handler import SimulatedEquipmentHandler  # noqa: E402
 
 
 def main() -> int:
@@ -41,6 +43,22 @@ def main() -> int:
     wf = TestConditionSettings().test_condition_list[idx]
     if wf.line_range is not tc.line_range:
         errors.append("TestConditionSettings line_range not shared with tc_default")
+
+    class _Parent:
+        test_plan = None
+        run_settings = {'debug': False}
+
+        def __init__(self):
+            self.equipment = SimulatedEquipmentHandler(self)
+
+    try:
+        TestItem(
+            parent=_Parent(),
+            test_type_index=idx,
+            test_conditions=tc,
+        )
+    except Exception as exc:
+        errors.append(f"TestItem init (Add Test path): {exc!r}")
 
     if errors:
         print("FAIL")

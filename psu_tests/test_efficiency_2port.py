@@ -417,10 +417,14 @@ class EfficiencyTest_2Port(BaseTestObject):
             self.electronic_load_2.turn_off()
 
     def input_supply_needs_discharge_resistor_check(self) -> bool:
-        if getattr(self, 'dc_source', None) is not None and self.input_supply is self.dc_source:
+        dc_source = getattr(self, 'dc_source', None)
+        input_supply = getattr(self, 'input_supply', None)
+        if dc_source is not None and input_supply is dc_source:
             return True
-        manu = getattr(self.input_supply, 'manufacturer', '') or ''
-        model = getattr(self.input_supply, 'model', '') or ''
+        if input_supply is None:
+            return False
+        manu = getattr(input_supply, 'manufacturer', '') or ''
+        model = getattr(input_supply, 'model', '') or ''
         return 'Magna-Power' in manu or 'SL1000' in model
 
     def confirm_discharge_resistor_disengaged(self):
