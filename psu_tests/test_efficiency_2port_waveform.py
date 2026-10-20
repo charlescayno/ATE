@@ -121,26 +121,48 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
 
     tc_default = TestConditions(
         name=title,
-        nominal_output_voltage_V=5,
-        nominal_load_current_A=5,
-        max_load_current_A=5,
-        line_range=LineSettings.UNIVERSAL,
-        load_range=LoadSettings.LOAD_EFF,
-        soak_time=SoaktimeSettings.SOAK_EFF,
-        general_options=GeneralOptions(),
+        nominal_output_voltage_V=48.0,
+        nominal_load_current_A=3.0,
+        max_load_current_A=3.0,
+        line_range=LineSettings.TST_326_HVDC,
+        load_range=LoadSettings.LOAD_SINGLE_VALUE_100_PCT,
+        soak_time=SoaktimeSettings.TST_326,
+        general_options=GeneralOptions(
+            measure_ripple=False,
+            use_eload_data=False,
+            eload_type='CC',
+            load_direction='Downward',
+            coupling='DC',
+        ),
         usbpd_options=USBPDOptions(),
         line_ramp_settings=LineRamp(),
         i2c_test_parameters=I2CTestParameters(
-            params=[12.0, 2.0, 0.0, "100, 50, 0", 3.0, 1.0, 2.0, 25.0, 1.0, 1.0],
-            cbx_params=["Option A: Proportional Sync (Both Ports 100% -> 10%)",
-                        "Yes", "Pre-Test & Per-Capture", "No"]),
+            params=[20.0, 0.1, 0.1, 0.0, 3.0, 1.0, 2.0, 25.0, 1.0, 1.0],
+            cbx_params=[
+                "Option C: Fixed Aux / Swept Main (Port 2 Fixed Load)",
+                "Yes",
+                "Per-Capture Only",
+                "Yes",
+            ]),
         unit_id="00",
         ambient_temp=25.0,
         scope_channels={
-            1: {'enabled': True, 'name': 'Primary Vds'},
-            2: {'enabled': True, 'name': 'Ids'},
-            3: {'enabled': False, 'name': ''},
-            4: {'enabled': False, 'name': ''}
+            1: {
+                'enabled': True,
+                'name': 'VDS_SR',
+                'measurements': ['MAXimum'],
+                'derating': 150.0,
+                'cursor': {'enabled': False, 'type': 'VERTical'},
+            },
+            2: {
+                'enabled': False,
+                'name': 'VDS_PRI',
+                'measurements': [],
+                'derating': None,
+                'cursor': {},
+            },
+            3: {'enabled': False, 'name': '', 'measurements': [], 'derating': None, 'cursor': {}},
+            4: {'enabled': False, 'name': '', 'measurements': [], 'derating': None, 'cursor': {}},
         })
 
     def __init__(self, test_item):
@@ -362,36 +384,62 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
             ws[f"A{row}"].font = CellFont(bold=True, size=10, color="1F497D")
             ws[f"B{row}"].font = CellFont(size=10)
 
+    def _excel_section_title_font(self):
+        return CellFont(bold=True, size=11, color="1F497D")
+
+    def _excel_column_header_font(self):
+        return CellFont(bold=True, size=10)
+
+    def _style_excel_section_title_cell(self, cell):
+        cell.font = self._excel_section_title_font()
+        cell.alignment = Alignment(horizontal='center', vertical='center')
+
     def _write_excel_section_header_row(self, ws, row: int):
         ws.merge_cells(f"A{row}:B{row}")
         ws[f"A{row}"] = 'Load Condition'
-        ws[f"A{row}"].alignment = Alignment(horizontal='center')
+        self._style_excel_section_title_cell(ws[f"A{row}"])
         ws.merge_cells(f"C{row}:D{row}")
         ws[f"C{row}"] = 'Input Set'
-        ws[f"C{row}"].alignment = Alignment(horizontal='center')
+        self._style_excel_section_title_cell(ws[f"C{row}"])
         ws.merge_cells(f"E{row}:I{row}")
         ws[f"E{row}"] = 'Input Measurement'
-        ws[f"E{row}"].alignment = Alignment(horizontal='center')
+        self._style_excel_section_title_cell(ws[f"E{row}"])
         ws.merge_cells(f"J{row}:M{row}")
         ws[f"J{row}"] = 'Output 1 Measurement'
-        ws[f"J{row}"].alignment = Alignment(horizontal='center')
+        self._style_excel_section_title_cell(ws[f"J{row}"])
         ws.merge_cells(f"N{row}:Q{row}")
         ws[f"N{row}"] = 'Output 2 Measurement'
-        ws[f"N{row}"].alignment = Alignment(horizontal='center')
+        self._style_excel_section_title_cell(ws[f"N{row}"])
         ws.merge_cells(f"R{row}:S{row}")
         ws[f"R{row}"] = 'Total Power & Efficiency'
-        ws[f"R{row}"].alignment = Alignment(horizontal='center')
+        self._style_excel_section_title_cell(ws[f"R{row}"])
         if self.use_average_efficiency_limits:
             ws.merge_cells(f"T{row}:X{row}")
             ws[f"T{row}"] = 'Average Efficiency Limits'
-            ws[f"T{row}"].alignment = Alignment(horizontal='center')
+            self._style_excel_section_title_cell(ws[f"T{row}"])
         first_col = self.scope_excel_col()
         last_col = first_col + len(self.scope_header_list) - 1
         ws.merge_cells(
             f"{get_column_letter(first_col)}{row}:{get_column_letter(last_col)}{row}")
         cell = ws[f"{get_column_letter(first_col)}{row}"]
         cell.value = 'Oscilloscope Measurements'
-        cell.alignment = Alignment(horizontal='center')
+        self._style_excel_section_title_cell(cell)
+
+    def _bold_excel_column_header_row(self, row: int):
+        """Bold Ch1 Load, Vin, scope columns, etc. on the dataframe header row."""
+        wb = openpyxl.load_workbook(self.data_file_path)
+        ws = wb[self.sheet_name]
+        last_col = self.scope_excel_col() + len(self.scope_header_list) - 1
+        header_font = self._excel_column_header_font()
+        center = Alignment(horizontal='center', vertical='center')
+        for col in range(1, last_col + 1):
+            cell = ws.cell(row=row, column=col)
+            if cell.value is None or str(cell.value).strip() == '':
+                continue
+            cell.font = header_font
+            cell.alignment = center
+        wb.save(self.data_file_path)
+        wb.close()
 
     def prepare_sheet_formatting(self):
         ws = self.ws
@@ -637,6 +685,7 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
                             self.data_filename, self.sheet_name, f"T{anchor_row}")
         export_to_excel(self.scope_dataframe, self.output_folder_path,
                         self.data_filename, self.sheet_name, f"{scope_col}{anchor_row}")
+        self._bold_excel_column_header_row(anchor_row)
         self.next_excel_data_row = anchor_row + len(self.output_dataframe) + 1
 
         self.output_dataframe = self.output_dataframe[0:0]

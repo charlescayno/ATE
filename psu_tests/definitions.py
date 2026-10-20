@@ -97,6 +97,10 @@ class LineSettings:
         name="90, 230",
         vin_freq=[ [90, 60], [230,50]],
         custom = False)
+    TST_326_HVDC = LineRange(
+        name="TST-326 HVDC",
+        vin_freq=[[750.0, 50.0], [800.0, 50.0], [860.0, 50.0]],
+        custom=False)
     CUSTOM = LineRange(
         name = "Custom",
         vin_freq=[],
@@ -174,6 +178,7 @@ class LineSettings:
         self.add_line_range(self.LOW_LINE)
         self.add_line_range(self.HIGH_LINE)
         self.add_line_range(self.LL_HL)
+        self.add_line_range(self.TST_326_HVDC)
         self.add_line_range(self.CUSTOM)
     
     def add_line_range(self, line_range:LineRange):
@@ -537,7 +542,14 @@ class SoaktimeSettings:
         load=0,
         integration=0,
         custom = True)
-    
+
+    TST_326 = SoakTime(
+        name="TST-326",
+        initial=5.0,
+        line=5.0,
+        load=5.0,
+        integration=0.0,
+        custom=False)
 
     def __init__(self):
 
@@ -552,6 +564,7 @@ class SoaktimeSettings:
         self.add_soaktime(self.SOAK_CVCC)
         self.add_soaktime(self.SOAK_INPUT_HARMONICS)
         self.add_soaktime(self.SOAK_TEST)
+        self.add_soaktime(self.TST_326)
         self.add_soaktime(self.SOAK_CUSTOM)
         
         self.default_list_names = list(x.name for x in self.soaktime_list)

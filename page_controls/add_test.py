@@ -2438,11 +2438,24 @@ class AddTestPageHandler(QObject):
         self.ch4_lineedit.setText(ch4.get('name', ''))
         self.ch4_lineedit.setEnabled(self.ch4_checkbox.isChecked())
 
-        if hasattr(self, 'scope_measurements'):
-            self.scope_measurements[1] = ch1.get('measurements', [])
-            self.scope_measurements[2] = ch2.get('measurements', [])
-            self.scope_measurements[3] = ch3.get('measurements', [])
-            self.scope_measurements[4] = ch4.get('measurements', [])
+        if not hasattr(self, 'scope_measurements'):
+            self.scope_measurements = {1: [], 2: [], 3: [], 4: []}
+        if not hasattr(self, 'scope_deratings'):
+            self.scope_deratings = {1: None, 2: None, 3: None, 4: None}
+        if not hasattr(self, 'scope_cursors'):
+            self.scope_cursors = {1: {}, 2: {}, 3: {}, 4: {}}
+        self.scope_measurements[1] = list(ch1.get('measurements') or [])
+        self.scope_measurements[2] = list(ch2.get('measurements') or [])
+        self.scope_measurements[3] = list(ch3.get('measurements') or [])
+        self.scope_measurements[4] = list(ch4.get('measurements') or [])
+        self.scope_deratings[1] = ch1.get('derating')
+        self.scope_deratings[2] = ch2.get('derating')
+        self.scope_deratings[3] = ch3.get('derating')
+        self.scope_deratings[4] = ch4.get('derating')
+        self.scope_cursors[1] = dict(ch1.get('cursor') or {})
+        self.scope_cursors[2] = dict(ch2.get('cursor') or {})
+        self.scope_cursors[3] = dict(ch3.get('cursor') or {})
+        self.scope_cursors[4] = dict(ch4.get('cursor') or {})
 
         self.ch1_checkbox.blockSignals(False)
         self.ch2_checkbox.blockSignals(False)
@@ -2942,7 +2955,9 @@ class AddTestPageHandler(QObject):
                 self.ui.widget_toggle_add_tests_line_range_coupling.setChecked(True)
             else:
                 self.ui.widget_toggle_add_tests_line_range_coupling.setChecked(False)
-            self.ui.chkbox_add_tests_eload_measurement.setChecked(False)
+            self.ui.chkbox_add_tests_eload_measurement.setChecked(
+                self.test_condition_settings.test_condition_list[self.test_type_index]
+                .general_options.use_eload_data)
             self.ui.cbx_add_tests_load_range_direction.setCurrentIndex(0)
             self.ui.cbx_add_tests_load_range_eload_type.setCurrentIndex(0)
             self.ui.chkbox_add_tests_proportional_current_request.setChecked(usb_pd_tracking_state)
@@ -2957,7 +2972,10 @@ class AddTestPageHandler(QObject):
                 self.ui.lineedit_add_tests_nominal_output_current.setText(f"{self.selected_test_class.tc_default.nominal_load_current_A:g}")
                 if hasattr(self, 'lineedit_add_tests_max_output_current'):
                     self.lineedit_add_tests_max_output_current.setText(f"{getattr(self.selected_test_class.tc_default, 'max_load_current_A', self.selected_test_class.tc_default.nominal_load_current_A):g}")
-                if hasattr(self, 'reset_scope_channels'):
+                default_scope = getattr(self.selected_test_class.tc_default, 'scope_channels', None)
+                if default_scope and hasattr(self, 'set_scope_channels_to_ui'):
+                    self.set_scope_channels_to_ui(default_scope)
+                elif hasattr(self, 'reset_scope_channels'):
                     self.reset_scope_channels()
             else:
                 self.ui.lineedit_add_tests_nominal_output_voltage.setText('')
@@ -2967,7 +2985,7 @@ class AddTestPageHandler(QObject):
                 default_i2c = getattr(self.selected_test_class.tc_default, 'i2c_test_parameters', None)
                 if default_i2c:
                     for idx, line in enumerate(self.i2c_ui_lineedits):
-                        if idx < len(default_i2c.param) and default_i2c.param[idx] != 0 and default_i2c.param[idx] != '':
+                        if idx < len(default_i2c.param) and default_i2c.param[idx] not in ('', None):
                             val = default_i2c.param[idx]
                             if isinstance(val, (int, float)):
                                 line.setText(f"{val:g}")

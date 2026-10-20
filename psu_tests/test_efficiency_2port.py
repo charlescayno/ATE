@@ -693,30 +693,35 @@ class EfficiencyTest_2Port(BaseTestObject):
             os.makedirs(self.waveform_filepath, exist_ok=True)
         self.define_output_data_objects()
         
+    def _style_eff2p_section_title_cell(self, cell):
+        from openpyxl.styles import Font as XlsxFont
+        cell.font = XlsxFont(bold=True, size=11, color="1F497D")
+        cell.alignment = Alignment(horizontal='center', vertical='center')
+
     def prepare_sheet_formatting(self):
         """Merge the cells for the header."""
         self.ws.merge_cells('A4:B4')
         self.ws['A4'] = 'Load Condition'
-        self.ws['A4'].alignment = Alignment(horizontal='center')
+        self._style_eff2p_section_title_cell(self.ws['A4'])
         self.ws.merge_cells('C4:D4')
         self.ws['C4'] = 'Input Set'
-        self.ws['C4'].alignment = Alignment(horizontal='center')
+        self._style_eff2p_section_title_cell(self.ws['C4'])
         self.ws.merge_cells('E4:I4')
         self.ws['E4'] = 'Input Measurement'
-        self.ws['E4'].alignment = Alignment(horizontal='center')
+        self._style_eff2p_section_title_cell(self.ws['E4'])
         self.ws.merge_cells('J4:M4')
         self.ws['J4'] = 'Output 1 Measurement'
-        self.ws['J4'].alignment = Alignment(horizontal='center')
+        self._style_eff2p_section_title_cell(self.ws['J4'])
         self.ws.merge_cells('N4:Q4')
         self.ws['N4'] = 'Output 2 Measurement'
-        self.ws['N4'].alignment = Alignment(horizontal='center')
+        self._style_eff2p_section_title_cell(self.ws['N4'])
         self.ws.merge_cells('R4:S4')
         self.ws['R4'] = 'Total Power & Efficiency'
-        self.ws['R4'].alignment = Alignment(horizontal='center')
+        self._style_eff2p_section_title_cell(self.ws['R4'])
         if self.use_average_efficiency_limits:
             self.ws.merge_cells('T4:X4')
             self.ws['T4'] = 'Average Efficiency Limits'
-            self.ws['T4'].alignment = Alignment(horizontal='center')
+            self._style_eff2p_section_title_cell(self.ws['T4'])
         self.wb.save(self.data_file_path)
         self.wb.close()
 
