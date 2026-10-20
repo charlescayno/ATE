@@ -1,4 +1,4 @@
-"""Assert Efficiency 2 Port (Waveform) tc_default matches TST-326 test plan."""
+"""Assert Steady-State Waveform 2 Port tc_default matches TST-326 test plan."""
 import os
 import sys
 from pathlib import Path
@@ -47,7 +47,7 @@ def main() -> int:
         for e in errors:
             print(" ", e)
         return 1
-    print("OK TST-326 Efficiency 2 Port (Waveform) defaults")
+    print("OK TST-326 Steady-State Waveform 2 Port defaults")
     return 0
 
 

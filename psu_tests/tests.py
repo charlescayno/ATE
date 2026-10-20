@@ -273,6 +273,8 @@ class TestPlan():
         test_names = get_test_title_list()
         if name not in test_names and name == "Primary Vds & Ids Steady-State" and "Steady-State Waveform Capture" in test_names:
             name = "Steady-State Waveform Capture"
+        if name not in test_names and name == "Efficiency 2 Port (Waveform)" and "Steady-State Waveform 2 Port" in test_names:
+            name = "Steady-State Waveform 2 Port"
         test_type:TemplateTest = TestTypes[test_names.index(name)]
         new_test_conditions:TestConditions = test_type.extract_test_condition(test_item_dict=test_item_dict)
         

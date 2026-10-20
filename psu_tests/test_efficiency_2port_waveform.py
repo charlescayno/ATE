@@ -52,13 +52,14 @@ class _CapturePromptHelper(QObject):
 
 class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
     """
-    Efficiency 2 Port with steady-state waveform capture at every operating point.
-    Each row holds the dual-output efficiency data followed by the oscilloscope
-    trigger level, active scope measurements, and the saved screenshot path.
+    Steady-State Waveform 2 Port: dual-output efficiency with scope capture at each point.
+    Main sheet holds full measurements; the Waveforms sheet shows load captions and images.
     """
 
-    title = "Efficiency 2 Port (Waveform)"
-    short_title = "Eff2P_WF"
+    LEGACY_TITLE = "Efficiency 2 Port (Waveform)"
+    title = "Steady-State Waveform 2 Port"
+    short_title = "SS_WF_2P"
+    EMBED_IMAGE_MAX_WIDTH_PX = 1200
     DISCHARGE_CC_A = 1.0
     STOP_DISCHARGE_MIN_PULSES = 2
     use_average_efficiency_limits = False
@@ -309,7 +310,10 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
         if not labels:
             labels = ['Vds Max (V)', 'Ids Max (A)']
         self.scope_measurement_labels = labels
-        return ['Trig Ch', 'Trig Level (V)'] + labels + ['Waveform File']
+        scope_cols = ['Trig Ch', 'Trig Level (V)'] + labels
+        if not getattr(self, 'embed_images', True):
+            scope_cols.append('Waveform File')
+        return scope_cols
 
     def setup_data_file(self):
         self.test_data = TestData()
@@ -350,7 +354,8 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
             wb.close()
 
         self.wb = openpyxl.load_workbook(self.data_file_path)
-        self.sheet_name = f"Eff2PWF_{self.coupling}_{round(self.vout_V, 3):g}V_{round(self.i_max_A, 3):g}A"
+        self.sheet_name = (
+            f"SS_WF_2P_{self.coupling}_{round(self.vout_V, 3):g}V_{round(self.i_max_A, 3):g}A")
         if self.sheet_name in self.wb.sheetnames:
             clear_sheet(self.output_folder_path, self.data_filename, self.sheet_name)
             self.wb = openpyxl.load_workbook(self.data_file_path)
@@ -657,7 +662,9 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
 
         if self.discharge_pulses > 0:
             self.discharge_output(self.discharge_pulses)
+        self._apply_main_sheet_number_formats()
         if self.embed_images:
+            self._link_capture_main_sheet_rows()
             self.embed_waveforms_in_excel()
 
     def _set_loads(self, i1_A, i2_A):
@@ -724,6 +731,11 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
             self._bold_excel_column_header_row(anchor_row)
         self.next_excel_data_row = anchor_row + rows_written
         self._excel_vin_block_index += 1
+        if rows_written > 0:
+            start_data = anchor_row + 1 if first_block else anchor_row
+            end_row = anchor_row + rows_written - 1
+            if end_row >= start_data:
+                self._format_main_sheet_data_rows(start_data, end_row)
 
         self.output_dataframe = dataframe_from_headers(self.header_list)
         if self.efficiency_dataframe is not None:
@@ -775,7 +787,10 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
                 if action == "SKIP":
                     print(f"[SKIP] Capture skipped at {vin_set} V, Ch1 {i1_A} A, Ch2 {i2_A} A")
                     self.oscilloscope.run()
-                    return [f"CH{self.trigger_channel}", "N/A"] + ["N/A"] * n_meas + [""]
+                    row = [f"CH{self.trigger_channel}", "N/A"] + ["N/A"] * n_meas
+                    if not self.embed_images:
+                        row.append("")
+                    return row
 
             prefix = f"{self.unit_id}_" if self.unit_id else ""
             img_filename = f"{prefix}{vin_set:g}V{self.coupling}_Ch1_{i1_A:g}A_Ch2_{i2_A:g}A.png"
@@ -796,7 +811,8 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
             for label in self.scope_measurement_labels:
                 val = meas.get(label)
                 row.append(val if val is not None else "N/A")
-            row.append(img_path)
+            if not self.embed_images:
+                row.append(img_path)
             return row
 
     def _read_trigger_level(self) -> float:
@@ -900,7 +916,7 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
                     if val is None or (isinstance(val, float) and math.isnan(val)):
                         continue
                     lbl = self._normalize_meas_label(lbl_raw)
-                    meas_val = round(float(val), 3)
+                    meas_val = round(float(val), 2)
                     meas_dict[f"{self._channel_name(ch_idx)} {lbl}"] = meas_val
                     if lbl == "Max" and ch_info.get('derating') is not None:
                         limit = ch_info.get('derating')
@@ -916,7 +932,7 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
                 name = self._channel_name(ch_num)
                 try:
                     labels, values = self.oscilloscope.get_measure(ch_num)
-                    meas_val = round(float(values[0]), 3) if values and values[0] is not None else 0.0
+                    meas_val = round(float(values[0]), 2) if values and values[0] is not None else 0.0
                 except Exception:
                     meas_val = 0.0
                 meas_dict[f"{name} Max"] = meas_val
@@ -970,6 +986,86 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
             except Exception:
                 pass
 
+    def process_data_row(self):
+        row = super().process_data_row()
+        vin_coupling_col = 2
+        if isinstance(row[vin_coupling_col], float) and row[vin_coupling_col] == int(row[vin_coupling_col]):
+            row[vin_coupling_col] = int(row[vin_coupling_col])
+        if isinstance(row[3], float) and row[3] == int(row[3]):
+            row[3] = int(row[3])
+        for i in range(4, len(row)):
+            if isinstance(row[i], (int, float)):
+                row[i] = round(float(row[i]), 2)
+        return row
+
+    @staticmethod
+    def _excel_num_format_for_header(header: str) -> str:
+        if header in ('Ch1 Load', 'Ch2 Load', 'Trig Ch', 'Waveform File'):
+            return ''
+        if header.endswith('(rms)') or header == 'Freq (Hz)':
+            return '0'
+        return '#,##0.00'
+
+    def _format_main_sheet_data_rows(self, start_row: int, end_row: int):
+        wb = openpyxl.load_workbook(self.data_file_path)
+        ws = wb[self.sheet_name]
+        for col_idx, header in enumerate(self.header_list, start=1):
+            fmt = self._excel_num_format_for_header(header)
+            if not fmt:
+                continue
+            for row in range(start_row, end_row + 1):
+                cell = ws.cell(row=row, column=col_idx)
+                if isinstance(cell.value, (int, float)):
+                    cell.number_format = fmt
+        scope_start = self.scope_excel_col()
+        for offset, header in enumerate(self.scope_header_list):
+            fmt = self._excel_num_format_for_header(header)
+            if not fmt:
+                continue
+            col = scope_start + offset
+            for row in range(start_row, end_row + 1):
+                cell = ws.cell(row=row, column=col)
+                if isinstance(cell.value, (int, float)):
+                    cell.number_format = fmt
+        wb.save(self.data_file_path)
+        wb.close()
+
+    def _apply_main_sheet_number_formats(self):
+        """Format any data rows already written (safety pass after multi-Vin export)."""
+        try:
+            wb = openpyxl.load_workbook(self.data_file_path)
+            ws = wb[self.sheet_name]
+            end_row = ws.max_row
+            start_row = self.excel_first_data_row + 1
+            if end_row >= start_row:
+                wb.close()
+                self._format_main_sheet_data_rows(start_row, end_row)
+            else:
+                wb.close()
+        except Exception as e:
+            print(f"[Warning] Excel number format pass: {e}")
+
+    def _link_capture_main_sheet_rows(self):
+        row = self.excel_first_data_row + 1
+        for rec in self.captured_records:
+            rec['main_sheet_row'] = row
+            row += 1
+
+    def _scaled_openpyxl_image(self, img_path: str):
+        img = OpenpyxlImage(img_path)
+        width_px, height_px = img.width, img.height
+        try:
+            from PIL import Image as PILImage
+            with PILImage.open(img_path) as pim:
+                width_px, height_px = pim.size
+        except Exception:
+            pass
+        max_w = self.EMBED_IMAGE_MAX_WIDTH_PX
+        scale = min(1.0, max_w / width_px) if width_px > max_w else 1.0
+        img.width = int(width_px * scale)
+        img.height = int(height_px * scale)
+        return img
+
     def embed_waveforms_in_excel(self):
         if OpenpyxlImage is None or not self.captured_records:
             return
@@ -981,26 +1077,46 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
             ws = wb.create_sheet(title=sheet)
             ws['B2'] = f"{self.title} - Captured Waveforms"
             ws['B2'].font = CellFont(size=14, bold=True, color="1F497D")
-            ws.column_dimensions['B'].width = 45
-            ws.column_dimensions['G'].width = 45
+            ws.column_dimensions['B'].width = 28
+            ws.column_dimensions['C'].width = 22
 
             current_row = 4
-            for idx, rec in enumerate(self.captured_records):
+            label_font = CellFont(bold=True, size=11, color="2952A3")
+            hdr_font = CellFont(bold=True, size=10, color="1F497D")
+            for rec in self.captured_records:
                 if not os.path.exists(rec['path']):
                     continue
-                col = 'B' if idx % 2 == 0 else 'G'
-                meas_items = [f"{k}: {v}" for k, v in rec['measurements'].items() if v not in (None, "N/A")]
-                meas_str = (" | " + " | ".join(meas_items)) if meas_items else ""
-                ws[f"{col}{current_row}"] = (
-                    f"{rec['vin']:g} V{self.coupling}, Ch1 {rec['i1']:g} A ({rec['ch1_lbl']}) / "
-                    f"Ch2 {rec['i2']:g} A ({rec['ch2_lbl']}) | Eff {rec['eff']:.2f}%{meas_str}")
-                ws[f"{col}{current_row}"].font = CellFont(bold=True, size=11, color="2952A3")
-                img = OpenpyxlImage(rec['path'])
-                img.width = 420
-                img.height = 315
-                ws.add_image(img, f"{col}{current_row + 1}")
-                if idx % 2 == 1:
-                    current_row += 18
+                vin_disp = int(rec['vin']) if rec['vin'] == int(rec['vin']) else rec['vin']
+                ws[f"B{current_row}"] = (
+                    f"{vin_disp:g} V{self.coupling} | Ch1 {rec['ch1_lbl']} / Ch2 {rec['ch2_lbl']}")
+                ws[f"B{current_row}"].font = label_font
+                current_row += 1
+
+                img = self._scaled_openpyxl_image(rec['path'])
+                ws.add_image(img, f"B{current_row}")
+                rows_for_img = max(12, int(img.height / 18) + 2)
+                current_row += rows_for_img
+
+                ws.cell(row=current_row, column=2, value="Parameter").font = hdr_font
+                ws.cell(row=current_row, column=3, value="Value").font = hdr_font
+                current_row += 1
+                detail_rows = [
+                    ("Main sheet row", rec.get('main_sheet_row')),
+                    ("Efficiency (%)", round(rec['eff'], 2)),
+                    (f"Trig Ch", f"CH{self.trigger_channel}"),
+                ]
+                for key, val in rec.get('measurements', {}).items():
+                    if val not in (None, "N/A"):
+                        detail_rows.append((key, val))
+                detail_rows.append(("Waveform file", os.path.basename(rec['path'])))
+                for param, val in detail_rows:
+                    ws.cell(row=current_row, column=2, value=param)
+                    cval = ws.cell(row=current_row, column=3, value=val)
+                    if isinstance(val, float):
+                        cval.number_format = '#,##0.00'
+                    current_row += 1
+                current_row += 1
+
             wb.save(self.data_file_path)
             wb.close()
         except Exception as e:

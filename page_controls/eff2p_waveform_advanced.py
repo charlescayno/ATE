@@ -1,4 +1,4 @@
-"""Advanced scope / timing settings for Efficiency 2 Port (Waveform) — opened from a gear button."""
+"""Advanced scope / timing settings for Steady-State Waveform 2 Port — opened from a gear button."""
 from PySide2.QtCore import Qt
 from PySide2.QtGui import QDoubleValidator
 from PySide2.QtWidgets import (

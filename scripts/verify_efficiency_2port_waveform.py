@@ -1,4 +1,4 @@
-"""Run Efficiency 2 Port (Waveform) headless against the simulated equipment and check the Excel output."""
+"""Run Steady-State Waveform 2 Port headless against simulated equipment and check Excel output."""
 import os
 import sys
 import tempfile
@@ -104,9 +104,11 @@ def run_case(mode_key: str, out_dir: str) -> list:
         errors.append(
             f"mode {mode_key}: soak times B10-B13 = "
             f"{ws['B10'].value!r}/{ws['B11'].value!r}/{ws['B12'].value!r}/{ws['B13'].value!r}")
+    if not test.sheet_name.startswith('SS_WF_2P_'):
+        errors.append(f"mode {mode_key}: sheet name {test.sheet_name!r}")
     expected_scope = [
         'Trig Ch', 'Trig Level (V)', 'Primary Vds Max', 'Primary Vds Derating (%)',
-        'Primary Vds Min', 'Ids Max', 'Waveform File',
+        'Primary Vds Min', 'Ids Max',
     ]
     got_scope = [ws.cell(row=col_row, column=scope_section_col + i).value for i in range(len(expected_scope))]
     if got_scope != expected_scope:
@@ -117,15 +119,18 @@ def run_case(mode_key: str, out_dir: str) -> list:
         for r in range(data_start, data_start + n_points):
             eff = ws.cell(row=r, column=19).value
             vds = ws.cell(row=r, column=scope_section_col + 2).value
-            img = ws.cell(row=r, column=scope_section_col + len(expected_scope) - 1).value
+            eff_fmt = ws.cell(row=r, column=19).number_format
             if not isinstance(eff, (int, float)) or not isinstance(vds, (int, float)):
                 errors.append(f"mode {mode_key}: row {r} eff={eff!r} vds={vds!r}")
+            if eff_fmt != '#,##0.00':
+                errors.append(f"mode {mode_key}: row {r} efficiency format {eff_fmt!r}")
             if ws.cell(row=r, column=scope_section_col).value != 'CH2':
                 errors.append(
                     f"mode {mode_key}: row {r} trigger channel "
                     f"{ws.cell(row=r, column=scope_section_col).value!r}")
-            if not img or not os.path.exists(img):
-                errors.append(f"mode {mode_key}: row {r} missing screenshot {img!r}")
+            last_scope_col = scope_section_col + len(expected_scope) - 1
+            if ws.cell(row=r, column=last_scope_col + 1).value == 'Waveform File':
+                errors.append(f"mode {mode_key}: Waveform File column should be omitted when embed=Yes")
         if vin_idx > 0:
             r0 = data_start
             if ws.cell(row=r0, column=1).value == 'Ch1 Load':
@@ -139,6 +144,17 @@ def run_case(mode_key: str, out_dir: str) -> list:
         errors.append(f"mode {mode_key}: no {wf_sheet} sheet")
     elif len(wb[wf_sheet]._images) != n_points * len(vin):
         errors.append(f"mode {mode_key}: {len(wb[wf_sheet]._images)} embedded images, expected {n_points * len(vin)}")
+    else:
+        ws_wf = wb[wf_sheet]
+        if ws_wf['B4'].value and 'Primary Vds' in str(ws_wf['B4'].value):
+            errors.append(f"mode {mode_key}: waveform caption should not include scope measurements")
+        found_param_hdr = any(
+            ws_wf.cell(row=row, column=2).value == 'Parameter'
+            for row in range(4, min(ws_wf.max_row, 80)))
+        if not found_param_hdr:
+            errors.append(f"mode {mode_key}: waveforms sheet missing detail Parameter/Value table")
+        if ws_wf._images and getattr(ws_wf._images[0], 'width', 0) <= 420:
+            errors.append(f"mode {mode_key}: embedded image width {ws_wf._images[0].width} (expect >420 native scale)")
 
     table = test.test_data_table
     if len(table.header) != 19 + len(expected_scope):
@@ -161,7 +177,7 @@ def main() -> int:
         for e in errors:
             print(" ", e)
         return 1
-    print("OK Efficiency 2 Port (Waveform) simulated runs passed")
+    print("OK Steady-State Waveform 2 Port simulated runs passed")
     return 0
 
 
