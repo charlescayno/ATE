@@ -73,28 +73,42 @@ def run_case(mode_key: str, out_dir: str) -> list:
     n_points = len(test.load_pairs)
     wb = openpyxl.load_workbook(test.data_file_path)
     ws = wb[test.sheet_name]
-    if ws['Y4'].value != 'Oscilloscope Measurements':
-        errors.append(f"mode {mode_key}: Y4 = {ws['Y4'].value!r}")
-    if ws['S5'].value != 'Efficiency (%)' or ws['T5'].value != 'Avg_Eff' or ws['Y5'].value != 'Trig Ch':
-        errors.append(f"mode {mode_key}: header row S5/T5/Y5 = {ws['S5'].value!r}/{ws['T5'].value!r}/{ws['Y5'].value!r}")
+    scope_section_col = test.scope_excel_col()
+    hdr_row = test.excel_section_header_row
+    col_row = test.excel_first_data_row
+    if ws.cell(row=hdr_row, column=scope_section_col).value != 'Oscilloscope Measurements':
+        errors.append(
+            f"mode {mode_key}: scope section title row {hdr_row} col {scope_section_col} = "
+            f"{ws.cell(row=hdr_row, column=scope_section_col).value!r}")
+    if ws.cell(row=col_row, column=19).value != 'Efficiency (%)':
+        errors.append(f"mode {mode_key}: S{col_row} = {ws.cell(row=col_row, column=19).value!r}")
+    if ws.cell(row=col_row, column=scope_section_col).value != 'Trig Ch':
+        errors.append(
+            f"mode {mode_key}: scope header col {scope_section_col} = "
+            f"{ws.cell(row=col_row, column=scope_section_col).value!r}")
+    if ws.cell(row=hdr_row, column=20).value == 'Average Efficiency Limits':
+        errors.append(f"mode {mode_key}: unexpected Average Efficiency Limits section at column T")
+    if ws['A2'].value != 'Unit ID' or ws['B2'].value != 'U7':
+        errors.append(f"mode {mode_key}: metadata A2/B2 = {ws['A2'].value!r}/{ws['B2'].value!r}")
     expected_scope = ['Trig Ch', 'Trig Level (V)', 'Primary Vds Max', 'Primary Vds Derating (%)', 'Ids Max', 'Waveform File']
-    got_scope = [ws.cell(row=5, column=25 + i).value for i in range(len(expected_scope))]
+    got_scope = [ws.cell(row=col_row, column=scope_section_col + i).value for i in range(len(expected_scope))]
     if got_scope != expected_scope:
         errors.append(f"mode {mode_key}: scope headers {got_scope}")
 
-    # Only the first line-voltage block carries the header row (same as Efficiency 2 Port).
-    data_start = 6
+    data_start = col_row + 1
     for vin_idx in range(len(vin)):
         if ws.cell(row=data_start + n_points, column=1).value not in (None, ''):
             errors.append(f"mode {mode_key}: expected blank separator at row {data_start + n_points}")
         for r in range(data_start, data_start + n_points):
             eff = ws.cell(row=r, column=19).value
-            vds = ws.cell(row=r, column=27).value
-            img = ws.cell(row=r, column=30).value
+            vds = ws.cell(row=r, column=scope_section_col + 2).value
+            img = ws.cell(row=r, column=scope_section_col + 5).value
             if not isinstance(eff, (int, float)) or not isinstance(vds, (int, float)):
                 errors.append(f"mode {mode_key}: row {r} eff={eff!r} vds={vds!r}")
-            if ws.cell(row=r, column=25).value != 'CH2':
-                errors.append(f"mode {mode_key}: row {r} trigger channel {ws.cell(row=r, column=25).value!r}")
+            if ws.cell(row=r, column=scope_section_col).value != 'CH2':
+                errors.append(
+                    f"mode {mode_key}: row {r} trigger channel "
+                    f"{ws.cell(row=r, column=scope_section_col).value!r}")
             if not img or not os.path.exists(img):
                 errors.append(f"mode {mode_key}: row {r} missing screenshot {img!r}")
         data_start += n_points + 1

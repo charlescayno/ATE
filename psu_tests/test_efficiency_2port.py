@@ -1,4 +1,28 @@
 from psu_tests.test_object_imports import *
+from PySide2.QtCore import Qt
+
+
+class _DischargeResistorPromptHelper(QObject):
+    """Thread-safe OK/Cancel prompt (same copy as Manual Control Magna/DC turn-on)."""
+
+    show_sig = Signal()
+
+    def __init__(self, main_window):
+        super().__init__()
+        self._main_window = main_window
+        self.confirmed = True
+        self.show_sig.connect(self._prompt, Qt.BlockingQueuedConnection)
+
+    @Slot()
+    def _prompt(self):
+        message = (
+            "<h2>⚠️ ATTENTION</h2><br>"
+            "<span style='font-size: 14pt; font-weight: bold;'>Is the discharge resistor disengaged?</span><br><br>"
+            "<span style='font-size: 12pt; color: #cc0000;'>Please disengage it before powering up.</span>"
+        )
+        res = self._main_window.msg_box_pick("Discharge Resistor Check", message)
+        self.confirmed = res == 1024  # QMessageBox.Ok
+
 
 class EfficiencyTest_2Port(BaseTestObject):
     """
@@ -8,6 +32,7 @@ class EfficiencyTest_2Port(BaseTestObject):
     """
 
     title = "Efficiency 2 Port"
+    use_average_efficiency_limits = True
 
     # General UI Definitions
     ui_definitions = General_UI_Definitions()
@@ -170,6 +195,8 @@ class EfficiencyTest_2Port(BaseTestObject):
         self.status_report(0, 0, vin_delays=True)
         if self.usbpd_test:
             self.input_supply_eload_discharge_sequence()
+
+        self.confirm_discharge_resistor_disengaged()
         
         # Loop through each line input level
         for self.vin_index, self.vin_freq in enumerate(self.vin_list): 
@@ -341,9 +368,10 @@ class EfficiencyTest_2Port(BaseTestObject):
                 self.output_dataframe, self.output_folder_path, 
                 self.data_filename, self.sheet_name, anchor)
             
-            export_to_excel(
-                self.efficiency_dataframe, self.output_folder_path, 
-                self.data_filename, self.sheet_name, eff_anchor)
+            if self.use_average_efficiency_limits:
+                export_to_excel(
+                    self.efficiency_dataframe, self.output_folder_path,
+                    self.data_filename, self.sheet_name, eff_anchor)
 
             self.next_excel_data_row = anchor_row + main_row_count + 1
 
@@ -387,6 +415,32 @@ class EfficiencyTest_2Port(BaseTestObject):
         self.equipment.input_supply_eload_discharge_sequence(self.i_max_A/3, coupling=self.coupling)
         if self.electronic_load_2 is not None:
             self.electronic_load_2.turn_off()
+
+    def input_supply_needs_discharge_resistor_check(self) -> bool:
+        if getattr(self, 'dc_source', None) is not None and self.input_supply is self.dc_source:
+            return True
+        manu = getattr(self.input_supply, 'manufacturer', '') or ''
+        model = getattr(self.input_supply, 'model', '') or ''
+        return 'Magna-Power' in manu or 'SL1000' in model
+
+    def confirm_discharge_resistor_disengaged(self):
+        import os
+        if os.environ.get('PI_ATE_AUTO_CONFIRM') == '1':
+            return
+        if getattr(self, '_discharge_resistor_confirmed', False):
+            return
+        if not self.input_supply_needs_discharge_resistor_check():
+            self._discharge_resistor_confirmed = True
+            return
+        helper = getattr(self, '_discharge_resistor_prompt_helper', None)
+        if helper is None:
+            helper = _DischargeResistorPromptHelper(self.parent)
+            self._discharge_resistor_prompt_helper = helper
+        helper.confirmed = True
+        helper.show_sig.emit()
+        if not helper.confirmed:
+            raise TestStopped
+        self._discharge_resistor_confirmed = True
     
     def correct_source_output(self):
         """Remove the offset in the measured input by adjusting the source voltage"""
@@ -648,9 +702,10 @@ class EfficiencyTest_2Port(BaseTestObject):
         self.ws.merge_cells('R4:S4')
         self.ws['R4'] = 'Total Power & Efficiency'
         self.ws['R4'].alignment = Alignment(horizontal='center')
-        self.ws.merge_cells('T4:X4')
-        self.ws['T4'] = 'Average Efficiency Limits'
-        self.ws['T4'].alignment = Alignment(horizontal='center')
+        if self.use_average_efficiency_limits:
+            self.ws.merge_cells('T4:X4')
+            self.ws['T4'] = 'Average Efficiency Limits'
+            self.ws['T4'].alignment = Alignment(horizontal='center')
         self.wb.save(self.data_file_path)
         self.wb.close()
 

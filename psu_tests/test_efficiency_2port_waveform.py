@@ -61,6 +61,9 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
     short_title = "Eff2P_WF"
     DISCHARGE_CC_A = 1.0
     STOP_DISCHARGE_MIN_PULSES = 2
+    use_average_efficiency_limits = False
+    excel_section_header_row = 10
+    excel_first_data_row = 11
 
     ui_definitions = General_UI_Definitions()
     ui_definitions.stack_page_1 = StackWidget1Pages.LineVoltageRange
@@ -303,8 +306,12 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
         self.scope_header_list = self.define_scope_header()
         self.output_dataframe = dataframe_from_headers(self.header_list)
         self.scope_dataframe = dataframe_from_headers(self.scope_header_list)
-        self.efficiency_header = ['Avg_Eff', 'DOE6 Limit', 'COC5 T2 Limit', 'COC5_T2_10%', 'Pass/Fail']
-        self.efficiency_dataframe = dataframe_from_headers(self.efficiency_header)
+        if self.use_average_efficiency_limits:
+            self.efficiency_header = ['Avg_Eff', 'DOE6 Limit', 'COC5 T2 Limit', 'COC5_T2_10%', 'Pass/Fail']
+            self.efficiency_dataframe = dataframe_from_headers(self.efficiency_header)
+        else:
+            self.efficiency_header = []
+            self.efficiency_dataframe = None
 
         if not os.path.exists(self.output_folder_path):
             os.makedirs(self.output_folder_path, exist_ok=True)
@@ -331,29 +338,69 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
                 del self.wb['Sheet']
 
         self.prepare_sheet_formatting()
-        self.next_excel_data_row = 5
+        self.next_excel_data_row = self.excel_first_data_row
         self.define_output_data_objects()
 
-    def prepare_sheet_formatting(self):
-        super().prepare_sheet_formatting()
-        wb = openpyxl.load_workbook(self.data_file_path)
-        ws = wb[self.sheet_name]
-        ws['A1'] = f"{self.title} Test"
-        ws['A1'].font = CellFont(size=14, bold=True, color="1F497D")
-        ws['A2'] = (
-            f"Unit ID: {self.unit_id} | Ambient Temp: {self.ambient_temp:g}\u00b0C | "
-            f"Ch1: {self.vout_V:g}V/{self.i_max_A:g}A | Ch2: {self.vout_2_V:g}V/{self.i_max_2_A:g}A | "
-            f"Mode: {self.dual_load_mode} | Probes: {self.probe_setup} | Trigger: CH{self.trigger_channel}")
-        ws['A2'].font = CellFont(size=10, italic=True)
+    def scope_excel_col(self) -> int:
+        """1-based column index for the first oscilloscope column."""
+        return 25 if self.use_average_efficiency_limits else 20
 
-        first_col = 25  # Column Y, after the T-X efficiency limits block
+    def _write_run_metadata_rows(self, ws):
+        meta = [
+            ("Unit ID", self.unit_id),
+            ("Ambient Temp (°C)", self.ambient_temp),
+            ("Ch1", f"{self.vout_V:g} V / {self.i_max_A:g} A"),
+            ("Ch2", f"{self.vout_2_V:g} V / {self.i_max_2_A:g} A"),
+            ("Mode", self.dual_load_mode),
+            ("Probes", self.probe_setup),
+            ("Trigger", f"CH{self.trigger_channel}"),
+        ]
+        for row_offset, (label, value) in enumerate(meta):
+            row = 2 + row_offset
+            ws[f"A{row}"] = label
+            ws[f"B{row}"] = value
+            ws[f"A{row}"].font = CellFont(bold=True, size=10, color="1F497D")
+            ws[f"B{row}"].font = CellFont(size=10)
+
+    def _write_excel_section_header_row(self, ws, row: int):
+        ws.merge_cells(f"A{row}:B{row}")
+        ws[f"A{row}"] = 'Load Condition'
+        ws[f"A{row}"].alignment = Alignment(horizontal='center')
+        ws.merge_cells(f"C{row}:D{row}")
+        ws[f"C{row}"] = 'Input Set'
+        ws[f"C{row}"].alignment = Alignment(horizontal='center')
+        ws.merge_cells(f"E{row}:I{row}")
+        ws[f"E{row}"] = 'Input Measurement'
+        ws[f"E{row}"].alignment = Alignment(horizontal='center')
+        ws.merge_cells(f"J{row}:M{row}")
+        ws[f"J{row}"] = 'Output 1 Measurement'
+        ws[f"J{row}"].alignment = Alignment(horizontal='center')
+        ws.merge_cells(f"N{row}:Q{row}")
+        ws[f"N{row}"] = 'Output 2 Measurement'
+        ws[f"N{row}"].alignment = Alignment(horizontal='center')
+        ws.merge_cells(f"R{row}:S{row}")
+        ws[f"R{row}"] = 'Total Power & Efficiency'
+        ws[f"R{row}"].alignment = Alignment(horizontal='center')
+        if self.use_average_efficiency_limits:
+            ws.merge_cells(f"T{row}:X{row}")
+            ws[f"T{row}"] = 'Average Efficiency Limits'
+            ws[f"T{row}"].alignment = Alignment(horizontal='center')
+        first_col = self.scope_excel_col()
         last_col = first_col + len(self.scope_header_list) - 1
-        ws.merge_cells(f"{get_column_letter(first_col)}4:{get_column_letter(last_col)}4")
-        cell = ws[f"{get_column_letter(first_col)}4"]
+        ws.merge_cells(
+            f"{get_column_letter(first_col)}{row}:{get_column_letter(last_col)}{row}")
+        cell = ws[f"{get_column_letter(first_col)}{row}"]
         cell.value = 'Oscilloscope Measurements'
         cell.alignment = Alignment(horizontal='center')
-        wb.save(self.data_file_path)
-        wb.close()
+
+    def prepare_sheet_formatting(self):
+        ws = self.ws
+        ws['A1'] = f"{self.title} Test"
+        ws['A1'].font = CellFont(size=14, bold=True, color="1F497D")
+        self._write_run_metadata_rows(ws)
+        self._write_excel_section_header_row(ws, self.excel_section_header_row)
+        self.wb.save(self.data_file_path)
+        self.wb.close()
 
     ###########################################################################
     #                               Test loop                                 #
@@ -423,6 +470,8 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
         self.status_report(0, 0, vin_delays=True)
         if self.usbpd_test:
             self.input_supply_eload_discharge_sequence()
+
+        self.confirm_discharge_resistor_disengaged()
 
         for self.vin_index, self.vin_freq in enumerate(self.vin_list):
             vin_set = self.vin_freq[0]
@@ -580,16 +629,19 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
 
     def _export_line_block(self):
         anchor_row = self.next_excel_data_row
+        scope_col = get_column_letter(self.scope_excel_col())
         export_to_excel(self.output_dataframe, self.output_folder_path,
                         self.data_filename, self.sheet_name, f"A{anchor_row}")
-        export_to_excel(self.efficiency_dataframe, self.output_folder_path,
-                        self.data_filename, self.sheet_name, f"T{anchor_row}")
+        if self.use_average_efficiency_limits and self.efficiency_dataframe is not None:
+            export_to_excel(self.efficiency_dataframe, self.output_folder_path,
+                            self.data_filename, self.sheet_name, f"T{anchor_row}")
         export_to_excel(self.scope_dataframe, self.output_folder_path,
-                        self.data_filename, self.sheet_name, f"Y{anchor_row}")
+                        self.data_filename, self.sheet_name, f"{scope_col}{anchor_row}")
         self.next_excel_data_row = anchor_row + len(self.output_dataframe) + 1
 
         self.output_dataframe = self.output_dataframe[0:0]
-        self.efficiency_dataframe = self.efficiency_dataframe[0:0]
+        if self.efficiency_dataframe is not None:
+            self.efficiency_dataframe = self.efficiency_dataframe[0:0]
         self.scope_dataframe = self.scope_dataframe[0:0]
 
     ###########################################################################
