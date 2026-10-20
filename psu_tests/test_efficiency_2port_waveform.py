@@ -481,15 +481,34 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
         """Label channels and push custom measurements/cursors to the scope when supported."""
         custom_meas = {}
         for ch_num, ch_data in self.scope_channels.items():
-            if not ch_data.get('enabled'):
-                continue
-            ch_name = ch_data.get('name') or f"CH{ch_num}"
-            if hasattr(self.oscilloscope, 'channel_label'):
+            ch_name = (ch_data.get('name') or f"CH{ch_num}").strip()
+            enabled = bool(ch_data.get('enabled'))
+            if hasattr(self.oscilloscope, 'apply_channel_from_ui'):
                 try:
-                    self.oscilloscope.channel_label(channel=ch_num, label=ch_name,
-                                                    rel_x_position=50, rel_y_position=50)
+                    self.oscilloscope.apply_channel_from_ui(ch_num, enabled, ch_name)
                 except Exception as e:
-                    print(f"[Warning] Failed to set label '{ch_name}' for CH{ch_num}: {e}")
+                    print(f"[Warning] Failed to apply CH{ch_num} on scope: {e}")
+                if not enabled:
+                    continue
+            elif not enabled:
+                if hasattr(self.oscilloscope, 'hide_channel'):
+                    try:
+                        self.oscilloscope.hide_channel(ch_num)
+                    except Exception as e:
+                        print(f"[Warning] Failed to hide CH{ch_num}: {e}")
+                continue
+            else:
+                if hasattr(self.oscilloscope, 'show_channel'):
+                    try:
+                        self.oscilloscope.show_channel(ch_num)
+                    except Exception as e:
+                        print(f"[Warning] Failed to show CH{ch_num}: {e}")
+                if hasattr(self.oscilloscope, 'channel_label'):
+                    try:
+                        self.oscilloscope.channel_label(channel=ch_num, label=ch_name,
+                                                        rel_x_position=50, rel_y_position=50)
+                    except Exception as e:
+                        print(f"[Warning] Failed to set label '{ch_name}' for CH{ch_num}: {e}")
             if ch_data.get('measurements'):
                 custom_meas[ch_num] = ch_data.get('measurements')
             if (ch_data.get('cursor') or {}).get('enabled') and hasattr(self.oscilloscope, 'cursor'):

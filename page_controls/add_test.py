@@ -2498,10 +2498,43 @@ class AddTestPageHandler(QObject):
 
             self.update_vds_ids_trigger_channels()
 
+    def push_scope_channels_to_instrument(self):
+        """Push CH enable + name from Add Test to the connected oscilloscope."""
+        if not hasattr(self, 'ch1_checkbox'):
+            return
+        selected = getattr(self, 'selected_test_class', None)
+        if selected is None or selected.title not in (
+                EFFICIENCY_2PORT_WAVEFORM_TITLE, EFFICIENCY_2PORT_WAVEFORM_LEGACY_TITLE):
+            return
+        try:
+            if hasattr(self.equipment, 'check_scope_availability'):
+                self.equipment.check_scope_availability(get_default=True)
+            scope = getattr(self.equipment, 'oscilloscope', None)
+        except Exception:
+            scope = None
+        if scope is None:
+            return
+        for ch in (1, 2, 3, 4):
+            cb = getattr(self, f'ch{ch}_checkbox', None)
+            le = getattr(self, f'ch{ch}_lineedit', None)
+            if cb is None or le is None:
+                continue
+            enabled = cb.isChecked()
+            name = le.text().strip() or f"CH{ch}"
+            if hasattr(scope, 'apply_channel_from_ui'):
+                scope.apply_channel_from_ui(ch, enabled, name)
+            elif enabled and hasattr(scope, 'channel_label'):
+                if hasattr(scope, 'show_channel'):
+                    scope.show_channel(ch)
+                scope.channel_label(ch, name)
+            elif not enabled and hasattr(scope, 'hide_channel'):
+                scope.hide_channel(ch)
+
     def sync_scope_channels_to_selected_test_item(self):
         if hasattr(self, 'selected_test_item') and self.selected_test_item and hasattr(self, 'get_scope_channels_from_ui'):
             if hasattr(self.selected_test_item, 'test_conditions'):
                 self.selected_test_item.test_conditions.scope_channels = self.get_scope_channels_from_ui()
+        self.push_scope_channels_to_instrument()
 
     def sync_waveform_scope_channels_before_run(self):
         """Snapshot scope matrix UI onto queued waveform tests (selected row) before Run."""

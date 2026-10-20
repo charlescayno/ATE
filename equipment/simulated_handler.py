@@ -460,6 +460,8 @@ class SimulatedOscilloscope:
         self.details = self.device_id
         self.address = 'TCPIP::192.168.1.100::INSTR'
         self.channel = {i: DummyScopeChannel(i) for i in range(1, 5)}
+        self.channel_display_labels = {i: f"CH{i}" for i in range(1, 5)}
+        self.channel_enabled = {i: (i <= 2) for i in range(1, 5)}
         self._trigger_mode = 'AUTO'
         self._time_scale = 1e-6
         self._time_position = 0.0
@@ -521,6 +523,20 @@ class SimulatedOscilloscope:
             {'channel': 1, 'labels': ['Max'], 'values': [round((self.state.vin * 1.414) + 115.0, 2)]},
             {'channel': 2, 'labels': ['Max'], 'values': [round(self.state.iout * 1.4 + 0.15, 3)]}
         ]
+
+    def channel_label(self, channel, label, rel_x_position=50, rel_y_position=50):
+        self.channel_display_labels[channel] = str(label)
+
+    def show_channel(self, channel):
+        self.channel_enabled[channel] = True
+
+    def hide_channel(self, channel):
+        self.channel_enabled[channel] = False
+
+    def apply_channel_from_ui(self, channel, enabled, label):
+        self.channel_enabled[channel] = bool(enabled)
+        if enabled and label:
+            self.channel_display_labels[channel] = str(label)
 
     def get_screenshot(self, filename='default.png', path='.'):
         """Returns a realistic oscilloscope graticule display."""

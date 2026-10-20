@@ -256,6 +256,41 @@ class RohdeSchwarzOscilloscope(OscilloscopeBaseClass):
     def show_channel(self, channel):
         self.write(f"CHANnel{channel}:STATe ON")
 
+    def channel_label(self, channel, label, rel_x_position=50, rel_y_position=50):
+        """Assign the R&S waveform label shown on-screen for this channel."""
+        safe = str(label).replace("'", "").replace('"', '')[:64]
+        if not safe:
+            return
+        for cmd in (
+            f"DISPlay:SIGNal:LABel C{channel}W1, '{safe}'",
+            f"DISPlay:SIGNal:LABel C{channel}, '{safe}'",
+        ):
+            try:
+                self.write(cmd)
+                print(f"[SCOPE] CH{channel} label set to {safe!r}")
+                return
+            except Exception:
+                continue
+        label_id = f"Label{channel}"
+        try:
+            self.write(f"DISPlay:SIGNal:LABel:REMove '{label_id}', C{channel}W1")
+            sleep(0.2)
+            self.write(
+                f"DISPlay:SIGNal:LABel:ADD '{label_id}', C{channel}W1, '{safe}', "
+                f"REL, {rel_x_position}, {rel_y_position}")
+            print(f"[SCOPE] CH{channel} overlay label {safe!r}")
+        except Exception as e:
+            print(f"[Warning] R&S channel_label CH{channel}: {e}")
+
+    def apply_channel_from_ui(self, channel, enabled, label):
+        """Match Add Test scope matrix: channel on/off + trace label."""
+        if enabled:
+            self.show_channel(channel)
+            if label:
+                self.channel_label(channel, label)
+        else:
+            self.hide_channel(channel)
+
     def add_zoom(self, rel_pos=0, rel_scale=25, vert_scale=100):
         self.remove_zoom()
         for i in range(5):
