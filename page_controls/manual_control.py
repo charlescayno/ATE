@@ -268,7 +268,8 @@ class ManualControlPageHandler():
         self.update_param_text_flag = False
         self.source_caps_listed = False
         self.setup_state_saving()
-    
+        self.initialize_aux_dc_source()
+
     def bind_ui_elements(self):
         from PySide2.QtGui import QDoubleValidator
         self.validator = QDoubleValidator(0, 16777215, 6)
@@ -379,121 +380,157 @@ class ManualControlPageHandler():
         self.ui.lineedit_manual_usbpd_request_param2.setValidator(self.validator)
 
     def _build_aux_dc_source_panel(self):
+        from functools import partial
         from PySide2.QtWidgets import (QFrame, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
                                        QPushButton, QGridLayout, QSizePolicy)
         from PySide2.QtCore import Qt, QSize
+        from equipment.dc_source import HMP_MANUAL_CHANNEL_COUNT
+
         ui = self.ui
         frame = QFrame(ui.frame_manual_control_lower)
         frame.setObjectName("frame_manual_control_dc_source_aux")
-        pol = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
-        pol.setHorizontalStretch(1)
-        frame.setSizePolicy(pol)
-        frame.setMinimumSize(QSize(280, 0))
-        frame.setMaximumHeight(ui.frame_manual_control_ac_source.maximumHeight()
-                               if ui.frame_manual_control_ac_source.maximumHeight() > 0 else 16777215)
+        frame.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
         frame.setStyleSheet(ui.frame_manual_control_ac_source.styleSheet())
 
         outer = QVBoxLayout(frame)
-        outer.setContentsMargins(6, 6, 6, 6)
-        outer.setSpacing(4)
+        outer.setContentsMargins(4, 4, 4, 4)
+        outer.setSpacing(2)
 
         title = QLabel("AUX DC (HMP)", frame)
         title.setObjectName("label_manual_control_dc_source_aux")
-        title.setMaximumHeight(30)
+        title.setMaximumHeight(26)
         title.setAlignment(Qt.AlignCenter)
         title.setStyleSheet(ui.label_manual_control_ac_source.styleSheet())
         outer.addWidget(title)
-
-        contents = QFrame(frame)
-        contents.setStyleSheet("border:none;")
-        row = QHBoxLayout(contents)
-        row.setContentsMargins(0, 0, 0, 0)
-        row.setSpacing(6)
-
-        params = QFrame(contents)
-        params.setObjectName("frame_manual_control_dc_aux_params")
-        params.setStyleSheet(ui.frame_manual_control_ac_source_params.styleSheet())
-        grid = QGridLayout(params)
-        grid.setContentsMargins(6, 6, 6, 6)
-        grid.setHorizontalSpacing(8)
-        grid.setVerticalSpacing(6)
 
         le_style = ui.lineedit_manual_control_ac_source_voltage.styleSheet()
         lbl_style = ui.label_manual_control_ac_source_voltage.styleSheet()
         min_le_h = ui.lineedit_manual_control_ac_source_voltage.minimumHeight()
 
-        ui.label_manual_control_dc_aux_voltage = QLabel("Voltage (V)", params)
-        ui.label_manual_control_dc_aux_voltage.setStyleSheet(lbl_style)
-        ui.lineedit_manual_control_dc_aux_voltage = QLineEdit(params)
-        ui.lineedit_manual_control_dc_aux_voltage.setObjectName("lineedit_manual_control_dc_aux_voltage")
-        ui.lineedit_manual_control_dc_aux_voltage.setText("0")
-        ui.lineedit_manual_control_dc_aux_voltage.setMinimumHeight(min_le_h)
-        ui.lineedit_manual_control_dc_aux_voltage.setValidator(self.validator)
-        ui.lineedit_manual_control_dc_aux_voltage.setStyleSheet(le_style)
+        self.hmp_aux_channel_widgets = {}
+        channels_host = QVBoxLayout()
+        channels_host.setSpacing(4)
 
-        ui.label_manual_control_dc_aux_current = QLabel("Current (A)", params)
-        ui.label_manual_control_dc_aux_current.setStyleSheet(lbl_style)
-        ui.lineedit_manual_control_dc_aux_current = QLineEdit(params)
-        ui.lineedit_manual_control_dc_aux_current.setObjectName("lineedit_manual_control_dc_aux_current")
-        ui.lineedit_manual_control_dc_aux_current.setText("1.0")
-        ui.lineedit_manual_control_dc_aux_current.setMinimumHeight(min_le_h)
-        ui.lineedit_manual_control_dc_aux_current.setValidator(self.validator)
-        ui.lineedit_manual_control_dc_aux_current.setStyleSheet(le_style)
+        for ch in range(1, HMP_MANUAL_CHANNEL_COUNT + 1):
+            ch_frame = QFrame(frame)
+            ch_frame.setObjectName(f"frame_manual_control_dc_aux_ch{ch}")
+            ch_frame.setStyleSheet("border: 1px solid #3f4657; border-radius: 3px;")
+            ch_row = QHBoxLayout(ch_frame)
+            ch_row.setContentsMargins(2, 2, 2, 2)
+            ch_row.setSpacing(4)
 
-        ui.btn_manual_control_dc_aux_apply = QPushButton("Apply V / I", params)
-        ui.btn_manual_control_dc_aux_apply.setObjectName("btn_manual_control_dc_aux_apply")
-        ui.btn_manual_control_dc_aux_apply.setMinimumHeight(32)
-        ui.btn_manual_control_dc_aux_apply.setStyleSheet(ui.btn_manual_control_ac_source_turn_on.styleSheet())
+            params = QFrame(ch_frame)
+            params.setObjectName(f"frame_manual_control_dc_aux_params_ch{ch}")
+            params.setStyleSheet(ui.frame_manual_control_ac_source_params.styleSheet())
+            grid = QGridLayout(params)
+            grid.setContentsMargins(4, 4, 4, 4)
+            grid.setHorizontalSpacing(6)
+            grid.setVerticalSpacing(4)
 
-        ui.label_manual_control_dc_aux_status = QLabel("Status: OFF", params)
-        ui.label_manual_control_dc_aux_status.setObjectName("label_manual_control_dc_aux_status")
-        ui.label_manual_control_dc_aux_status.setStyleSheet("color: rgb(140,140,140); border: none;")
-        ui.label_manual_control_dc_aux_status.setAlignment(Qt.AlignCenter)
+            lbl_ch = QLabel(f"CH{ch}", params)
+            lbl_ch.setStyleSheet(lbl_style)
+            le_v = QLineEdit(params)
+            le_v.setObjectName(f"lineedit_manual_control_dc_aux_voltage_ch{ch}")
+            le_v.setText("0")
+            le_v.setMinimumHeight(min_le_h)
+            le_v.setValidator(self.validator)
+            le_v.setStyleSheet(le_style)
+            le_i = QLineEdit(params)
+            le_i.setObjectName(f"lineedit_manual_control_dc_aux_current_ch{ch}")
+            le_i.setText("1.0")
+            le_i.setMinimumHeight(min_le_h)
+            le_i.setValidator(self.validator)
+            le_i.setStyleSheet(le_style)
+            btn_apply = QPushButton("Apply V / I", params)
+            btn_apply.setObjectName(f"btn_manual_control_dc_aux_apply_ch{ch}")
+            btn_apply.setMinimumHeight(28)
+            btn_apply.setStyleSheet(ui.btn_manual_control_ac_source_turn_on.styleSheet())
+            lbl_status = QLabel("Status: OFF", params)
+            lbl_status.setObjectName(f"label_manual_control_dc_aux_status_ch{ch}")
+            lbl_status.setStyleSheet("color: rgb(140,140,140); border: none;")
+            lbl_status.setAlignment(Qt.AlignCenter)
 
-        grid.addWidget(ui.label_manual_control_dc_aux_voltage, 0, 0)
-        grid.addWidget(ui.lineedit_manual_control_dc_aux_voltage, 0, 1)
-        grid.addWidget(ui.label_manual_control_dc_aux_current, 1, 0)
-        grid.addWidget(ui.lineedit_manual_control_dc_aux_current, 1, 1)
-        grid.addWidget(ui.btn_manual_control_dc_aux_apply, 2, 0, 1, 2)
-        grid.addWidget(ui.label_manual_control_dc_aux_status, 3, 0, 1, 2)
+            grid.addWidget(lbl_ch, 0, 0)
+            grid.addWidget(QLabel("V", params), 0, 1)
+            grid.addWidget(le_v, 0, 2)
+            grid.addWidget(QLabel("A", params), 1, 1)
+            grid.addWidget(le_i, 1, 2)
+            grid.addWidget(btn_apply, 2, 0, 1, 3)
+            grid.addWidget(lbl_status, 3, 0, 1, 3)
 
-        btn_frame = QFrame(contents)
-        btn_frame.setObjectName("frame_manual_control_dc_aux_buttons")
-        btn_frame.setStyleSheet(ui.frame_manual_control_ac_source_buttons.styleSheet())
-        btn_col = QVBoxLayout(btn_frame)
-        btn_col.setContentsMargins(4, 4, 4, 4)
-        btn_col.setSpacing(4)
+            btn_frame = QFrame(ch_frame)
+            btn_frame.setObjectName(f"frame_manual_control_dc_aux_buttons_ch{ch}")
+            btn_frame.setStyleSheet(ui.frame_manual_control_ac_source_buttons.styleSheet())
+            btn_col = QVBoxLayout(btn_frame)
+            btn_col.setContentsMargins(2, 2, 2, 2)
+            btn_col.setSpacing(2)
+            btn_on = QPushButton(btn_frame)
+            btn_on.setObjectName(f"btn_manual_control_dc_aux_turn_on_ch{ch}")
+            btn_on.setMinimumSize(QSize(72, 56))
+            btn_on.setFont(ui.btn_manual_control_ac_source_turn_on.font())
+            btn_on.setStyleSheet(ui.btn_manual_control_ac_source_turn_on.styleSheet())
+            btn_on.setIcon(ui.btn_manual_control_ac_source_turn_on.icon())
+            btn_off = QPushButton(btn_frame)
+            btn_off.setObjectName(f"btn_manual_control_dc_aux_turn_off_ch{ch}")
+            btn_off.setMinimumSize(QSize(72, 56))
+            btn_off.setFont(ui.btn_manual_control_ac_source_turn_off.font())
+            btn_off.setStyleSheet(ui.btn_manual_control_ac_source_turn_off.styleSheet())
+            btn_off.setIcon(ui.btn_manual_control_ac_source_turn_off.icon())
+            btn_col.addWidget(btn_on)
+            btn_col.addWidget(btn_off)
 
-        ui.btn_manual_control_dc_aux_turn_on = QPushButton(btn_frame)
-        ui.btn_manual_control_dc_aux_turn_on.setObjectName("btn_manual_control_dc_aux_turn_on")
-        ui.btn_manual_control_dc_aux_turn_on.setMinimumSize(QSize(100, 80))
-        ui.btn_manual_control_dc_aux_turn_on.setFont(ui.btn_manual_control_ac_source_turn_on.font())
-        ui.btn_manual_control_dc_aux_turn_on.setStyleSheet(ui.btn_manual_control_ac_source_turn_on.styleSheet())
-        ui.btn_manual_control_dc_aux_turn_on.setIcon(ui.btn_manual_control_ac_source_turn_on.icon())
+            ch_row.addWidget(params, 1)
+            ch_row.addWidget(btn_frame, 0)
+            channels_host.addWidget(ch_frame)
 
-        ui.btn_manual_control_dc_aux_turn_off = QPushButton(btn_frame)
-        ui.btn_manual_control_dc_aux_turn_off.setObjectName("btn_manual_control_dc_aux_turn_off")
-        ui.btn_manual_control_dc_aux_turn_off.setMinimumSize(QSize(100, 80))
-        ui.btn_manual_control_dc_aux_turn_off.setFont(ui.btn_manual_control_ac_source_turn_off.font())
-        ui.btn_manual_control_dc_aux_turn_off.setStyleSheet(ui.btn_manual_control_ac_source_turn_off.styleSheet())
-        ui.btn_manual_control_dc_aux_turn_off.setIcon(ui.btn_manual_control_ac_source_turn_off.icon())
+            btn_apply.clicked.connect(partial(self.aux_dc_apply_settings, ch))
+            btn_on.clicked.connect(partial(self.aux_dc_turn_on, ch))
+            btn_off.clicked.connect(partial(self.aux_dc_turn_off, ch))
 
-        btn_col.addWidget(ui.btn_manual_control_dc_aux_turn_on)
-        btn_col.addWidget(ui.btn_manual_control_dc_aux_turn_off)
+            self.hmp_aux_channel_widgets[ch] = {
+                'le_v': le_v, 'le_i': le_i, 'status': lbl_status, 'buttons': btn_frame,
+            }
 
-        row.addWidget(params, 1)
-        row.addWidget(btn_frame, 0)
-        outer.addWidget(contents, 0)
+        outer.addLayout(channels_host)
 
-        idx = ui.horizontalLayout_13.indexOf(ui.frame_manual_control_ac_source)
-        ui.horizontalLayout_13.insertWidget(idx + 1, frame, 1)
+        # Legacy single-channel widget names (CH1) for older verify/scripts
+        w1 = self.hmp_aux_channel_widgets[1]
+        ui.lineedit_manual_control_dc_aux_voltage = w1['le_v']
+        ui.lineedit_manual_control_dc_aux_current = w1['le_i']
+        ui.label_manual_control_dc_aux_status = w1['status']
+        ui.frame_manual_control_dc_aux_buttons = w1['buttons']
+        ui.btn_manual_control_dc_aux_apply = frame.findChild(QPushButton, "btn_manual_control_dc_aux_apply_ch1")
+        ui.btn_manual_control_dc_aux_turn_on = frame.findChild(QPushButton, "btn_manual_control_dc_aux_turn_on_ch1")
+        ui.btn_manual_control_dc_aux_turn_off = frame.findChild(QPushButton, "btn_manual_control_dc_aux_turn_off_ch1")
+
         ui.frame_manual_control_dc_source_aux = frame
-        ui.frame_manual_control_dc_aux_buttons = btn_frame
         frame.setVisible(False)
+        self._stack_aux_under_dc_source()
 
-        ui.btn_manual_control_dc_aux_turn_on.clicked.connect(self.aux_dc_turn_on)
-        ui.btn_manual_control_dc_aux_turn_off.clicked.connect(self.aux_dc_turn_off)
-        ui.btn_manual_control_dc_aux_apply.clicked.connect(self.aux_dc_apply_settings)
+    def _stack_aux_under_dc_source(self):
+        from PySide2.QtWidgets import QFrame, QVBoxLayout, QSizePolicy
+        from PySide2.QtCore import QSize
+        ui = self.ui
+        layout = ui.horizontalLayout_13
+        ac = ui.frame_manual_control_ac_source
+        aux = ui.frame_manual_control_dc_source_aux
+        idx = layout.indexOf(ac)
+        if idx < 0:
+            return
+        col = QFrame(ui.frame_manual_control_lower)
+        col.setObjectName("frame_manual_control_dc_source_column")
+        col.setMinimumSize(QSize(300, 0))
+        col.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Preferred)
+        col_v = QVBoxLayout(col)
+        col_v.setContentsMargins(0, 0, 0, 0)
+        col_v.setSpacing(4)
+        layout.removeWidget(ac)
+        ac.setParent(col)
+        aux.setParent(col)
+        col_v.addWidget(ac)
+        col_v.addWidget(aux)
+        layout.insertWidget(idx, col, 0)
+        ui.frame_manual_control_dc_source_column = col
 
     def set_pd_flags(self, flag_code:int):
         match flag_code:
@@ -957,56 +994,96 @@ class ManualControlPageHandler():
         frame.setStyleSheet(Style.normal_frame)
         self.update_aux_dc_status()
 
-    def _aux_dc_setpoints(self):
-        v = float(self.ui.lineedit_manual_control_dc_aux_voltage.text())
-        i = float(self.ui.lineedit_manual_control_dc_aux_current.text())
+    def _aux_dc_setpoints(self, channel: int):
+        w = self.hmp_aux_channel_widgets[channel]
+        v = float(w['le_v'].text())
+        i = float(w['le_i'].text())
         return v, i
 
-    def aux_dc_apply_settings(self):
+    def _aux_dc_use_channels(self) -> bool:
+        aux = self.dc_source_aux
+        if aux is None:
+            return False
+        if hasattr(aux, 'is_hmp_series'):
+            return aux.is_hmp_series()
+        return (getattr(aux, 'model', '') or '').upper().startswith('HMP')
+
+    def _aux_dc_apply_channel(self, channel: int, v: float, i: float):
+        aux = self.dc_source_aux
+        if self._aux_dc_use_channels():
+            aux.channel_set_voltage(channel, v)
+            aux.channel_set_current_limit(channel, i)
+        else:
+            aux.set_current_limit(i)
+            aux.voltage = v
+
+    def _aux_dc_on_channel(self, channel: int):
+        aux = self.dc_source_aux
+        if self._aux_dc_use_channels():
+            aux.channel_turn_on(channel)
+        else:
+            aux.turn_on()
+
+    def _aux_dc_off_channel(self, channel: int):
+        aux = self.dc_source_aux
+        if self._aux_dc_use_channels():
+            aux.channel_turn_off(channel)
+        else:
+            aux.turn_off()
+
+    def aux_dc_apply_settings(self, channel: int = 1):
         if not self.dc_source_aux_accessible or self.dc_source_aux is None:
             return
         try:
-            v, i = self._aux_dc_setpoints()
-            self.dc_source_aux.set_current_limit(i)
-            self.dc_source_aux.voltage = v
+            v, i = self._aux_dc_setpoints(channel)
+            self._aux_dc_apply_channel(channel, v, i)
         except Exception as e:
-            print(f"[DC_SOURCE] Aux apply failed: {e}")
+            print(f"[DC_SOURCE] Aux CH{channel} apply failed: {e}")
             self.dc_source_aux_accessible = False
             self.ui.frame_manual_control_dc_source_aux.setStyleSheet(Style.red_frame)
             self.ui.frame_manual_control_dc_source_aux.setEnabled(False)
 
-    def aux_dc_turn_on(self):
+    def aux_dc_turn_on(self, channel: int = 1):
         if not self.dc_source_aux_accessible or self.dc_source_aux is None:
             return
         try:
-            self.aux_dc_apply_settings()
-            self.dc_source_aux.turn_on()
+            self.aux_dc_apply_settings(channel)
+            self._aux_dc_on_channel(channel)
             self.update_aux_dc_status()
         except Exception as e:
-            print(f"[DC_SOURCE] Aux ON failed: {e}")
+            print(f"[DC_SOURCE] Aux CH{channel} ON failed: {e}")
 
-    def aux_dc_turn_off(self):
+    def aux_dc_turn_off(self, channel: int = 1):
         if not self.dc_source_aux_accessible or self.dc_source_aux is None:
             return
         try:
-            self.dc_source_aux.turn_off()
+            self._aux_dc_off_channel(channel)
             self.update_aux_dc_status()
         except Exception as e:
-            print(f"[DC_SOURCE] Aux OFF failed: {e}")
+            print(f"[DC_SOURCE] Aux CH{channel} OFF failed: {e}")
 
     def update_aux_dc_status(self):
         if not getattr(self, 'dc_source_aux_accessible', False) or self.dc_source_aux is None:
             return
         try:
-            from equipment.dc_source import DC_SOURCE_STATUS
-            self.dc_source_aux.update_status()
-            on = self.dc_source_aux.output_status == DC_SOURCE_STATUS.ON
-            self.ui.label_manual_control_dc_aux_status.setText("Status: ON" if on else "Status: OFF")
-            self.ui.label_manual_control_dc_aux_status.setStyleSheet(
-                "color: rgb(85,255,127); border: none;" if on else "color: rgb(140,140,140); border: none;")
-            if hasattr(self.ui, 'frame_manual_control_dc_aux_buttons'):
-                self.ui.frame_manual_control_dc_aux_buttons.setStyleSheet(
-                    Style.green_frame if on else Style.normal_frame)
+            from equipment.dc_source import DC_SOURCE_STATUS, HMP_MANUAL_CHANNEL_COUNT
+            channels = range(1, HMP_MANUAL_CHANNEL_COUNT + 1)
+            if not self._aux_dc_use_channels():
+                channels = (1,)
+            for ch in channels:
+                w = self.hmp_aux_channel_widgets.get(ch)
+                if not w:
+                    continue
+                if self._aux_dc_use_channels():
+                    on_val = self.dc_source_aux.channel_update_status(ch)
+                else:
+                    self.dc_source_aux.update_status()
+                    on_val = self.dc_source_aux.output_status
+                on = on_val == DC_SOURCE_STATUS.ON
+                w['status'].setText("Status: ON" if on else "Status: OFF")
+                w['status'].setStyleSheet(
+                    "color: rgb(85,255,127); border: none;" if on else "color: rgb(140,140,140); border: none;")
+                w['buttons'].setStyleSheet(Style.green_frame if on else Style.normal_frame)
         except Exception:
             pass
 

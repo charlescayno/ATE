@@ -77,6 +77,37 @@ class SimulatedDCSource:
         self._voltage = 0.0
         self._current_limit = 1.0
         self.aux_rail = False
+        self._hmp_active = 1
+        if (model or '').upper().startswith('HMP'):
+            self._hmp_channels = {
+                i: {'v': 0.0, 'i': 1.0, 'on': 0} for i in range(1, 4)
+            }
+
+    def is_hmp_series(self) -> bool:
+        return hasattr(self, '_hmp_channels')
+
+    def _hmp_sync_active_from_store(self):
+        if not self.is_hmp_series():
+            return
+        ch = self._hmp_channels[self._hmp_active]
+        self._voltage = ch['v']
+        self._current_limit = ch['i']
+        self.output_status = ch['on']
+
+    def _hmp_store_active(self):
+        if not self.is_hmp_series():
+            return
+        ch = self._hmp_channels[self._hmp_active]
+        ch['v'] = self._voltage
+        ch['i'] = self._current_limit
+        ch['on'] = self.output_status
+
+    def select_channel(self, channel: int):
+        if not self.is_hmp_series():
+            return
+        self._hmp_store_active()
+        self._hmp_active = int(channel)
+        self._hmp_sync_active_from_store()
 
     @property
     def voltage(self):
@@ -85,6 +116,8 @@ class SimulatedDCSource:
     @voltage.setter
     def voltage(self, value):
         self._voltage = float(value)
+        if self.is_hmp_series():
+            self._hmp_channels[self._hmp_active]['v'] = self._voltage
         if not self.aux_rail:
             self.state.vin = self._voltage
 
@@ -95,17 +128,43 @@ class SimulatedDCSource:
     @current.setter
     def current(self, value):
         self._current_limit = float(value)
+        if self.is_hmp_series():
+            self._hmp_channels[self._hmp_active]['i'] = self._current_limit
 
     def update_status(self):
-        # Already tracked internally
         pass
-        
+
+    def channel_set_voltage(self, channel: int, voltage: float):
+        self.select_channel(channel)
+        self.voltage = voltage
+
+    def channel_set_current_limit(self, channel: int, current_a: float):
+        self.select_channel(channel)
+        self.set_current_limit(current_a)
+
+    def channel_turn_on(self, channel: int):
+        self.select_channel(channel)
+        self.turn_on()
+
+    def channel_turn_off(self, channel: int):
+        self.select_channel(channel)
+        self.turn_off()
+
+    def channel_update_status(self, channel: int) -> int:
+        self.select_channel(channel)
+        self.update_status()
+        return self.output_status
+
     def turn_on(self):
         self.output_status = 1
+        if self.is_hmp_series():
+            self._hmp_channels[self._hmp_active]['on'] = 1
         print(f"[DC_SOURCE] DC Source Simulated: Output ON")
 
     def turn_off(self):
         self.output_status = 0
+        if self.is_hmp_series():
+            self._hmp_channels[self._hmp_active]['on'] = 0
         print(f"[DC_SOURCE] DC Source Simulated: Output OFF")
 
 

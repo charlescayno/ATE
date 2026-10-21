@@ -45,7 +45,12 @@ class EquipmentSetupPageHandler():
         self.initialize_ui_values()
 
         self.check_equipment_availability()
-    
+
+    def _sync_manual_aux_dc_panel(self):
+        mc = getattr(self.parent, "manual_control_handler", None)
+        if mc is not None:
+            mc.initialize_aux_dc_source()
+
     ################################################################################
     #                           USER INTERFACE BINDINGS                            #
     ################################################################################    
@@ -298,8 +303,8 @@ class EquipmentSetupPageHandler():
         self.ui_update_dc_source_aux_combo_box()
 
         self.ui_update_sink_and_i2c_combo_boxes()
-        
-        
+        self._sync_manual_aux_dc_panel()
+
     def ui_update_usbpd_sink_combo_box(self):
         if self.equipment.usbpd_sink.status == SINK_STATE.USBPD_SOURCE_CONNECTED:
             pass
@@ -430,6 +435,7 @@ class EquipmentSetupPageHandler():
         selection = cbx.currentIndex()
         if selection <= 0:
             self.equipment.dc_source_aux = None
+            self._sync_manual_aux_dc_panel()
             return
         if self.ongoing_dc_source_aux_update:
             return
@@ -441,7 +447,8 @@ class EquipmentSetupPageHandler():
             self.ui_update_dc_source_aux_combo_box()
             return
         self.equipment.dc_source_aux = picked
-        
+        self._sync_manual_aux_dc_panel()
+
     def ui_update_power_meters_combo_boxes(self):
         """Populate the power meter combo boxes."""
         self.ongoing_power_meter_update = True

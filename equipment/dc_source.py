@@ -9,6 +9,9 @@ class DC_SOURCE_STATUS:
     ON = 1
 
 
+HMP_MANUAL_CHANNEL_COUNT = 3
+
+
 def _resolve_dc_source_model(model: str):
     key = (model or '').strip()
     if key in DC_SOURCE_LIST:
@@ -113,6 +116,39 @@ class DCSource(Equipment):
         self.command_output = self.dc_source_object.output
         self.command_state = self.dc_source_object.state
         self.command_sequence = self.dc_source_object.sequence
+
+    def is_hmp_series(self) -> bool:
+        return (getattr(self, 'model', '') or '').strip().upper().startswith('HMP')
+
+    def select_channel(self, channel: int):
+        if not self.is_hmp_series():
+            return
+        ch = int(channel)
+        if ch < 1 or ch > HMP_MANUAL_CHANNEL_COUNT:
+            raise ValueError(f'HMP channel must be 1..{HMP_MANUAL_CHANNEL_COUNT}')
+        nsel = getattr(self.dc_source_object, 'inst_nsel', 'INSTrument:NSEL')
+        self.write(f'{nsel} {ch}')
+
+    def channel_set_voltage(self, channel: int, voltage: float):
+        self.select_channel(channel)
+        self.voltage = voltage
+
+    def channel_set_current_limit(self, channel: int, current_a: float):
+        self.select_channel(channel)
+        self.set_current_limit(current_a)
+
+    def channel_turn_on(self, channel: int):
+        self.select_channel(channel)
+        self.turn_on()
+
+    def channel_turn_off(self, channel: int):
+        self.select_channel(channel)
+        self.turn_off()
+
+    def channel_update_status(self, channel: int) -> int:
+        self.select_channel(channel)
+        self.update_status()
+        return self.output_status
 
     def cleanup(self):
         self.turn_off()

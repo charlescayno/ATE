@@ -53,6 +53,10 @@ def test_aux_manual_setpoints():
     check("sim aux: does not drive input rail", abs(h.state.vin - vin_before) < 1e-6)
     aux.turn_off()
     check("sim aux: output off", aux.output_status == 0)
+    aux.channel_set_voltage(2, 9.0)
+    aux.channel_turn_on(2)
+    check("sim aux: CH2 voltage", abs(aux._hmp_channels[2]['v'] - 9.0) < 1e-6)
+    check("sim aux: CH2 on", aux._hmp_channels[2]['on'] == 1)
 
 
 def test_hmp_scpi_commands():
@@ -98,6 +102,12 @@ def test_hmp_scpi_commands():
     check("driver: SOURce:VOLTage write", "SOURce:VOLTage 5.0" in cmds, cmds)
     check("driver: SOURce:CURRent write", "SOURce:CURRent 1.25" in cmds, cmds)
     check("driver: OUTPut ON", "OUTPut ON" in cmds, cmds)
+
+    ld.channel_set_voltage(2, 3.3)
+    ld.channel_set_current_limit(2, 0.5)
+    ld.channel_turn_on(2)
+    check("driver: INSTrument:NSEL for CH2", "INSTrument:NSEL 2" in cmds, cmds)
+    check("driver: CH2 voltage", "SOURce:VOLTage 3.3" in cmds, cmds)
 
 
 if __name__ == "__main__":

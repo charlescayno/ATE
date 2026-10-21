@@ -50,3 +50,4 @@ class DCSourceHMP2030(DCSourceBaseClass):
         self.sequence = 'OUTPut:SEQuence'
         self.set_volt = 'SOURce:VOLTage'
         self.set_curr = 'SOURce:CURRent'
+        self.inst_nsel = 'INSTrument:NSEL'
