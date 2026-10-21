@@ -142,7 +142,7 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
         usbpd_options=USBPDOptions(),
         line_ramp_settings=LineRamp(),
         i2c_test_parameters=I2CTestParameters(
-            params=[20.0, 0.1, 0.1, 0.0, 3.0, 1.0, 2.0, 25.0, 1.0, 1.0],
+            params=[20.0, 0.1, 0.1, 0.0, 1.0, 1.0, 2.0, 25.0, 1.0, 1.0],
             cbx_params=[
                 "Option C: Fixed Aux / Swept Main (Port 2 Fixed Load)",
                 "Yes",
@@ -260,7 +260,7 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
                 pass
             return default
 
-        self.trigger_delta = _param(4, 0.5, minimum=1e-9)
+        self.trigger_delta = _param(4, 1.0, minimum=1e-9)
         self.settle_time = _param(5, 1.0, minimum=0)
         self.discharge_pulses = _param(6, 0, cast=int, minimum=0)
         self.ambient_temp = _param(7, float(getattr(tc, 'ambient_temp', 25.0) or 25.0))

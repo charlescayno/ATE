@@ -28,6 +28,9 @@ class StartupWaveformTest_2Port(EfficiencyWaveformTest_2Port):
             cbx[3] = "No"
         if len(cbx) > 2:
             cbx[2] = "Per-Capture Only"
+        params = list(getattr(i2c, 'param', []) or [])
+        if len(params) > 4:
+            params[4] = 1.0
         return TestConditions(
             name=cls.title,
             nominal_output_voltage_V=tc.nominal_output_voltage_V,
@@ -40,7 +43,7 @@ class StartupWaveformTest_2Port(EfficiencyWaveformTest_2Port):
             usbpd_options=tc.usbpd_options,
             line_ramp_settings=tc.line_ramp_settings,
             i2c_test_parameters=I2CTestParameters(
-                params=list(getattr(i2c, 'param', []) or []),
+                params=params,
                 cbx_params=cbx,
             ),
             unit_id=tc.unit_id,
