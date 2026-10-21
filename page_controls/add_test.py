@@ -41,8 +41,14 @@ from psu_tests.test_type import *
 from misc_functions.misc_functions import *
 
 STEADY_STATE_WAVEFORM_2PORT_TITLE = "Steady-State Waveform 2 Port"
+STARTUP_WAVEFORM_2PORT_TITLE = "Startup Waveform 2 Port"
 EFFICIENCY_2PORT_WAVEFORM_TITLE = STEADY_STATE_WAVEFORM_2PORT_TITLE
 EFFICIENCY_2PORT_WAVEFORM_LEGACY_TITLE = "Efficiency 2 Port (Waveform)"
+WAVEFORM_2PORT_TITLES = (
+    EFFICIENCY_2PORT_WAVEFORM_TITLE,
+    EFFICIENCY_2PORT_WAVEFORM_LEGACY_TITLE,
+    STARTUP_WAVEFORM_2PORT_TITLE,
+)
 EFFICIENCY_2PORT_TITLES = ("Efficiency 2 Port", STEADY_STATE_WAVEFORM_2PORT_TITLE)
 STEADY_STATE_TITLES = ("Steady-State Waveform Capture", "Primary Vds & Ids Steady-State")
 
@@ -1754,8 +1760,7 @@ class AddTestPageHandler(QObject):
 
         if self.selected_test_class.title in EFFICIENCY_2PORT_TITLES:
             # The waveform variant uses all 4 dropdowns, so Dual Load Mode cannot span both columns.
-            is_waveform_variant = self.selected_test_class.title in (
-                EFFICIENCY_2PORT_WAVEFORM_TITLE, EFFICIENCY_2PORT_WAVEFORM_LEGACY_TITLE)
+            is_waveform_variant = self.selected_test_class.title in WAVEFORM_2PORT_TITLES
             self.ui.gridLayout_12.removeWidget(self.ui.frame_add_tests_i2c_cbxparam_1)
             self.ui.gridLayout_12.addWidget(self.ui.frame_add_tests_i2c_cbxparam_1, 5, 0, 1, 1 if is_waveform_variant else 2)
             self.ui.horizontalLayout_81.setStretch(0, 0)
@@ -1871,8 +1876,7 @@ class AddTestPageHandler(QObject):
 
     def _apply_eff2p_waveform_i2c_visibility(self):
         selected = getattr(self, 'selected_test_class', None)
-        is_wf = selected is not None and selected.title in (
-            EFFICIENCY_2PORT_WAVEFORM_TITLE, EFFICIENCY_2PORT_WAVEFORM_LEGACY_TITLE)
+        is_wf = selected is not None and selected.title in WAVEFORM_2PORT_TITLES
         if is_wf:
             for i in range(4, 10):
                 self.i2c_ui_lineedit_frames[i].setVisible(False)
@@ -1912,8 +1916,7 @@ class AddTestPageHandler(QObject):
         # Unit ID Visibility (only for Steady-State)
         if hasattr(self, 'frame_unit_id'):
             self.frame_unit_id.setVisible(
-                test_class.title in STEADY_STATE_TITLES or test_class.title in (
-                    EFFICIENCY_2PORT_WAVEFORM_TITLE, EFFICIENCY_2PORT_WAVEFORM_LEGACY_TITLE))
+                test_class.title in STEADY_STATE_TITLES or test_class.title in WAVEFORM_2PORT_TITLES)
 
         # Test Time Parameters
         ui.label_add_tests_testtime_param1.setText(ui_def.test_time_param1_label)
@@ -1951,7 +1954,7 @@ class AddTestPageHandler(QObject):
         if test_class.title in EFFICIENCY_2PORT_TITLES:
             ui.label_add_tests_nominal_output_voltage.setText("Nominal Vout 1 (V)")
             ui.label_add_tests_nominal_output_current.setText("Nominal Iout 1 (A)")
-            if test_class.title in (EFFICIENCY_2PORT_WAVEFORM_TITLE, EFFICIENCY_2PORT_WAVEFORM_LEGACY_TITLE):
+            if test_class.title in WAVEFORM_2PORT_TITLES:
                 ui.label_add_tests_i2c_settings.setText("Output 2 / Scope & Trigger Settings")
                 self._ensure_scope_channels_frame()
                 self.frame_scope_channels.setVisible(True)
@@ -2507,9 +2510,13 @@ class AddTestPageHandler(QObject):
         """Snapshot scope matrix UI onto queued waveform tests (selected row) before Run."""
         if not hasattr(self, 'get_scope_channels_from_ui'):
             return
-        try:
-            wf_idx = TestTypes.index(EfficiencyWaveformTest_2Port)
-        except ValueError:
+        wf_indices = []
+        for wf_cls in (EfficiencyWaveformTest_2Port, StartupWaveformTest_2Port):
+            try:
+                wf_indices.append(TestTypes.index(wf_cls))
+            except ValueError:
+                pass
+        if not wf_indices:
             return
         selected_row = self.ui.table_add_tests_test_list.currentRow()
         scope_visible = (
@@ -2520,7 +2527,7 @@ class AddTestPageHandler(QObject):
             return
         scope = self.get_scope_channels_from_ui()
         for idx, item in enumerate(self.test_plan.test_items):
-            if item.test_type_index == wf_idx and idx == selected_row:
+            if item.test_type_index in wf_indices and idx == selected_row:
                 item.test_conditions.scope_channels = scope
 
     def update_test_list_control_buttons_state(self):
