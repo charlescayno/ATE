@@ -641,48 +641,71 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
             pass
         return None
 
+    def _bulk_cap_ramp_start_voltage(self, target_v: float) -> float:
+        """Best estimate of present input V before ramping to the next Vin setpoint."""
+        measured = self._read_input_voltage_for_skip()
+        if measured is not None:
+            return float(measured)
+        last = getattr(self, '_last_bulk_cap_vin_set', None)
+        if last is not None:
+            return float(last)
+        try:
+            v = getattr(self.input_supply, 'voltage', None)
+            if v is not None:
+                return float(v)
+        except (TypeError, ValueError, AttributeError):
+            pass
+        return float(target_v)
+
     def _bulk_cap_ramp_to_voltage(self, target_v: float):
-        """Ramp from 0 V to target_v at BULK_CAP_RAMP_V_PER_S (Magna DC only)."""
+        """Ramp from present input V to target_v at BULK_CAP_RAMP_V_PER_S (Magna DC only)."""
         global test_control_flags
         target_v = float(target_v)
         if not self._bulk_cap_ramp_applies():
             return
 
         tol = self.BULK_CAP_RAMP_SKIP_FRACTION * max(abs(target_v), 1.0)
-        measured = self._read_input_voltage_for_skip()
-        if measured is not None and abs(measured - target_v) <= tol:
+        start_v = self._bulk_cap_ramp_start_voltage(target_v)
+        if abs(start_v - target_v) <= tol:
             print(
                 f"[TEST_STEP] Bulk-cap ramp skipped "
-                f"(within {self.BULK_CAP_RAMP_SKIP_FRACTION * 100:g}% of {target_v:g} V, read {measured:g} V)"
+                f"(within {self.BULK_CAP_RAMP_SKIP_FRACTION * 100:g}% of {target_v:g} V, read {start_v:g} V)"
             )
             self.input_supply.set_voltage_with_coupling(voltage=target_v, coupling=self.coupling)
             self.input_supply.turn_on()
+            self._last_bulk_cap_vin_set = target_v
             return
 
         print(
-            f"[TEST_STEP] Bulk-cap ramp 0 -> {target_v:g} V "
+            f"[TEST_STEP] Bulk-cap ramp {start_v:g} -> {target_v:g} V "
             f"at {self.BULK_CAP_RAMP_V_PER_S:g} V/s"
         )
-        try:
-            self.input_supply.turn_off()
-        except Exception:
-            pass
-        sleep(0.2)
-        self.input_supply.set_voltage_with_coupling(voltage=0.0, coupling=self.coupling)
+        self.input_supply.set_voltage_with_coupling(voltage=start_v, coupling=self.coupling)
         self.input_supply.turn_on()
-        sleep(0.1)
+        sleep(0.05)
 
         step_v = self.BULK_CAP_RAMP_V_PER_S * self.BULK_CAP_RAMP_STEP_S
-        v = 0.0
-        while v < target_v - step_v * 0.5:
-            if test_control_flags.get('StopTest'):
-                raise TestStopped
-            if test_control_flags.get('SkipTest'):
-                raise TestSkipped
-            v = min(v + step_v, target_v)
-            self.input_supply.set_voltage_with_coupling(voltage=v, coupling=self.coupling)
-            sleep(self.BULK_CAP_RAMP_STEP_S)
+        v = start_v
+        if target_v >= start_v:
+            while v < target_v - step_v * 0.5:
+                if test_control_flags.get('StopTest'):
+                    raise TestStopped
+                if test_control_flags.get('SkipTest'):
+                    raise TestSkipped
+                v = min(v + step_v, target_v)
+                self.input_supply.set_voltage_with_coupling(voltage=v, coupling=self.coupling)
+                sleep(self.BULK_CAP_RAMP_STEP_S)
+        else:
+            while v > target_v + step_v * 0.5:
+                if test_control_flags.get('StopTest'):
+                    raise TestStopped
+                if test_control_flags.get('SkipTest'):
+                    raise TestSkipped
+                v = max(v - step_v, target_v)
+                self.input_supply.set_voltage_with_coupling(voltage=v, coupling=self.coupling)
+                sleep(self.BULK_CAP_RAMP_STEP_S)
         self.input_supply.set_voltage_with_coupling(voltage=target_v, coupling=self.coupling)
+        self._last_bulk_cap_vin_set = target_v
 
     def test_loop(self):
         soak = self.soak_time
@@ -1367,7 +1390,12 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
             load_index = 0
             if vin_delays:
                 if self._bulk_cap_ramp_in_queue_estimate():
-                    add_time(float(vin_row[0]) / self.BULK_CAP_RAMP_V_PER_S + 0.5)
+                    v_set = float(vin_row[0])
+                    if vin_index == 0:
+                        add_time(0.5)
+                    else:
+                        v_prev = float(self.vin_list[vin_index - 1][0])
+                        add_time(abs(v_set - v_prev) / self.BULK_CAP_RAMP_V_PER_S + 0.2)
                 add_time(4)
                 if self.usbpd_test:
                     add_time(1)
