@@ -1,7 +1,6 @@
 from equipment.equipment import Equipment, visa_io
 from equipment.definitions import ELECTRONIC_LOAD_MODULES_LIST, ELECTRONIC_LOAD_MODULES_PROG_LIST
 from equipment.eload_specs import EloadModuleBaseClass, EloadStatus, ELoadTypes,Eload_Chroma_Prog_Group1
-from equipment.eload_specs import fixed_range_modes, check_fixed_level
 
 from misc_functions.misc_functions import *
 
@@ -193,7 +192,7 @@ class ElectronicLoadModule(Equipment):
         self.prog_func:Eload_Chroma_Prog_Group1 =  ELECTRONIC_LOAD_MODULES_PROG_LIST[eload_model]
 
         # LOADING MODES
-        self.load_modes = list(eload_object.MODES) + fixed_range_modes(eload_object)
+        self.load_modes = eload_object.MODES
         
         self.mode_range_count = eload_object.MODE_RANGE_COUNT
 
@@ -823,58 +822,6 @@ class ElectronicLoadModule(Equipment):
         self.active_channel_mode = 'CCH'
         self._active_level = '1'
         self._cc = current
-
-    def _enter_mode(self, mode:str) -> bool:
-        '''Select the channel and switch MODE if needed; returns True if the load was ON and was turned off.'''
-        self.write(f'{self.prog_func.channel} {self.channel}')
-        self.active_channel_status = self.write(f'{self.prog_func.load}?')
-        current_mode = self.write(f'{self.prog_func.mode}?')
-        if current_mode == mode:
-            return False
-        was_on = self.active_channel_status == EloadStatus.ON
-        if was_on:
-            self.write(f'{self.prog_func.load} OFF')
-        self.write(f'{self.prog_func.mode} {mode}')
-        self.active_channel_mode = mode
-        return was_on
-
-    def _resume(self, was_on:bool):
-        if was_on:
-            self.write(f'{self.prog_func.load} ON')
-        self.active_channel_status = self.write(f'{self.prog_func.load}?')
-
-    def set_fixed_mode(self, mode:str, level:float, level_no:int=1):
-        '''Static CC/CR in a fixed range (CCL/CCH/CRL/CRH); raises ValueError if the level is out of range.'''
-        check_fixed_level(self, mode, level)
-        print(f"[E_LOAD] Electronic Load {self.device_id} (CH {self.channel}): {mode} L{level_no} {level}")
-        was_on = self._enter_mode(mode)
-        func = self.prog_func.current_static if mode in ELoadTypes.FIXED_CC else self.prog_func.resistance
-        self.write(f'{func}:L{level_no} {level}')
-        self._active_level = str(level_no)
-        if mode in ELoadTypes.FIXED_CC:
-            self._cc = level
-        self._resume(was_on)
-
-    def set_dynamic(self, mode:str, l1:float, l2:float, t1_ms:float, t2_ms:float, rise=None, fall=None):
-        '''Dynamic CC (CCDL/CCDH): toggles L1/L2 for T1/T2 ms; rise/fall in A/us or "MAX".'''
-        check_fixed_level(self, mode, l1)
-        check_fixed_level(self, mode, l2)
-        t_min_ms, t_max_ms = self.ccd_t_min_s * 1e3, self.ccd_t_max_s * 1e3
-        for name, t in (('T1', t1_ms), ('T2', t2_ms)):
-            if not (t_min_ms <= t <= t_max_ms):
-                raise ValueError(f'{name} {t:g} ms is outside {t_min_ms:g} to {t_max_ms:g} ms.')
-        print(f"[E_LOAD] Electronic Load {self.device_id} (CH {self.channel}): {mode} L1 {l1} L2 {l2} T1 {t1_ms}ms T2 {t2_ms}ms")
-        was_on = self._enter_mode(mode)
-        dyn = self.prog_func.current_dynamic
-        self.write(f'{dyn}:L1 {l1}')
-        self.write(f'{dyn}:L2 {l2}')
-        if rise is not None:
-            self.write(f'{dyn}:{self.prog_func.rise} {rise}')
-        if fall is not None:
-            self.write(f'{dyn}:{self.prog_func.fall} {fall}')
-        self.write(f'{dyn}:T1 {t1_ms:g}mS')
-        self.write(f'{dyn}:T2 {t2_ms:g}mS')
-        self._resume(was_on)
 
     def snapshot_state(self) -> dict:
         self.write(f'{self.prog_func.channel} {self.channel}')

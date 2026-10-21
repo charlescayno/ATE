@@ -22,7 +22,7 @@ from equipment.ac_source import *
 from equipment.power_meter import *
 from equipment.electronic_load import *
 import inject_ui
-from page_controls import pml_grid, eload_grid
+from page_controls import pml_grid
 from equipment.eload_specs import ELoadTypes
 
 from user_settings.save_load import (write_to_default_config, read_from_default_config) 
@@ -233,12 +233,13 @@ class ManualControlPageHandler():
 
         # Inject multi-channel UI components
         inject_ui.inject_ui(self)
+        self.ui.frame_manual_control_eload_2.setVisible(True)
+        self.ui.frame_manual_control_eload_4.setVisible(False)
         self.pml_grid = pml_grid.PmlGrid(self)
         self.pml_pout_W = {n: None for n in pml_grid.CHANNELS}
 
         # Bind UI elements to functionss
         self.bind_ui_elements()
-        self.eload_grid = eload_grid.EloadGrid(self)
 
         # Use the equipment from the parent
         self.equipment:EquipmentHandler = parent.equipment
@@ -273,11 +274,27 @@ class ManualControlPageHandler():
 
         # Channel 3 binds
 
+        self.ui.btn_manual_control_eload_turn_on_2.clicked.connect(self.eload_2_turn_on)
+        self.ui.btn_manual_control_eload_set_A_2.clicked.connect(self.eload_2_set_level_A)
+        self.ui.btn_manual_control_eload_set_B_2.clicked.connect(self.eload_2_set_level_B)
+        self.ui.btn_manual_control_eload_set_slew_2.clicked.connect(self.eload_2_set_slew)
+        self.ui.btn_manual_control_eload_turn_off_2.clicked.connect(self.eload_2_turn_off)
+        self.ui.btn_manual_control_eload_a_b_swap_2.clicked.connect(self.eload_2_swap_active_level)
+        self.ui.cbx_manual_control_eload_type_2.currentIndexChanged.connect(self.update_eload_2_settings)
+        
         self.ui.lineedit_manual_control_eload_a_level_2.setValidator(self.validator)
         self.ui.lineedit_manual_control_eload_slew_rise_2.setValidator(self.validator)
         self.ui.lineedit_manual_control_eload_b_level_2.setValidator(self.validator)
         self.ui.lineedit_manual_control_eload_slew_fall_2.setValidator(self.validator)
 
+        self.ui.btn_manual_control_eload_turn_on_3.clicked.connect(self.eload_3_turn_on)
+        self.ui.btn_manual_control_eload_set_A_3.clicked.connect(self.eload_3_set_level_A)
+        self.ui.btn_manual_control_eload_set_B_3.clicked.connect(self.eload_3_set_level_B)
+        self.ui.btn_manual_control_eload_set_slew_3.clicked.connect(self.eload_3_set_slew)
+        self.ui.btn_manual_control_eload_turn_off_3.clicked.connect(self.eload_3_turn_off)
+        self.ui.btn_manual_control_eload_a_b_swap_3.clicked.connect(self.eload_3_swap_active_level)
+        self.ui.cbx_manual_control_eload_type_3.currentIndexChanged.connect(self.update_eload_3_settings)
+        
         self.ui.lineedit_manual_control_eload_a_level_3.setValidator(self.validator)
         self.ui.lineedit_manual_control_eload_slew_rise_3.setValidator(self.validator)
         self.ui.lineedit_manual_control_eload_b_level_3.setValidator(self.validator)
@@ -364,6 +381,23 @@ class ManualControlPageHandler():
             connect(lambda: self.set_acsource_flags(AC_SOURCE_REQUEST.OFF))
         self.ui.chkbox_manual_control_ac_source_coupling.clicked.connect(self.update_ac_source_coupling)
         
+        # E-Load Buttons       
+        self.ui.btn_manual_control_eload_turn_on.clicked.connect(
+                self.eload_turn_on)
+        self.ui.btn_manual_control_eload_set_A.clicked.connect(
+            self.eload_set_level_A)
+        self.ui.btn_manual_control_eload_set_B.clicked.connect(
+            self.eload_set_level_B)
+        self.ui.btn_manual_control_eload_set_slew.clicked.connect(
+            self.eload_set_slew)
+        self.ui.btn_manual_control_eload_turn_off.clicked.connect(
+            self.eload_turn_off)
+        self.ui.btn_manual_control_eload_a_b_swap.clicked.connect(
+            self.eload_swap_active_level)
+        self.ui.cbx_manual_control_eload_type.currentIndexChanged.connect(
+            self.update_eload_settings)
+        
+
         # Set validator for lineedits
         self.validator = QDoubleValidator(0, 16777215, 6)
         
@@ -536,7 +570,7 @@ class ManualControlPageHandler():
     def ui_acsource_update(self):
         pass
     def ui_eload_update(self):
-        self.eload_grid.refresh_status()
+        pass
 
 
     ########################################################################
@@ -813,7 +847,6 @@ class ManualControlPageHandler():
 
         self.initialize_equipment_ui_frames()
         self.refresh_pml_assignment()
-        self.refresh_eload_assignment()
 
         # TODO: Add a way to configure which equipment is to be used in the GUI
         # Currently the equipment used are based on address order
@@ -852,14 +885,6 @@ class ManualControlPageHandler():
             if not assigned:
                 setattr(self, 'power_meter_load_accessible' if n == 1 else f'power_meter_load_{n}_accessible', False)
                 self.pml_pout_W[n] = None
-
-    def refresh_eload_assignment(self):
-        """Grey out e-load tiles with no load assigned; fill the mode list of the assigned ones."""
-        for n in eload_grid.CHANNELS:
-            assigned = getattr(self.equipment, f'electronic_load_{n}', None) is not None
-            if not assigned:
-                setattr(self, 'electronic_load_accessible' if n == 1 else f'electronic_load_{n}_accessible', False)
-            self.eload_grid.set_assigned(n, assigned)
 
     @power_meter_load_2_access
     def power_meter_load_2_update(self):
@@ -962,6 +987,7 @@ class ManualControlPageHandler():
     def initialize_eload(self):
         self.electronic_load:ElectronicLoadModule = self.equipment.electronic_load_1
         self.electronic_load.set_active_level(1)
+        self.update_eload_modes_cbx()
     
     @power_meter_source_access
     def initialize_power_meter_source(self):
@@ -1145,6 +1171,225 @@ class ManualControlPageHandler():
             self.ui.label_manual_control_dc_source_estimated_time.setText("Estimated Time: N/A")
 
     # Electronic Load Functions
+    @eload_access
+    def update_eload_modes_cbx(self):
+        """Populate the eload modes based on the current Eload model"""
+        modes = self.electronic_load.load_modes
+
+        self.ui.cbx_manual_control_eload_type.clear()
+        self.ui.cbx_manual_control_eload_type.addItems(modes)
+
+        # If the eload is multi channel, the A/B button is not available
+        if self.electronic_load.multi_channel:
+            self.ui.frame_manual_control_eload_b.setVisible(False)
+        else:
+            self.ui.frame_manual_control_eload_b.setVisible(True)
+
+    @eload_access
+    def eload_turn_off(self):
+        """Turn off the electronic load."""
+        self.electronic_load.turn_off()
+
+    @eload_access
+    def eload_turn_on(self):
+        """Turn on the electronic load"""
+        self.electronic_load.turn_on()
+
+    @eload_access
+    def eload_set_level_A(self):
+        # Take the inputs first
+        try:
+            load_mode = self.ui.cbx_manual_control_eload_type.currentText()
+
+            load_a_level_txt = self.ui.lineedit_manual_control_eload_a_level.text()
+        
+            load_a_level = round(float(load_a_level_txt),6)
+            
+            vout_V = self.electronic_load.voltage
+            if abs(vout_V) < 0.5:
+                vout_V = self.electronic_load.crh_max_v
+                
+        except Exception as e:
+            print(e)
+            return        
+        
+        match load_mode:
+            case ELoadTypes.CC:
+                iout_a_A = load_a_level
+            case ELoadTypes.CR:
+                # If input is 0, assume no input (open circuit, max cr) instead of short circuit
+                if load_a_level == 0:
+                    iout_a_A = 0
+                else:
+                    iout_a_A = vout_V/load_a_level
+            case ELoadTypes.CP:
+                iout_a_A = load_a_level/vout_V
+            case ELoadTypes.CV:
+                vout_V = load_a_level
+                iout_a_A = None
+            case _:
+                return
+        self.electronic_load.set_active_level(1)
+        self.electronic_load.set_load(vout_V=vout_V, iout_A=iout_a_A, mode=load_mode)
+        
+    @eload_access                 
+    def eload_set_level_B(self):
+        # Take the inputs first
+        try:
+            load_mode = self.ui.cbx_manual_control_eload_type.currentText()
+
+            load_b_level_txt = self.ui.lineedit_manual_control_eload_b_level.text()
+            
+            load_b_level = round(float(load_b_level_txt),6)
+            
+            vout_V = self.electronic_load.voltage
+            if abs(vout_V) < 0.5:
+                vout_V = self.electronic_load.crh_max_v
+                
+        except Exception as e:
+            print(e)
+            return 
+        
+        match load_mode:
+            case ELoadTypes.CC:
+                iout_b_A = load_b_level
+            case ELoadTypes.CR:
+                # If input is 0, assume no input (open circuit, max cr) instead of short circuit
+                if load_b_level == 0:
+                    iout_b_A = 0
+                else:
+                    iout_b_A = vout_V/load_b_level
+            case ELoadTypes.CP:
+                iout_b_A = load_b_level/vout_V
+            case ELoadTypes.CV:
+                vout_V = load_b_level
+                iout_b_A = None
+            case _:
+                return
+        self.electronic_load.set_active_level(2)
+        self.electronic_load.set_load(vout_V=vout_V, iout_A=iout_b_A, mode=load_mode)
+   
+    @eload_access   
+    def eload_set_slew(self):
+        # Take the inputs first
+        try:
+            load_mode = self.ui.cbx_manual_control_eload_type.currentText()
+
+            load_rise_txt = self.ui.lineedit_manual_control_eload_slew_rise.text().strip().upper()
+            load_fall_txt = self.ui.lineedit_manual_control_eload_slew_fall.text().strip().upper()
+            
+            if load_rise_txt == "MAX":
+                load_rise = "MAX"
+            else:
+                load_rise = round(float(load_rise_txt)/1000, 6)
+                
+            if load_fall_txt == "MAX":
+                load_fall = "MAX"
+            else:
+                load_fall = round(float(load_fall_txt)/1000, 6)
+            
+        except Exception as e:
+            print(e)
+            return 
+
+        match load_mode:
+            case ELoadTypes.CC:
+                self.electronic_load.set_cc_static_slew(load_rise,load_fall)
+            case ELoadTypes.CR:
+                self.electronic_load.set_cr_slew(load_rise,load_fall)
+          
+    @eload_access   
+    def eload_swap_active_level(self):
+        vout_V = self.electronic_load.voltage
+        if abs(vout_V) < 0.5:
+            vout_V = self.electronic_load.crh_max_v
+        if self.electronic_load._active_level == '1':
+            self.eload_set_level_B()
+        else:
+            self.eload_set_level_A()
+        
+        # self.electronic_load.get_active_level()
+        # load_mode = self.ui.cbx_manual_control_eload_type.currentText()
+        # vout_V = self.electronic_load.voltage
+        # if abs(vout_V) < 0.5:
+        #     vout_V = self.electronic_load.crh_max_v
+        # match load_mode:
+        #     case ELoadTypes.CC:
+        #         if self.electronic_load._active_level == '1':
+        #             self.electronic_load.set_active_level(2)
+        #             self.electronic_load.set_load(vout_V=vout_V, iout_A=self.electronic_load.cc_static_l2, mode=load_mode)
+        #         else:
+        #             self.electronic_load.set_active_level(1)
+        #             self.electronic_load.set_load(vout_V=vout_V, iout_A=self.electronic_load.cc_static_l1, mode=load_mode)
+        #     case ELoadTypes.CR:
+        #         if self.electronic_load._active_level == '1':
+        #             self.electronic_load.set_active_level(2)
+        #             self.electronic_load.set_load(vout_V=vout_V, iout_A=(vout_V/self.electronic_load.cr_l2), mode=load_mode)
+        #         else:
+        #             self.electronic_load.set_active_level(1)
+        #             self.electronic_load.set_load(vout_V=vout_V, iout_A=(vout_V/self.electronic_load.cr_l1), mode=load_mode)
+    
+    def update_eload_settings(self):
+        self.ui.label_manual_control_electronic_load_rise.setText('Rise')
+        self.ui.label_manual_control_eload_slew_rise_unit.setText('mA / µs')
+        self.ui.label_manual_control_eload_slew_fall_unit.setText('mA / µs')
+        self.ui.lineedit_manual_control_eload_slew_rise.setText('150')
+        self.ui.lineedit_manual_control_eload_slew_fall.setText('150')
+        
+        if self.ui.cbx_manual_control_eload_type.currentText() == ELoadTypes.CC:
+            self.ui.label_manual_control_eload_a_level_unit.setText('A')
+            self.ui.label_manual_control_eload_b_level_unit.setText('A')
+            self.ui.label_manual_control_electronic_load_rise.setEnabled(True)
+            self.ui.lineedit_manual_control_eload_slew_rise.setEnabled(True)
+            self.ui.label_manual_control_eload_slew_rise_unit.setEnabled(True)
+            self.ui.label_manual_control_electronic_load_fall.setEnabled(True)
+            self.ui.lineedit_manual_control_eload_slew_fall.setEnabled(True)
+            self.ui.label_manual_control_eload_slew_fall_unit.setEnabled(True)
+        elif self.ui.cbx_manual_control_eload_type.currentText() == ELoadTypes.CR:
+            self.ui.label_manual_control_eload_a_level_unit.setText('Ω')
+            self.ui.label_manual_control_eload_b_level_unit.setText('Ω')
+            if not self.electronic_load.cr_slew_available:
+                self.ui.label_manual_control_electronic_load_rise.setEnabled(False)
+                self.ui.lineedit_manual_control_eload_slew_rise.setEnabled(False)
+                self.ui.label_manual_control_eload_slew_rise_unit.setEnabled(False)
+                self.ui.label_manual_control_electronic_load_fall.setEnabled(False)
+                self.ui.lineedit_manual_control_eload_slew_fall.setEnabled(False)
+                self.ui.label_manual_control_eload_slew_fall_unit.setEnabled(False)
+            else:
+                self.ui.label_manual_control_electronic_load_rise.setEnabled(True)
+                self.ui.lineedit_manual_control_eload_slew_rise.setEnabled(True)
+                self.ui.label_manual_control_eload_slew_rise_unit.setEnabled(True)
+                self.ui.label_manual_control_electronic_load_fall.setEnabled(True)
+                self.ui.lineedit_manual_control_eload_slew_fall.setEnabled(True)
+                self.ui.label_manual_control_eload_slew_fall_unit.setEnabled(True)
+        elif self.ui.cbx_manual_control_eload_type.currentText() == ELoadTypes.CV:
+            self.ui.label_manual_control_eload_a_level_unit.setText('V')
+            self.ui.label_manual_control_eload_b_level_unit.setText('V')
+            self.ui.label_manual_control_electronic_load_rise.setEnabled(True)
+            self.ui.lineedit_manual_control_eload_slew_rise.setEnabled(True)
+            self.ui.label_manual_control_eload_slew_rise_unit.setEnabled(True)
+            self.ui.label_manual_control_eload_slew_rise_unit.setText('A')
+            self.ui.label_manual_control_electronic_load_rise.setText('Limit')
+            self.ui.label_manual_control_electronic_load_fall.setEnabled(False)
+            self.ui.lineedit_manual_control_eload_slew_fall.setEnabled(False)
+            self.ui.label_manual_control_eload_slew_fall_unit.setEnabled(False)
+        elif self.ui.cbx_manual_control_eload_type.currentText() == ELoadTypes.CP:
+            self.ui.label_manual_control_eload_a_level_unit.setText('W')
+            self.ui.label_manual_control_eload_b_level_unit.setText('W')
+            if self.electronic_load.cp_slew_unit[0] ==  'A':
+                self.ui.label_manual_control_eload_slew_rise_unit.setText('A / µs')
+                self.ui.label_manual_control_eload_slew_fall_unit.setText('A / µs')
+            else:
+                self.ui.label_manual_control_eload_slew_rise_unit.setText('W / µs')
+                self.ui.label_manual_control_eload_slew_fall_unit.setText('W / µs')
+            self.ui.lineedit_manual_control_eload_slew_rise.setText('0.15')
+            self.ui.lineedit_manual_control_eload_slew_fall.setText('0.15')
+            self.ui.label_manual_control_electronic_load_rise.setEnabled(True)
+            self.ui.lineedit_manual_control_eload_slew_rise.setEnabled(True)
+            self.ui.label_manual_control_eload_slew_rise_unit.setEnabled(True)
+            self.ui.label_manual_control_electronic_load_fall.setEnabled(True)
+            self.ui.lineedit_manual_control_eload_slew_fall.setEnabled(True)
+            self.ui.label_manual_control_eload_slew_fall_unit.setEnabled(True)
     @eload_2_access
     def eload_2_update(self):
         """ Update eload
@@ -1158,6 +1403,210 @@ class ManualControlPageHandler():
 #                         Equipment Functions Start                        #
     ########################################################################
 
+    def update_eload_2_settings(self):
+        self.ui.label_manual_control_electronic_load_rise.setText('Rise')
+        self.ui.label_manual_control_eload_2_slew_rise_unit.setText('mA / µs')
+        self.ui.label_manual_control_eload_2_slew_fall_unit.setText('mA / µs')
+        self.ui.lineedit_manual_control_eload_slew_rise.setText('150')
+        self.ui.lineedit_manual_control_eload_slew_fall.setText('150')
+        
+        if self.ui.cbx_manual_control_eload_type_2.currentText() == ELoadTypes.CC:
+            self.ui.label_manual_control_eload_2_a_level_unit.setText('A')
+            self.ui.label_manual_control_eload_2_b_level_unit.setText('A')
+            self.ui.label_manual_control_electronic_load_rise.setEnabled(True)
+            self.ui.lineedit_manual_control_eload_slew_rise.setEnabled(True)
+            self.ui.label_manual_control_eload_2_slew_rise_unit.setEnabled(True)
+            self.ui.label_manual_control_electronic_load_fall.setEnabled(True)
+            self.ui.lineedit_manual_control_eload_slew_fall.setEnabled(True)
+            self.ui.label_manual_control_eload_2_slew_fall_unit.setEnabled(True)
+        elif self.ui.cbx_manual_control_eload_type_2.currentText() == ELoadTypes.CR:
+            self.ui.label_manual_control_eload_2_a_level_unit.setText('Ω')
+            self.ui.label_manual_control_eload_2_b_level_unit.setText('Ω')
+            if not self.equipment.electronic_load_2.cr_slew_available:
+                self.ui.label_manual_control_electronic_load_rise.setEnabled(False)
+                self.ui.lineedit_manual_control_eload_slew_rise.setEnabled(False)
+                self.ui.label_manual_control_eload_2_slew_rise_unit.setEnabled(False)
+                self.ui.label_manual_control_electronic_load_fall.setEnabled(False)
+                self.ui.lineedit_manual_control_eload_slew_fall.setEnabled(False)
+                self.ui.label_manual_control_eload_2_slew_fall_unit.setEnabled(False)
+            else:
+                self.ui.label_manual_control_electronic_load_rise.setEnabled(True)
+                self.ui.lineedit_manual_control_eload_slew_rise.setEnabled(True)
+                self.ui.label_manual_control_eload_2_slew_rise_unit.setEnabled(True)
+                self.ui.label_manual_control_electronic_load_fall.setEnabled(True)
+                self.ui.lineedit_manual_control_eload_slew_fall.setEnabled(True)
+                self.ui.label_manual_control_eload_2_slew_fall_unit.setEnabled(True)
+        elif self.ui.cbx_manual_control_eload_type_2.currentText() == ELoadTypes.CV:
+            self.ui.label_manual_control_eload_2_a_level_unit.setText('V')
+            self.ui.label_manual_control_eload_2_b_level_unit.setText('V')
+            self.ui.label_manual_control_electronic_load_rise.setEnabled(True)
+            self.ui.lineedit_manual_control_eload_slew_rise.setEnabled(True)
+            self.ui.label_manual_control_eload_2_slew_rise_unit.setEnabled(True)
+            self.ui.label_manual_control_eload_2_slew_rise_unit.setText('A')
+            self.ui.label_manual_control_electronic_load_rise.setText('Limit')
+            self.ui.label_manual_control_electronic_load_fall.setEnabled(False)
+            self.ui.lineedit_manual_control_eload_slew_fall.setEnabled(False)
+            self.ui.label_manual_control_eload_2_slew_fall_unit.setEnabled(False)
+        elif self.ui.cbx_manual_control_eload_type_2.currentText() == ELoadTypes.CP:
+            self.ui.label_manual_control_eload_2_a_level_unit.setText('W')
+            self.ui.label_manual_control_eload_2_b_level_unit.setText('W')
+            if self.equipment.electronic_load_2.cp_slew_unit[0] ==  'A':
+                self.ui.label_manual_control_eload_2_slew_rise_unit.setText('A / µs')
+                self.ui.label_manual_control_eload_2_slew_fall_unit.setText('A / µs')
+            else:
+                self.ui.label_manual_control_eload_2_slew_rise_unit.setText('W / µs')
+                self.ui.label_manual_control_eload_2_slew_fall_unit.setText('W / µs')
+            self.ui.lineedit_manual_control_eload_slew_rise.setText('0.15')
+            self.ui.lineedit_manual_control_eload_slew_fall.setText('0.15')
+            self.ui.label_manual_control_electronic_load_rise.setEnabled(True)
+            self.ui.lineedit_manual_control_eload_slew_rise.setEnabled(True)
+            self.ui.label_manual_control_eload_2_slew_rise_unit.setEnabled(True)
+            self.ui.label_manual_control_electronic_load_fall.setEnabled(True)
+            self.ui.lineedit_manual_control_eload_slew_fall.setEnabled(True)
+            self.ui.label_manual_control_eload_2_slew_fall_unit.setEnabled(True)    @eload_2_access
+    def eload_2_turn_off(self):
+        """Turn off the electronic load."""
+        self.equipment.electronic_load_2.turn_off()
+
+    @eload_2_access
+    def eload_2_turn_on(self):
+        """Turn on the electronic load"""
+        self.equipment.electronic_load_2.turn_on()
+
+    @eload_2_access
+    def eload_2_set_level_A(self):
+        # Take the inputs first
+        try:
+            load_mode = self.ui.cbx_manual_control_eload_type_2.currentText()
+
+            load_a_level_txt = self.ui.lineedit_manual_control_eload_a_level_2.text()
+        
+            load_a_level = round(float(load_a_level_txt),6)
+            
+            vout_V = self.equipment.electronic_load_2.voltage
+            if abs(vout_V) < 0.5:
+                vout_V = self.equipment.electronic_load_2.crh_max_v
+                
+        except Exception as e:
+            print(e)
+            return        
+        
+        match load_mode:
+            case ELoadTypes.CC:
+                iout_a_A = load_a_level
+            case ELoadTypes.CR:
+                # If input is 0, assume no input (open circuit, max cr) instead of short circuit
+                if load_a_level == 0:
+                    iout_a_A = 0
+                else:
+                    iout_a_A = vout_V/load_a_level
+            case ELoadTypes.CP:
+                iout_a_A = load_a_level/vout_V
+            case ELoadTypes.CV:
+                vout_V = load_a_level
+                iout_a_A = None
+            case _:
+                return
+        self.equipment.electronic_load_2.set_active_level(1)
+        self.equipment.electronic_load_2.set_load(vout_V=vout_V, iout_A=iout_a_A, mode=load_mode)
+        
+    @eload_2_access                 
+    def eload_2_set_level_B(self):
+        # Take the inputs first
+        try:
+            load_mode = self.ui.cbx_manual_control_eload_type_2.currentText()
+
+            load_b_level_txt = self.ui.lineedit_manual_control_eload_b_level_2.text()
+            
+            load_b_level = round(float(load_b_level_txt),6)
+            
+            vout_V = self.equipment.electronic_load_2.voltage
+            if abs(vout_V) < 0.5:
+                vout_V = self.equipment.electronic_load_2.crh_max_v
+                
+        except Exception as e:
+            print(e)
+            return 
+        
+        match load_mode:
+            case ELoadTypes.CC:
+                iout_b_A = load_b_level
+            case ELoadTypes.CR:
+                # If input is 0, assume no input (open circuit, max cr) instead of short circuit
+                if load_b_level == 0:
+                    iout_b_A = 0
+                else:
+                    iout_b_A = vout_V/load_b_level
+            case ELoadTypes.CP:
+                iout_b_A = load_b_level/vout_V
+            case ELoadTypes.CV:
+                vout_V = load_b_level
+                iout_b_A = None
+            case _:
+                return
+        self.equipment.electronic_load_2.set_active_level(2)
+        self.equipment.electronic_load_2.set_load(vout_V=vout_V, iout_A=iout_b_A, mode=load_mode)
+   
+    @eload_2_access   
+    def eload_2_set_slew(self):
+        # Take the inputs first
+        try:
+            load_mode = self.ui.cbx_manual_control_eload_type_2.currentText()
+
+            load_rise_txt = self.ui.lineedit_manual_control_eload_slew_rise.text().strip().upper()
+            load_fall_txt = self.ui.lineedit_manual_control_eload_slew_fall.text().strip().upper()
+            
+            if load_rise_txt == "MAX":
+                load_rise = "MAX"
+            else:
+                load_rise = round(float(load_rise_txt)/1000, 6)
+                
+            if load_fall_txt == "MAX":
+                load_fall = "MAX"
+            else:
+                load_fall = round(float(load_fall_txt)/1000, 6)
+            
+        except Exception as e:
+            print(e)
+            return 
+
+        match load_mode:
+            case ELoadTypes.CC:
+                self.equipment.electronic_load_2.set_cc_static_slew(load_rise,load_fall)
+            case ELoadTypes.CR:
+                self.equipment.electronic_load_2.set_cr_slew(load_rise,load_fall)
+          
+    @eload_2_access   
+    def eload_2_swap_active_level(self):
+        vout_V = self.equipment.electronic_load_2.voltage
+        if abs(vout_V) < 0.5:
+            vout_V = self.equipment.electronic_load_2.crh_max_v
+        if self.equipment.electronic_load_2._active_level == '1':
+            self.eload_2_set_level_B()
+        else:
+            self.eload_2_set_level_A()
+        
+        # self.equipment.electronic_load_2.get_active_level()
+        # load_mode = self.ui.cbx_manual_control_eload_type_2.currentText()
+        # vout_V = self.equipment.electronic_load_2.voltage
+        # if abs(vout_V) < 0.5:
+        #     vout_V = self.equipment.electronic_load_2.crh_max_v
+        # match load_mode:
+        #     case ELoadTypes.CC:
+        #         if self.equipment.electronic_load_2._active_level == '1':
+        #             self.equipment.electronic_load_2.set_active_level(2)
+        #             self.equipment.electronic_load_2.set_load(vout_V=vout_V, iout_A=self.equipment.electronic_load_2.cc_static_l2, mode=load_mode)
+        #         else:
+        #             self.equipment.electronic_load_2.set_active_level(1)
+        #             self.equipment.electronic_load_2.set_load(vout_V=vout_V, iout_A=self.equipment.electronic_load_2.cc_static_l1, mode=load_mode)
+        #     case ELoadTypes.CR:
+        #         if self.equipment.electronic_load_2._active_level == '1':
+        #             self.equipment.electronic_load_2.set_active_level(2)
+        #             self.equipment.electronic_load_2.set_load(vout_V=vout_V, iout_A=(vout_V/self.equipment.electronic_load_2.cr_l2), mode=load_mode)
+        #         else:
+        #             self.equipment.electronic_load_2.set_active_level(1)
+        #             self.equipment.electronic_load_2.set_load(vout_V=vout_V, iout_A=(vout_V/self.equipment.electronic_load_2.cr_l1), mode=load_mode)
+    
     @power_meter_load_2_access
     def ui_power_meter_load_2_update(self):
         # Load power meter display
@@ -1193,6 +1642,210 @@ class ManualControlPageHandler():
 #                         Equipment Functions Start                        #
     ########################################################################
 
+    def update_eload_3_settings(self):
+        self.ui.label_manual_control_electronic_load_rise.setText('Rise')
+        self.ui.label_manual_control_eload_3_slew_rise_unit.setText('mA / µs')
+        self.ui.label_manual_control_eload_3_slew_fall_unit.setText('mA / µs')
+        self.ui.lineedit_manual_control_eload_slew_rise.setText('150')
+        self.ui.lineedit_manual_control_eload_slew_fall.setText('150')
+        
+        if self.ui.cbx_manual_control_eload_type_3.currentText() == ELoadTypes.CC:
+            self.ui.label_manual_control_eload_3_a_level_unit.setText('A')
+            self.ui.label_manual_control_eload_3_b_level_unit.setText('A')
+            self.ui.label_manual_control_electronic_load_rise.setEnabled(True)
+            self.ui.lineedit_manual_control_eload_slew_rise.setEnabled(True)
+            self.ui.label_manual_control_eload_3_slew_rise_unit.setEnabled(True)
+            self.ui.label_manual_control_electronic_load_fall.setEnabled(True)
+            self.ui.lineedit_manual_control_eload_slew_fall.setEnabled(True)
+            self.ui.label_manual_control_eload_3_slew_fall_unit.setEnabled(True)
+        elif self.ui.cbx_manual_control_eload_type_3.currentText() == ELoadTypes.CR:
+            self.ui.label_manual_control_eload_3_a_level_unit.setText('Ω')
+            self.ui.label_manual_control_eload_3_b_level_unit.setText('Ω')
+            if not self.equipment.electronic_load_3.cr_slew_available:
+                self.ui.label_manual_control_electronic_load_rise.setEnabled(False)
+                self.ui.lineedit_manual_control_eload_slew_rise.setEnabled(False)
+                self.ui.label_manual_control_eload_3_slew_rise_unit.setEnabled(False)
+                self.ui.label_manual_control_electronic_load_fall.setEnabled(False)
+                self.ui.lineedit_manual_control_eload_slew_fall.setEnabled(False)
+                self.ui.label_manual_control_eload_3_slew_fall_unit.setEnabled(False)
+            else:
+                self.ui.label_manual_control_electronic_load_rise.setEnabled(True)
+                self.ui.lineedit_manual_control_eload_slew_rise.setEnabled(True)
+                self.ui.label_manual_control_eload_3_slew_rise_unit.setEnabled(True)
+                self.ui.label_manual_control_electronic_load_fall.setEnabled(True)
+                self.ui.lineedit_manual_control_eload_slew_fall.setEnabled(True)
+                self.ui.label_manual_control_eload_3_slew_fall_unit.setEnabled(True)
+        elif self.ui.cbx_manual_control_eload_type_3.currentText() == ELoadTypes.CV:
+            self.ui.label_manual_control_eload_3_a_level_unit.setText('V')
+            self.ui.label_manual_control_eload_3_b_level_unit.setText('V')
+            self.ui.label_manual_control_electronic_load_rise.setEnabled(True)
+            self.ui.lineedit_manual_control_eload_slew_rise.setEnabled(True)
+            self.ui.label_manual_control_eload_3_slew_rise_unit.setEnabled(True)
+            self.ui.label_manual_control_eload_3_slew_rise_unit.setText('A')
+            self.ui.label_manual_control_electronic_load_rise.setText('Limit')
+            self.ui.label_manual_control_electronic_load_fall.setEnabled(False)
+            self.ui.lineedit_manual_control_eload_slew_fall.setEnabled(False)
+            self.ui.label_manual_control_eload_3_slew_fall_unit.setEnabled(False)
+        elif self.ui.cbx_manual_control_eload_type_3.currentText() == ELoadTypes.CP:
+            self.ui.label_manual_control_eload_3_a_level_unit.setText('W')
+            self.ui.label_manual_control_eload_3_b_level_unit.setText('W')
+            if self.equipment.electronic_load_3.cp_slew_unit[0] ==  'A':
+                self.ui.label_manual_control_eload_3_slew_rise_unit.setText('A / µs')
+                self.ui.label_manual_control_eload_3_slew_fall_unit.setText('A / µs')
+            else:
+                self.ui.label_manual_control_eload_3_slew_rise_unit.setText('W / µs')
+                self.ui.label_manual_control_eload_3_slew_fall_unit.setText('W / µs')
+            self.ui.lineedit_manual_control_eload_slew_rise.setText('0.15')
+            self.ui.lineedit_manual_control_eload_slew_fall.setText('0.15')
+            self.ui.label_manual_control_electronic_load_rise.setEnabled(True)
+            self.ui.lineedit_manual_control_eload_slew_rise.setEnabled(True)
+            self.ui.label_manual_control_eload_3_slew_rise_unit.setEnabled(True)
+            self.ui.label_manual_control_electronic_load_fall.setEnabled(True)
+            self.ui.lineedit_manual_control_eload_slew_fall.setEnabled(True)
+            self.ui.label_manual_control_eload_3_slew_fall_unit.setEnabled(True)    @eload_3_access
+    def eload_3_turn_off(self):
+        """Turn off the electronic load."""
+        self.equipment.electronic_load_3.turn_off()
+
+    @eload_3_access
+    def eload_3_turn_on(self):
+        """Turn on the electronic load"""
+        self.equipment.electronic_load_3.turn_on()
+
+    @eload_3_access
+    def eload_3_set_level_A(self):
+        # Take the inputs first
+        try:
+            load_mode = self.ui.cbx_manual_control_eload_type_3.currentText()
+
+            load_a_level_txt = self.ui.lineedit_manual_control_eload_a_level_3.text()
+        
+            load_a_level = round(float(load_a_level_txt),6)
+            
+            vout_V = self.equipment.electronic_load_3.voltage
+            if abs(vout_V) < 0.5:
+                vout_V = self.equipment.electronic_load_3.crh_max_v
+                
+        except Exception as e:
+            print(e)
+            return        
+        
+        match load_mode:
+            case ELoadTypes.CC:
+                iout_a_A = load_a_level
+            case ELoadTypes.CR:
+                # If input is 0, assume no input (open circuit, max cr) instead of short circuit
+                if load_a_level == 0:
+                    iout_a_A = 0
+                else:
+                    iout_a_A = vout_V/load_a_level
+            case ELoadTypes.CP:
+                iout_a_A = load_a_level/vout_V
+            case ELoadTypes.CV:
+                vout_V = load_a_level
+                iout_a_A = None
+            case _:
+                return
+        self.equipment.electronic_load_3.set_active_level(1)
+        self.equipment.electronic_load_3.set_load(vout_V=vout_V, iout_A=iout_a_A, mode=load_mode)
+        
+    @eload_3_access                 
+    def eload_3_set_level_B(self):
+        # Take the inputs first
+        try:
+            load_mode = self.ui.cbx_manual_control_eload_type_3.currentText()
+
+            load_b_level_txt = self.ui.lineedit_manual_control_eload_b_level_3.text()
+            
+            load_b_level = round(float(load_b_level_txt),6)
+            
+            vout_V = self.equipment.electronic_load_3.voltage
+            if abs(vout_V) < 0.5:
+                vout_V = self.equipment.electronic_load_3.crh_max_v
+                
+        except Exception as e:
+            print(e)
+            return 
+        
+        match load_mode:
+            case ELoadTypes.CC:
+                iout_b_A = load_b_level
+            case ELoadTypes.CR:
+                # If input is 0, assume no input (open circuit, max cr) instead of short circuit
+                if load_b_level == 0:
+                    iout_b_A = 0
+                else:
+                    iout_b_A = vout_V/load_b_level
+            case ELoadTypes.CP:
+                iout_b_A = load_b_level/vout_V
+            case ELoadTypes.CV:
+                vout_V = load_b_level
+                iout_b_A = None
+            case _:
+                return
+        self.equipment.electronic_load_3.set_active_level(2)
+        self.equipment.electronic_load_3.set_load(vout_V=vout_V, iout_A=iout_b_A, mode=load_mode)
+   
+    @eload_3_access   
+    def eload_3_set_slew(self):
+        # Take the inputs first
+        try:
+            load_mode = self.ui.cbx_manual_control_eload_type_3.currentText()
+
+            load_rise_txt = self.ui.lineedit_manual_control_eload_slew_rise.text().strip().upper()
+            load_fall_txt = self.ui.lineedit_manual_control_eload_slew_fall.text().strip().upper()
+            
+            if load_rise_txt == "MAX":
+                load_rise = "MAX"
+            else:
+                load_rise = round(float(load_rise_txt)/1000, 6)
+                
+            if load_fall_txt == "MAX":
+                load_fall = "MAX"
+            else:
+                load_fall = round(float(load_fall_txt)/1000, 6)
+            
+        except Exception as e:
+            print(e)
+            return 
+
+        match load_mode:
+            case ELoadTypes.CC:
+                self.equipment.electronic_load_3.set_cc_static_slew(load_rise,load_fall)
+            case ELoadTypes.CR:
+                self.equipment.electronic_load_3.set_cr_slew(load_rise,load_fall)
+          
+    @eload_3_access   
+    def eload_3_swap_active_level(self):
+        vout_V = self.equipment.electronic_load_3.voltage
+        if abs(vout_V) < 0.5:
+            vout_V = self.equipment.electronic_load_3.crh_max_v
+        if self.equipment.electronic_load_3._active_level == '1':
+            self.eload_3_set_level_B()
+        else:
+            self.eload_3_set_level_A()
+        
+        # self.equipment.electronic_load_3.get_active_level()
+        # load_mode = self.ui.cbx_manual_control_eload_type_3.currentText()
+        # vout_V = self.equipment.electronic_load_3.voltage
+        # if abs(vout_V) < 0.5:
+        #     vout_V = self.equipment.electronic_load_3.crh_max_v
+        # match load_mode:
+        #     case ELoadTypes.CC:
+        #         if self.equipment.electronic_load_3._active_level == '1':
+        #             self.equipment.electronic_load_3.set_active_level(2)
+        #             self.equipment.electronic_load_3.set_load(vout_V=vout_V, iout_A=self.equipment.electronic_load_3.cc_static_l2, mode=load_mode)
+        #         else:
+        #             self.equipment.electronic_load_3.set_active_level(1)
+        #             self.equipment.electronic_load_3.set_load(vout_V=vout_V, iout_A=self.equipment.electronic_load_3.cc_static_l1, mode=load_mode)
+        #     case ELoadTypes.CR:
+        #         if self.equipment.electronic_load_3._active_level == '1':
+        #             self.equipment.electronic_load_3.set_active_level(2)
+        #             self.equipment.electronic_load_3.set_load(vout_V=vout_V, iout_A=(vout_V/self.equipment.electronic_load_3.cr_l2), mode=load_mode)
+        #         else:
+        #             self.equipment.electronic_load_3.set_active_level(1)
+        #             self.equipment.electronic_load_3.set_load(vout_V=vout_V, iout_A=(vout_V/self.equipment.electronic_load_3.cr_l1), mode=load_mode)
+    
     @power_meter_load_3_access
     def ui_power_meter_load_3_update(self):
         # Load power meter display
@@ -1228,6 +1881,210 @@ class ManualControlPageHandler():
 #                         Equipment Functions Start                        #
     ########################################################################
 
+    def update_eload_4_settings(self):
+        self.ui.label_manual_control_electronic_load_rise.setText('Rise')
+        self.ui.label_manual_control_eload_4_slew_rise_unit.setText('mA / µs')
+        self.ui.label_manual_control_eload_4_slew_fall_unit.setText('mA / µs')
+        self.ui.lineedit_manual_control_eload_slew_rise.setText('150')
+        self.ui.lineedit_manual_control_eload_slew_fall.setText('150')
+        
+        if self.ui.cbx_manual_control_eload_type_4.currentText() == ELoadTypes.CC:
+            self.ui.label_manual_control_eload_4_a_level_unit.setText('A')
+            self.ui.label_manual_control_eload_4_b_level_unit.setText('A')
+            self.ui.label_manual_control_electronic_load_rise.setEnabled(True)
+            self.ui.lineedit_manual_control_eload_slew_rise.setEnabled(True)
+            self.ui.label_manual_control_eload_4_slew_rise_unit.setEnabled(True)
+            self.ui.label_manual_control_electronic_load_fall.setEnabled(True)
+            self.ui.lineedit_manual_control_eload_slew_fall.setEnabled(True)
+            self.ui.label_manual_control_eload_4_slew_fall_unit.setEnabled(True)
+        elif self.ui.cbx_manual_control_eload_type_4.currentText() == ELoadTypes.CR:
+            self.ui.label_manual_control_eload_4_a_level_unit.setText('Ω')
+            self.ui.label_manual_control_eload_4_b_level_unit.setText('Ω')
+            if not self.equipment.electronic_load_4.cr_slew_available:
+                self.ui.label_manual_control_electronic_load_rise.setEnabled(False)
+                self.ui.lineedit_manual_control_eload_slew_rise.setEnabled(False)
+                self.ui.label_manual_control_eload_4_slew_rise_unit.setEnabled(False)
+                self.ui.label_manual_control_electronic_load_fall.setEnabled(False)
+                self.ui.lineedit_manual_control_eload_slew_fall.setEnabled(False)
+                self.ui.label_manual_control_eload_4_slew_fall_unit.setEnabled(False)
+            else:
+                self.ui.label_manual_control_electronic_load_rise.setEnabled(True)
+                self.ui.lineedit_manual_control_eload_slew_rise.setEnabled(True)
+                self.ui.label_manual_control_eload_4_slew_rise_unit.setEnabled(True)
+                self.ui.label_manual_control_electronic_load_fall.setEnabled(True)
+                self.ui.lineedit_manual_control_eload_slew_fall.setEnabled(True)
+                self.ui.label_manual_control_eload_4_slew_fall_unit.setEnabled(True)
+        elif self.ui.cbx_manual_control_eload_type_4.currentText() == ELoadTypes.CV:
+            self.ui.label_manual_control_eload_4_a_level_unit.setText('V')
+            self.ui.label_manual_control_eload_4_b_level_unit.setText('V')
+            self.ui.label_manual_control_electronic_load_rise.setEnabled(True)
+            self.ui.lineedit_manual_control_eload_slew_rise.setEnabled(True)
+            self.ui.label_manual_control_eload_4_slew_rise_unit.setEnabled(True)
+            self.ui.label_manual_control_eload_4_slew_rise_unit.setText('A')
+            self.ui.label_manual_control_electronic_load_rise.setText('Limit')
+            self.ui.label_manual_control_electronic_load_fall.setEnabled(False)
+            self.ui.lineedit_manual_control_eload_slew_fall.setEnabled(False)
+            self.ui.label_manual_control_eload_4_slew_fall_unit.setEnabled(False)
+        elif self.ui.cbx_manual_control_eload_type_4.currentText() == ELoadTypes.CP:
+            self.ui.label_manual_control_eload_4_a_level_unit.setText('W')
+            self.ui.label_manual_control_eload_4_b_level_unit.setText('W')
+            if self.equipment.electronic_load_4.cp_slew_unit[0] ==  'A':
+                self.ui.label_manual_control_eload_4_slew_rise_unit.setText('A / µs')
+                self.ui.label_manual_control_eload_4_slew_fall_unit.setText('A / µs')
+            else:
+                self.ui.label_manual_control_eload_4_slew_rise_unit.setText('W / µs')
+                self.ui.label_manual_control_eload_4_slew_fall_unit.setText('W / µs')
+            self.ui.lineedit_manual_control_eload_slew_rise.setText('0.15')
+            self.ui.lineedit_manual_control_eload_slew_fall.setText('0.15')
+            self.ui.label_manual_control_electronic_load_rise.setEnabled(True)
+            self.ui.lineedit_manual_control_eload_slew_rise.setEnabled(True)
+            self.ui.label_manual_control_eload_4_slew_rise_unit.setEnabled(True)
+            self.ui.label_manual_control_electronic_load_fall.setEnabled(True)
+            self.ui.lineedit_manual_control_eload_slew_fall.setEnabled(True)
+            self.ui.label_manual_control_eload_4_slew_fall_unit.setEnabled(True)    @eload_4_access
+    def eload_4_turn_off(self):
+        """Turn off the electronic load."""
+        self.equipment.electronic_load_4.turn_off()
+
+    @eload_4_access
+    def eload_4_turn_on(self):
+        """Turn on the electronic load"""
+        self.equipment.electronic_load_4.turn_on()
+
+    @eload_4_access
+    def eload_4_set_level_A(self):
+        # Take the inputs first
+        try:
+            load_mode = self.ui.cbx_manual_control_eload_type_4.currentText()
+
+            load_a_level_txt = self.ui.lineedit_manual_control_eload_a_level_4.text()
+        
+            load_a_level = round(float(load_a_level_txt),6)
+            
+            vout_V = self.equipment.electronic_load_4.voltage
+            if abs(vout_V) < 0.5:
+                vout_V = self.equipment.electronic_load_4.crh_max_v
+                
+        except Exception as e:
+            print(e)
+            return        
+        
+        match load_mode:
+            case ELoadTypes.CC:
+                iout_a_A = load_a_level
+            case ELoadTypes.CR:
+                # If input is 0, assume no input (open circuit, max cr) instead of short circuit
+                if load_a_level == 0:
+                    iout_a_A = 0
+                else:
+                    iout_a_A = vout_V/load_a_level
+            case ELoadTypes.CP:
+                iout_a_A = load_a_level/vout_V
+            case ELoadTypes.CV:
+                vout_V = load_a_level
+                iout_a_A = None
+            case _:
+                return
+        self.equipment.electronic_load_4.set_active_level(1)
+        self.equipment.electronic_load_4.set_load(vout_V=vout_V, iout_A=iout_a_A, mode=load_mode)
+        
+    @eload_4_access                 
+    def eload_4_set_level_B(self):
+        # Take the inputs first
+        try:
+            load_mode = self.ui.cbx_manual_control_eload_type_4.currentText()
+
+            load_b_level_txt = self.ui.lineedit_manual_control_eload_b_level_4.text()
+            
+            load_b_level = round(float(load_b_level_txt),6)
+            
+            vout_V = self.equipment.electronic_load_4.voltage
+            if abs(vout_V) < 0.5:
+                vout_V = self.equipment.electronic_load_4.crh_max_v
+                
+        except Exception as e:
+            print(e)
+            return 
+        
+        match load_mode:
+            case ELoadTypes.CC:
+                iout_b_A = load_b_level
+            case ELoadTypes.CR:
+                # If input is 0, assume no input (open circuit, max cr) instead of short circuit
+                if load_b_level == 0:
+                    iout_b_A = 0
+                else:
+                    iout_b_A = vout_V/load_b_level
+            case ELoadTypes.CP:
+                iout_b_A = load_b_level/vout_V
+            case ELoadTypes.CV:
+                vout_V = load_b_level
+                iout_b_A = None
+            case _:
+                return
+        self.equipment.electronic_load_4.set_active_level(2)
+        self.equipment.electronic_load_4.set_load(vout_V=vout_V, iout_A=iout_b_A, mode=load_mode)
+   
+    @eload_4_access   
+    def eload_4_set_slew(self):
+        # Take the inputs first
+        try:
+            load_mode = self.ui.cbx_manual_control_eload_type_4.currentText()
+
+            load_rise_txt = self.ui.lineedit_manual_control_eload_slew_rise.text().strip().upper()
+            load_fall_txt = self.ui.lineedit_manual_control_eload_slew_fall.text().strip().upper()
+            
+            if load_rise_txt == "MAX":
+                load_rise = "MAX"
+            else:
+                load_rise = round(float(load_rise_txt)/1000, 6)
+                
+            if load_fall_txt == "MAX":
+                load_fall = "MAX"
+            else:
+                load_fall = round(float(load_fall_txt)/1000, 6)
+            
+        except Exception as e:
+            print(e)
+            return 
+
+        match load_mode:
+            case ELoadTypes.CC:
+                self.equipment.electronic_load_4.set_cc_static_slew(load_rise,load_fall)
+            case ELoadTypes.CR:
+                self.equipment.electronic_load_4.set_cr_slew(load_rise,load_fall)
+          
+    @eload_4_access   
+    def eload_4_swap_active_level(self):
+        vout_V = self.equipment.electronic_load_4.voltage
+        if abs(vout_V) < 0.5:
+            vout_V = self.equipment.electronic_load_4.crh_max_v
+        if self.equipment.electronic_load_4._active_level == '1':
+            self.eload_4_set_level_B()
+        else:
+            self.eload_4_set_level_A()
+        
+        # self.equipment.electronic_load_4.get_active_level()
+        # load_mode = self.ui.cbx_manual_control_eload_type_4.currentText()
+        # vout_V = self.equipment.electronic_load_4.voltage
+        # if abs(vout_V) < 0.5:
+        #     vout_V = self.equipment.electronic_load_4.crh_max_v
+        # match load_mode:
+        #     case ELoadTypes.CC:
+        #         if self.equipment.electronic_load_4._active_level == '1':
+        #             self.equipment.electronic_load_4.set_active_level(2)
+        #             self.equipment.electronic_load_4.set_load(vout_V=vout_V, iout_A=self.equipment.electronic_load_4.cc_static_l2, mode=load_mode)
+        #         else:
+        #             self.equipment.electronic_load_4.set_active_level(1)
+        #             self.equipment.electronic_load_4.set_load(vout_V=vout_V, iout_A=self.equipment.electronic_load_4.cc_static_l1, mode=load_mode)
+        #     case ELoadTypes.CR:
+        #         if self.equipment.electronic_load_4._active_level == '1':
+        #             self.equipment.electronic_load_4.set_active_level(2)
+        #             self.equipment.electronic_load_4.set_load(vout_V=vout_V, iout_A=(vout_V/self.equipment.electronic_load_4.cr_l2), mode=load_mode)
+        #         else:
+        #             self.equipment.electronic_load_4.set_active_level(1)
+        #             self.equipment.electronic_load_4.set_load(vout_V=vout_V, iout_A=(vout_V/self.equipment.electronic_load_4.cr_l1), mode=load_mode)
+    
     @power_meter_load_4_access
     def ui_power_meter_load_4_update(self):
         # Load power meter display
@@ -1258,21 +2115,11 @@ class ManualControlPageHandler():
         self.settings_file = "manual_control_settings.json"
         
         self.state_widgets = []
-        self.state_keys = {}
-        names = {}
-        for owner in (self, self.ui):
-            for attr, value in vars(owner).items():
-                if isinstance(value, (QLineEdit, QComboBox, QCheckBox)):
-                    names.setdefault(id(value), attr)
-        candidates = []
         for t in (QLineEdit, QComboBox, QCheckBox):
-            candidates += self.ui.page_manual_control.findChildren(t)
-        candidates += self.pml_grid.dialog_state_widgets() + self.eload_grid.dialog_state_widgets()
-        for widget in candidates:
+            for widget in self.ui.page_manual_control.findChildren(t):
                 obj_name = widget.objectName()
-                if not obj_name or widget in self.state_widgets: continue
+                if not obj_name: continue
                 self.state_widgets.append(widget)
-                self.state_keys[id(widget)] = names.get(id(widget), obj_name)
                 
                 if isinstance(widget, QLineEdit):
                     widget.editingFinished.connect(self.save_manual_settings)
@@ -1288,7 +2135,7 @@ class ManualControlPageHandler():
         from PySide2.QtWidgets import QLineEdit, QComboBox, QCheckBox
         state = {}
         for widget in self.state_widgets:
-            obj_name = self.state_keys.get(id(widget), widget.objectName())
+            obj_name = widget.objectName()
             if isinstance(widget, QLineEdit):
                 state[obj_name] = widget.text()
             elif isinstance(widget, QComboBox):
@@ -1314,7 +2161,7 @@ class ManualControlPageHandler():
                 state = json.load(f)
                 
             for widget in self.state_widgets:
-                obj_name = self.state_keys.get(id(widget), widget.objectName())
+                obj_name = widget.objectName()
                 if obj_name in state:
                     val = state[obj_name]
                     widget.blockSignals(True)

@@ -125,16 +125,19 @@ def test_driver_commands():
 def test_psu_discharge():
     import psu_tests.test_vds_ids_steady_state as ss
     import psu_tests.test_efficiency_2port_waveform as ew
-    for mod, cls, src_attr in ((ss, ss.VdsIdsSteadyStateTest, 'ac_source'), (ew, ew.EfficiencyWaveformTest_2Port, 'input_supply')):
+    cases = (
+        (ss, ss.VdsIdsSteadyStateTest, 'ac_source', SimpleNamespace(i_max_A=3.0), 3.0),
+        (ew, ew.EfficiencyWaveformTest_2Port, 'input_supply', SimpleNamespace(i_max_A=3.0), 1.0),
+    )
+    for mod, cls, src_attr, t_extra, cch_a in cases:
         log = []
-        t = SimpleNamespace(electronic_load=FakeLoad('L1', log), electronic_load_2=None, i_max_A=3.0)
+        t = SimpleNamespace(electronic_load=FakeLoad('L1', log), electronic_load_2=None, **vars(t_extra))
         setattr(t, src_attr, SimpleNamespace(turn_off=lambda: log.append(('src', 'off'))))
         mod.sleep = lambda s: None
         cls.discharge_output(t, 2)
         names = [e[1] for e in log]
-        expect_a = 1.0 if cls is ew.EfficiencyWaveformTest_2Port else 3.0
-        check(f"{mod.__name__.split('.')[-1]}: discharge uses CCH at {expect_a:g} A, no SHORT/auto-range",
-              names.count('cch') == 2 and all(e[2] == expect_a for e in log if e[1] == 'cch')
+        check(f"{mod.__name__.split('.')[-1]}: discharge uses CCH at test current, no SHORT/auto-range",
+              names.count('cch') == 2 and all(e[2] == cch_a for e in log if e[1] == 'cch')
               and 'SHORT' not in names and 'AUTO_RANGE_CC' not in names, log)
 
 
@@ -148,8 +151,6 @@ def test_ui():
     ui.stackedWidget.setCurrentWidget(ui.page_manual_control)
     app.processEvents()
     mc = window.manual_control_handler
-    import tempfile
-    mc.settings_file = os.path.join(tempfile.gettempdir(), "pi_ate_verify_manual_settings.json")
     grid = mc.pml_grid
 
     check("ui: tab widget removed from layout", not ui.tabWidget_pml.isVisible() and ui.tabWidget_pml.count() == 0)
