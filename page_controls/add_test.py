@@ -49,7 +49,12 @@ WAVEFORM_2PORT_TITLES = (
     EFFICIENCY_2PORT_WAVEFORM_LEGACY_TITLE,
     STARTUP_WAVEFORM_2PORT_TITLE,
 )
-EFFICIENCY_2PORT_TITLES = ("Efficiency 2 Port", STEADY_STATE_WAVEFORM_2PORT_TITLE)
+EFFICIENCY_2PORT_TITLES = (
+    "Efficiency 2 Port",
+    STEADY_STATE_WAVEFORM_2PORT_TITLE,
+    EFFICIENCY_2PORT_WAVEFORM_LEGACY_TITLE,
+    STARTUP_WAVEFORM_2PORT_TITLE,
+)
 STEADY_STATE_TITLES = ("Steady-State Waveform Capture", "Primary Vds & Ids Steady-State")
 
 import user_settings.save_load as configs
@@ -2008,6 +2013,17 @@ class AddTestPageHandler(QObject):
                 ui.lineedit_add_tests_nominal_output_voltage.setText(f"{test_class.tc_default.nominal_output_voltage_V:g}")
             if not ui.lineedit_add_tests_nominal_output_current.text():
                 ui.lineedit_add_tests_nominal_output_current.setText(f"{test_class.tc_default.nominal_load_current_A:g}")
+
+            if len(getattr(self, 'i2c_ui_combo_boxes', [])) > 3:
+                auto_find_cbx = self.i2c_ui_combo_boxes[3]
+                if test_class.title == STARTUP_WAVEFORM_2PORT_TITLE:
+                    auto_find_cbx.setEnabled(False)
+                    for i in range(auto_find_cbx.count()):
+                        if str(auto_find_cbx.itemText(i)).strip().lower().startswith('no'):
+                            auto_find_cbx.setCurrentIndex(i)
+                            break
+                else:
+                    auto_find_cbx.setEnabled(True)
         elif test_class.title in ["Steady-State Waveform Capture", "Primary Vds & Ids Steady-State"]:
             ui.label_add_tests_nominal_output_voltage.setText("Nominal Vout (V)")
             ui.label_add_tests_nominal_output_current.setText("Nominal Iout (A)")
