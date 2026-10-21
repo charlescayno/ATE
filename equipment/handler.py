@@ -253,7 +253,7 @@ class EquipmentHandler():
         manufacturer, model, serial, fw_version = device_id.split(",", 4)[:4]
 
         # Check the device model to see what kind of equipment it is
-        equipment_type = self.get_equipment_type(model)
+        equipment_type = self.get_equipment_type(model.strip())
         
         match equipment_type:
             case EquipmentType.AC_SOURCE:
@@ -284,17 +284,33 @@ class EquipmentHandler():
             case EquipmentType.OSCILLOSCOPE:
                 self.oscilloscopes.append(Oscilloscope(device, device_id))
 
+    @staticmethod
+    def _is_magna_dc(dc: DCSource) -> bool:
+        if dc is None:
+            return False
+        m = (getattr(dc, 'model', '') or '').strip()
+        man = (getattr(dc, 'manufacturer', '') or '')
+        return 'SL1000' in m or 'Magna' in man
+
+    @staticmethod
+    def _is_hmp_dc(dc: DCSource) -> bool:
+        if dc is None:
+            return False
+        m = (getattr(dc, 'model', '') or '').strip().upper()
+        return m.startswith('HMP')
+
     def get_equipment_type(self, equipment_model:str)->EquipmentType:
         """ Check the equipment type by comparing the equipment model
         to a list of predefined equipment model numbers
         
         """
+        model_key = (equipment_model or '').strip()
         # Check if equipment is AC Source
-        if equipment_model in AC_SOURCE_LIST:
+        if model_key in AC_SOURCE_LIST or equipment_model in AC_SOURCE_LIST:
             return EquipmentType.AC_SOURCE
 
         # Check if equipment is DC Source
-        elif equipment_model in DC_SOURCE_LIST:
+        elif model_key in DC_SOURCE_LIST or equipment_model in DC_SOURCE_LIST:
             return EquipmentType.DC_SOURCE
 
         # Check if equipment is Power Meter
@@ -428,6 +444,7 @@ class EquipmentHandler():
         # No need for list of roles for equipment that we don't expect to have multiples of
         self.ac_source:ACSource = None
         self.dc_source:DCSource = None
+        self.dc_source_aux:DCSource = None
         self.oscilloscope:OscilloscopeBaseClass = None
 
     def reset_power_meter_roles(self):
@@ -522,6 +539,16 @@ class EquipmentHandler():
                     break
         if self.dc_source is None and len(self.dc_sources) > 0 and (not saved_dc or saved_dc != "-"):
             self.dc_source = self.dc_sources[0]
+
+        saved_dc_aux = saved_config.get("dc_source_aux", "")
+        self.dc_source_aux = None
+        if saved_dc_aux and saved_dc_aux != "-":
+            for dc in self.dc_sources:
+                if dc is not None and dc.description == saved_dc_aux:
+                    self.dc_source_aux = dc
+                    break
+        if self.dc_source_aux is None and len(self.dc_sources) > 1:
+            self._assign_dc_roles_heuristic(preserve_primary=True)
 
         # 3. Power Meters
         self.reset_power_meter_roles()
@@ -774,14 +801,45 @@ class EquipmentHandler():
             self.ac_source = self.ac_sources[0]
 
 
-    def auto_set_dc_source_roles(self):
-        """ Placeholder if there are tests with multiple DC sources
-        """
-        # For now, set it as the first DC source in the list
+    def _assign_dc_roles_heuristic(self, preserve_primary: bool = False):
+        """Split Magna (primary) vs HMP (aux) when multiple DC sources are present."""
+        magna = next((d for d in self.dc_sources if self._is_magna_dc(d)), None)
+        hmp = next((d for d in self.dc_sources if self._is_hmp_dc(d)), None)
+        if magna and hmp:
+            if not preserve_primary and (self.dc_source is None or self.dc_source is hmp):
+                self.dc_source = magna
+            if self.dc_source_aux is None or self.dc_source_aux is self.dc_source:
+                self.dc_source_aux = hmp if hmp is not self.dc_source else None
+            return
+        if len(self.dc_sources) == 1:
+            only = self.dc_sources[0]
+            if self._is_hmp_dc(only):
+                if self.dc_source_aux is None:
+                    self.dc_source_aux = only
+            elif self.dc_source is None:
+                self.dc_source = only
+            return
+        for dc in self.dc_sources:
+            if self.dc_source is None and not self._is_hmp_dc(dc):
+                self.dc_source = dc
+            elif self.dc_source_aux is None and dc is not self.dc_source:
+                self.dc_source_aux = dc
 
+    def auto_set_dc_source_roles(self):
+        """Assign primary and auxiliary DC source roles."""
         self.dc_source = None
-        
-        if len(self.dc_sources) > 0:   
+        self.dc_source_aux = None
+        if len(self.dc_sources) == 0:
+            return
+        if len(self.dc_sources) == 1:
+            only = self.dc_sources[0]
+            if self._is_hmp_dc(only):
+                self.dc_source_aux = only
+            else:
+                self.dc_source = only
+            return
+        self._assign_dc_roles_heuristic()
+        if self.dc_source is None:
             self.dc_source = self.dc_sources[0]
             
     def input_supply_eload_discharge_sequence(self,iout_A,coupling=AC_SOURCE_COUPLING.AC):

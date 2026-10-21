@@ -6,8 +6,8 @@ from sink_controllers.pat_tool import SMBUS_STATE
 import sink_controllers.pi_epr_sink as PI_EPR_SINK
 from sink_controllers.definitions import SINK_STATE
 
-from PySide2.QtWidgets import QMessageBox, QPushButton
-from PySide2.QtCore import QSize
+from PySide2.QtWidgets import QMessageBox, QPushButton, QFrame, QLabel, QComboBox, QVBoxLayout, QHBoxLayout
+from PySide2.QtCore import QSize, Qt
 
 from user_settings.save_load import (write_to_default_config, read_from_default_config,
                                      save_equipment_setup, load_equipment_setup) 
@@ -35,9 +35,11 @@ class EquipmentSetupPageHandler():
         self.ongoing_sink_update = False
         self.ongoing_ac_source_update = False
         self.ongoing_dc_source_update = False
+        self.ongoing_dc_source_aux_update = False
         self.ongoing_power_meter_update = False
         self.ongoing_eload_update = False
 
+        self._build_aux_dc_source_setup()
         self.bind_ui_elements()
 
         self.initialize_ui_values()
@@ -87,6 +89,9 @@ class EquipmentSetupPageHandler():
         
         self.ui.cbx_equip_setup_sources_dcsource.currentIndexChanged.connect(
             self.update_dc_source_info)
+
+        self.ui.cbx_equip_setup_sources_dcsource_aux.currentIndexChanged.connect(
+            self.update_dc_source_aux_info)
         
         self.ui.cbx_equip_setup_sinkcontroller.currentIndexChanged.connect(
             self.update_sink_controller_info)
@@ -145,6 +150,7 @@ class EquipmentSetupPageHandler():
         config = {
             "ac_source": self.ui.cbx_equip_setup_sources_acsource.currentText(),
             "dc_source": self.ui.cbx_equip_setup_sources_dcsource.currentText(),
+            "dc_source_aux": self.ui.cbx_equip_setup_sources_dcsource_aux.currentText(),
             "oscilloscope_address": self.ui.lineedit_equip_setup_oscilloscope.text().strip(),
             "power_meters": {
                 "source": self.ui.cbx_equip_setup_power_meter_source.currentText(),
@@ -289,6 +295,7 @@ class EquipmentSetupPageHandler():
         self.ui_update_ac_source_combo_box()
 
         self.ui_update_dc_source_combo_box()
+        self.ui_update_dc_source_aux_combo_box()
 
         self.ui_update_sink_and_i2c_combo_boxes()
         
@@ -349,6 +356,7 @@ class EquipmentSetupPageHandler():
             combo_box.setCurrentIndex(self.equipment.dc_sources.index(self.equipment.dc_source))
         
         self.ongoing_dc_source_update = False
+        self.ui_update_dc_source_aux_combo_box()
             
     def update_dc_source_info(self):
         cbx = self.ui.cbx_equip_setup_sources_dcsource
@@ -361,8 +369,78 @@ class EquipmentSetupPageHandler():
             return
         try:
             self.equipment.dc_source = self.equipment.dc_sources[selection]
+            if (self.equipment.dc_source_aux is not None
+                    and self.equipment.dc_source_aux is self.equipment.dc_source):
+                self.equipment.dc_source_aux = None
+                self.ui_update_dc_source_aux_combo_box()
         except Exception as e:
             print(e)
+
+    def _build_aux_dc_source_setup(self):
+        ui = self.ui
+        frame = QFrame(ui.frame_equip_setup_sources_contents)
+        frame.setObjectName("frame_equip_setup_sources_dcsource_aux")
+        frame.setStyleSheet(ui.frame_equip_setup_sources_dcsource.styleSheet())
+        row = QHBoxLayout(frame)
+        label = QLabel("Aux DC", frame)
+        label.setMaximumWidth(100)
+        label.setAlignment(Qt.AlignCenter)
+        label.setStyleSheet("border:none;")
+        contents = QFrame(frame)
+        contents.setStyleSheet("border: None;")
+        v = QVBoxLayout(contents)
+        cbx = QComboBox(contents)
+        cbx.setObjectName("cbx_equip_setup_sources_dcsource_aux")
+        cbx.setMaximumHeight(40)
+        cbx.setStyleSheet(ui.cbx_equip_setup_sources_dcsource.styleSheet())
+        v.addWidget(cbx)
+        row.addWidget(label)
+        row.addWidget(contents)
+        ui.verticalLayout_58.addWidget(frame)
+        ui.frame_equip_setup_sources_dcsource_aux = frame
+        ui.cbx_equip_setup_sources_dcsource_aux = cbx
+        ui.label_equip_setup_sources_dcsource_aux = label
+
+    def ui_update_dc_source_aux_combo_box(self):
+        from PySide2.QtCore import Qt
+        frame = self.ui.frame_equip_setup_sources_dcsource_aux
+        combo_box = self.ui.cbx_equip_setup_sources_dcsource_aux
+        self.ongoing_dc_source_aux_update = True
+        combo_box.clear()
+        combo_box.addItem("-")
+        frame.setStyleSheet(red_frame)
+        for dc_source in self.equipment.dc_sources:
+            if dc_source is None:
+                continue
+            if dc_source is self.equipment.dc_source:
+                continue
+            frame.setStyleSheet(green_frame)
+            combo_box.addItem(dc_source.description)
+        if self.equipment.dc_source_aux is not None:
+            for i in range(combo_box.count()):
+                if combo_box.itemText(i) == self.equipment.dc_source_aux.description:
+                    combo_box.setCurrentIndex(i)
+                    break
+        else:
+            combo_box.setCurrentIndex(0)
+        self.ongoing_dc_source_aux_update = False
+
+    def update_dc_source_aux_info(self):
+        cbx = self.ui.cbx_equip_setup_sources_dcsource_aux
+        selection = cbx.currentIndex()
+        if selection <= 0:
+            self.equipment.dc_source_aux = None
+            return
+        if self.ongoing_dc_source_aux_update:
+            return
+        desc = cbx.currentText()
+        picked = next((d for d in self.equipment.dc_sources if d and d.description == desc), None)
+        if picked is self.equipment.dc_source:
+            QMessageBox.warning(self.parent, "Equipment Setup",
+                                "Aux DC source must be different from the primary DC source.")
+            self.ui_update_dc_source_aux_combo_box()
+            return
+        self.equipment.dc_source_aux = picked
         
     def ui_update_power_meters_combo_boxes(self):
         """Populate the power meter combo boxes."""

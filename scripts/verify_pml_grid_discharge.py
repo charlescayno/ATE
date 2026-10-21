@@ -189,6 +189,15 @@ def test_ui():
           (ui.label_pml_display_d.text(), ui.label_pml_display_d_2.text()))
     check("ui: CH2 Pout shown", ui.label_pml_display_c_2.text() == '5.00 W', ui.label_pml_display_c_2.text())
 
+    eload = mc.eload_grid
+    check("ui: e-load tabs removed", ui.tabWidget_eload.count() == 0 and not ui.tabWidget_eload.isVisible())
+    check("ui: all 4 e-load tiles visible", all(eload.channels[n].w['tile'].isVisible() for n in (1, 2, 3, 4)))
+    check("ui: e-load slew frames in gear dialogs",
+          all(eload.channels[n].w['slew'].parent() is eload.dialogs[n] for n in (1, 2, 3, 4)))
+    eload.gears[3].click(); app.processEvents()
+    check("ui: e-load gear opens CH3 slew dialog", eload.dialogs[3].isVisible())
+    eload.dialogs[3].close()
+
     # Auto-discharge on source OFF
     log = []
     mc.equipment.electronic_load_1 = FakeLoad('L1', log, mode='CCL', status='1', cc=2.5)

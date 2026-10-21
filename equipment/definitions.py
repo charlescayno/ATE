@@ -31,7 +31,11 @@ AC_SOURCE_LIST = {
 }
 
 DC_SOURCE_LIST = {
-    ' SL1000-1.5' :DCSourceMagnaPower,
+    ' SL1000-1.5': DCSourceMagnaPower,
+    'SL1000-1.5': DCSourceMagnaPower,
+    'HMP2030': DCSourceHMP2030,
+    'HMP2020': DCSourceHMP2030,
+    'HMP4040': DCSourceHMP2030,
 }
 
 POWER_METER_LIST = {

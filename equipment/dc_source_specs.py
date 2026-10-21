@@ -32,3 +32,21 @@ class DCSourceChroma(DCSourceBaseClass):
         self.output = 'OUTP'
         self.state = 'STAT'
         self.sequence = 'OUTP:SEQ'
+
+
+class DCSourceHMP2030(DCSourceBaseClass):
+    """Rohde & Schwarz HMP series (2030 / 2020 / 4040)."""
+
+    def __init__(self):
+        super().__init__()
+        self.output_on = 'OUTPut ON'
+        self.output_off = 'OUTPut OFF'
+        self.measure = 'MEASure'
+        self.volt = 'VOLTage'
+        self.curr = 'CURRent'
+        self.output = 'OUTPut'
+        self.state = 'STATe'
+        # No sequence programming on HMP; DCSource.turn_sequence uses this harmlessly.
+        self.sequence = 'OUTPut:SEQuence'
+        self.set_volt = 'SOURce:VOLTage'
+        self.set_curr = 'SOURce:CURRent'

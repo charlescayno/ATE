@@ -65,16 +65,36 @@ class VirtualCircuitState:
 
 
 class SimulatedDCSource:
-    def __init__(self, state):
+    def __init__(self, state, *, model='SL1000-1.5', manufacturer='Magna-Power', serial='SIM-DC-001'):
         self.state = state
-        self.description = "Simulated Magna-Power SL1000-1.5 DC Source"
-        self.manufacturer = "Magna-Power"
-        self.model = "SL1000-1.5"
-        self.serial = "SIM-DC-001"
+        self.manufacturer = manufacturer
+        self.model = model
+        self.serial = serial
+        self.description = f"{manufacturer} {model} {serial}"
+        self.device_id = f"{manufacturer},{model},{serial},1.0.0"
         self.output_status = 0 # 0 = OFF, 1 = ON
         self.coupling = 'DC'
-        self.voltage = 0.0
-        self.current = 0.0
+        self._voltage = 0.0
+        self._current_limit = 1.0
+        self.aux_rail = False
+
+    @property
+    def voltage(self):
+        return self._voltage
+
+    @voltage.setter
+    def voltage(self, value):
+        self._voltage = float(value)
+        if not self.aux_rail:
+            self.state.vin = self._voltage
+
+    @property
+    def current(self):
+        return self._current_limit
+
+    @current.setter
+    def current(self, value):
+        self._current_limit = float(value)
 
     def update_status(self):
         # Already tracked internally
@@ -94,10 +114,14 @@ class SimulatedDCSource:
     def set_voltage_with_coupling(self, voltage, coupling):
         self.voltage = voltage
         self.coupling = coupling
-        self.state.input_voltage = voltage
+        if not self.aux_rail:
+            self.state.vin = voltage
         if not hasattr(self, '_last_printed_voltage') or abs(self._last_printed_voltage - voltage) > 0.001:
-            print(f"[DC_SOURCE] DC Source Simulated: Set Voltage to {voltage:.2f}V (Coupling: {coupling})")
+            print(f"[DC_SOURCE] {self.description}: Set Voltage to {voltage:.2f}V (Coupling: {coupling})")
             self._last_printed_voltage = voltage
+
+    def set_current_limit(self, current_a: float):
+        self.current = current_a
 
 class SimulatedACSource:
     def __init__(self, state: VirtualCircuitState):
@@ -198,6 +222,11 @@ class SimulatedElectronicLoadModule:
         self.active_channel_status = 1
         self.active_channel_short = 0
         self.crh_max_r = 50000.0
+        self.crh_max_v = 80.0
+        self.multi_channel = False
+        self.cr_slew_available = True
+        self.cp_slew_unit = 'W / µs'
+        self.load_modes = ['CC', 'CR', 'CV', 'CP', 'LED']
 
     @property
     def _ch(self):
@@ -584,6 +613,9 @@ class SimulatedEquipmentHandler(EquipmentHandler):
         # Virtual instruments
         self.ac_source = SimulatedACSource(self.state)
         self.dc_source = SimulatedDCSource(self.state)
+        self.dc_source_aux = SimulatedDCSource(
+            self.state, model='HMP2030', manufacturer='Rohde&Schwarz', serial='SIM-HMP-001')
+        self.dc_source_aux.aux_rail = True
         self.electronic_load_1 = SimulatedElectronicLoadModule(self.state, channel_idx=1)
         self.electronic_load_2 = SimulatedElectronicLoadModule(self.state, channel_idx=2)
         self.electronic_load_3 = SimulatedElectronicLoadModule(self.state, channel_idx=3)
@@ -605,7 +637,7 @@ class SimulatedEquipmentHandler(EquipmentHandler):
 
         # Equipment lists
         self.ac_sources = [self.ac_source]
-        self.dc_sources = [self.dc_source]
+        self.dc_sources = [self.dc_source, self.dc_source_aux]
         self.e_loads = [
             self.electronic_load_1,
             self.electronic_load_2,
