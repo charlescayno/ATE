@@ -76,7 +76,7 @@ def main():
     check("ui: 3 channel widget sets", len(getattr(mc, 'hmp_aux_channel_widgets', {})) == HMP_MANUAL_CHANNEL_COUNT)
     for ch in range(1, HMP_MANUAL_CHANNEL_COUNT + 1):
         w = mc.hmp_aux_channel_widgets[ch]
-        check(f"ui: CH{ch} status label", "Status:" in w['status'].text())
+        check(f"ui: CH{ch} status label", w['status'].text() in ("Off", "On", "Status: OFF", "Status: ON"))
 
     eq = win.equipment
     if getattr(eq, "dc_source_aux", None) is None:

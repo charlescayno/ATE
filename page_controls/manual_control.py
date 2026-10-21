@@ -393,105 +393,97 @@ class ManualControlPageHandler():
         frame.setStyleSheet(ui.frame_manual_control_ac_source.styleSheet())
 
         outer = QVBoxLayout(frame)
-        outer.setContentsMargins(4, 4, 4, 4)
+        outer.setContentsMargins(2, 2, 2, 2)
         outer.setSpacing(2)
 
         title = QLabel("AUX DC (HMP)", frame)
         title.setObjectName("label_manual_control_dc_source_aux")
-        title.setMaximumHeight(26)
+        title.setMaximumHeight(22)
         title.setAlignment(Qt.AlignCenter)
         title.setStyleSheet(ui.label_manual_control_ac_source.styleSheet())
         outer.addWidget(title)
 
         le_style = ui.lineedit_manual_control_ac_source_voltage.styleSheet()
         lbl_style = ui.label_manual_control_ac_source_voltage.styleSheet()
-        min_le_h = ui.lineedit_manual_control_ac_source_voltage.minimumHeight()
+        compact_le_h = 22
+        btn_compact = (
+            "QPushButton { min-height: 22px; max-height: 24px; padding: 2px 6px; font-size: 11px; }"
+        )
+
+        params = QFrame(frame)
+        params.setObjectName("frame_manual_control_dc_aux_params")
+        params.setStyleSheet(ui.frame_manual_control_ac_source_params.styleSheet())
+        grid = QGridLayout(params)
+        grid.setContentsMargins(4, 4, 4, 4)
+        grid.setHorizontalSpacing(4)
+        grid.setVerticalSpacing(3)
+
+        hdr = QLabel("Ch", params)
+        hdr.setStyleSheet(lbl_style + " border: none;")
+        grid.addWidget(hdr, 0, 0)
+        for col, text in enumerate(("V", "A", "", "", ""), start=1):
+            if text:
+                h = QLabel(text, params)
+                h.setStyleSheet(lbl_style + " border: none;")
+                h.setAlignment(Qt.AlignCenter)
+                grid.addWidget(h, 0, col)
 
         self.hmp_aux_channel_widgets = {}
-        channels_host = QVBoxLayout()
-        channels_host.setSpacing(4)
+        btn_on_style = ui.btn_manual_control_ac_source_turn_on.styleSheet() + btn_compact
+        btn_off_style = ui.btn_manual_control_ac_source_turn_off.styleSheet() + btn_compact
 
         for ch in range(1, HMP_MANUAL_CHANNEL_COUNT + 1):
-            ch_frame = QFrame(frame)
-            ch_frame.setObjectName(f"frame_manual_control_dc_aux_ch{ch}")
-            ch_frame.setStyleSheet("border: 1px solid #3f4657; border-radius: 3px;")
-            ch_row = QHBoxLayout(ch_frame)
-            ch_row.setContentsMargins(2, 2, 2, 2)
-            ch_row.setSpacing(4)
-
-            params = QFrame(ch_frame)
-            params.setObjectName(f"frame_manual_control_dc_aux_params_ch{ch}")
-            params.setStyleSheet(ui.frame_manual_control_ac_source_params.styleSheet())
-            grid = QGridLayout(params)
-            grid.setContentsMargins(4, 4, 4, 4)
-            grid.setHorizontalSpacing(6)
-            grid.setVerticalSpacing(4)
-
-            lbl_ch = QLabel(f"CH{ch}", params)
-            lbl_ch.setStyleSheet(lbl_style)
+            row = ch
+            lbl_ch = QLabel(f"{ch}", params)
+            lbl_ch.setAlignment(Qt.AlignCenter)
+            lbl_ch.setStyleSheet(lbl_style + " border: none; font-weight: bold;")
             le_v = QLineEdit(params)
             le_v.setObjectName(f"lineedit_manual_control_dc_aux_voltage_ch{ch}")
             le_v.setText("0")
-            le_v.setMinimumHeight(min_le_h)
+            le_v.setFixedHeight(compact_le_h)
             le_v.setValidator(self.validator)
             le_v.setStyleSheet(le_style)
             le_i = QLineEdit(params)
             le_i.setObjectName(f"lineedit_manual_control_dc_aux_current_ch{ch}")
             le_i.setText("1.0")
-            le_i.setMinimumHeight(min_le_h)
+            le_i.setFixedHeight(compact_le_h)
             le_i.setValidator(self.validator)
             le_i.setStyleSheet(le_style)
-            btn_apply = QPushButton("Apply V / I", params)
+            btn_apply = QPushButton("Set", params)
             btn_apply.setObjectName(f"btn_manual_control_dc_aux_apply_ch{ch}")
-            btn_apply.setMinimumHeight(28)
-            btn_apply.setStyleSheet(ui.btn_manual_control_ac_source_turn_on.styleSheet())
-            lbl_status = QLabel("Status: OFF", params)
-            lbl_status.setObjectName(f"label_manual_control_dc_aux_status_ch{ch}")
-            lbl_status.setStyleSheet("color: rgb(140,140,140); border: none;")
-            lbl_status.setAlignment(Qt.AlignCenter)
-
-            grid.addWidget(lbl_ch, 0, 0)
-            grid.addWidget(QLabel("V", params), 0, 1)
-            grid.addWidget(le_v, 0, 2)
-            grid.addWidget(QLabel("A", params), 1, 1)
-            grid.addWidget(le_i, 1, 2)
-            grid.addWidget(btn_apply, 2, 0, 1, 3)
-            grid.addWidget(lbl_status, 3, 0, 1, 3)
-
-            btn_frame = QFrame(ch_frame)
-            btn_frame.setObjectName(f"frame_manual_control_dc_aux_buttons_ch{ch}")
-            btn_frame.setStyleSheet(ui.frame_manual_control_ac_source_buttons.styleSheet())
-            btn_col = QVBoxLayout(btn_frame)
-            btn_col.setContentsMargins(2, 2, 2, 2)
-            btn_col.setSpacing(2)
-            btn_on = QPushButton(btn_frame)
+            btn_apply.setStyleSheet(btn_on_style)
+            btn_apply.setToolTip("Apply V / I for this channel")
+            btn_on = QPushButton("On", params)
             btn_on.setObjectName(f"btn_manual_control_dc_aux_turn_on_ch{ch}")
-            btn_on.setMinimumSize(QSize(72, 56))
-            btn_on.setFont(ui.btn_manual_control_ac_source_turn_on.font())
-            btn_on.setStyleSheet(ui.btn_manual_control_ac_source_turn_on.styleSheet())
-            btn_on.setIcon(ui.btn_manual_control_ac_source_turn_on.icon())
-            btn_off = QPushButton(btn_frame)
+            btn_on.setStyleSheet(btn_on_style)
+            btn_off = QPushButton("Off", params)
             btn_off.setObjectName(f"btn_manual_control_dc_aux_turn_off_ch{ch}")
-            btn_off.setMinimumSize(QSize(72, 56))
-            btn_off.setFont(ui.btn_manual_control_ac_source_turn_off.font())
-            btn_off.setStyleSheet(ui.btn_manual_control_ac_source_turn_off.styleSheet())
-            btn_off.setIcon(ui.btn_manual_control_ac_source_turn_off.icon())
-            btn_col.addWidget(btn_on)
-            btn_col.addWidget(btn_off)
+            btn_off.setStyleSheet(btn_off_style)
+            lbl_status = QLabel("Off", params)
+            lbl_status.setObjectName(f"label_manual_control_dc_aux_status_ch{ch}")
+            lbl_status.setStyleSheet("color: rgb(140,140,140); border: none; font-size: 11px;")
+            lbl_status.setAlignment(Qt.AlignCenter)
+            lbl_status.setMinimumWidth(28)
 
-            ch_row.addWidget(params, 1)
-            ch_row.addWidget(btn_frame, 0)
-            channels_host.addWidget(ch_frame)
+            grid.addWidget(lbl_ch, row, 0)
+            grid.addWidget(le_v, row, 1)
+            grid.addWidget(le_i, row, 2)
+            grid.addWidget(btn_apply, row, 3)
+            grid.addWidget(btn_on, row, 4)
+            grid.addWidget(btn_off, row, 5)
+            grid.addWidget(lbl_status, row, 6)
 
             btn_apply.clicked.connect(partial(self.aux_dc_apply_settings, ch))
             btn_on.clicked.connect(partial(self.aux_dc_turn_on, ch))
             btn_off.clicked.connect(partial(self.aux_dc_turn_off, ch))
 
             self.hmp_aux_channel_widgets[ch] = {
-                'le_v': le_v, 'le_i': le_i, 'status': lbl_status, 'buttons': btn_frame,
+                'le_v': le_v, 'le_i': le_i, 'status': lbl_status, 'buttons': lbl_status,
             }
 
-        outer.addLayout(channels_host)
+        grid.setColumnStretch(1, 1)
+        grid.setColumnStretch(2, 1)
+        outer.addWidget(params)
 
         # Legacy single-channel widget names (CH1) for older verify/scripts
         w1 = self.hmp_aux_channel_widgets[1]
@@ -1080,10 +1072,11 @@ class ManualControlPageHandler():
                     self.dc_source_aux.update_status()
                     on_val = self.dc_source_aux.output_status
                 on = on_val == DC_SOURCE_STATUS.ON
-                w['status'].setText("Status: ON" if on else "Status: OFF")
+                w['status'].setText("On" if on else "Off")
                 w['status'].setStyleSheet(
-                    "color: rgb(85,255,127); border: none;" if on else "color: rgb(140,140,140); border: none;")
-                w['buttons'].setStyleSheet(Style.green_frame if on else Style.normal_frame)
+                    "color: rgb(85,255,127); border: none; font-size: 11px;" if on
+                    else "color: rgb(140,140,140); border: none; font-size: 11px;")
+                w['buttons'].setStyleSheet(Style.normal_frame)
         except Exception:
             pass
 
