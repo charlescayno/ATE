@@ -43,18 +43,25 @@ from misc_functions.misc_functions import *
 
 STEADY_STATE_WAVEFORM_2PORT_TITLE = "Steady-State Waveform 2 Port"
 STARTUP_WAVEFORM_2PORT_TITLE = "Startup Waveform 2 Port"
+STARTUP_WAVEFORM_AC_TURNON_TITLE = "Startup Waveform AC Turn-On (DER-1113)"
+STARTUP_WAVEFORM_TITLES = (
+    STARTUP_WAVEFORM_2PORT_TITLE,
+    STARTUP_WAVEFORM_AC_TURNON_TITLE,
+)
 EFFICIENCY_2PORT_WAVEFORM_TITLE = STEADY_STATE_WAVEFORM_2PORT_TITLE
 EFFICIENCY_2PORT_WAVEFORM_LEGACY_TITLE = "Efficiency 2 Port (Waveform)"
 WAVEFORM_2PORT_TITLES = (
     EFFICIENCY_2PORT_WAVEFORM_TITLE,
     EFFICIENCY_2PORT_WAVEFORM_LEGACY_TITLE,
     STARTUP_WAVEFORM_2PORT_TITLE,
+    STARTUP_WAVEFORM_AC_TURNON_TITLE,
 )
 EFFICIENCY_2PORT_TITLES = (
     "Efficiency 2 Port",
     STEADY_STATE_WAVEFORM_2PORT_TITLE,
     EFFICIENCY_2PORT_WAVEFORM_LEGACY_TITLE,
     STARTUP_WAVEFORM_2PORT_TITLE,
+    STARTUP_WAVEFORM_AC_TURNON_TITLE,
 )
 STEADY_STATE_TITLES = ("Steady-State Waveform Capture", "Primary Vds & Ids Steady-State")
 
@@ -2116,7 +2123,7 @@ class AddTestPageHandler(QObject):
 
             if len(getattr(self, 'i2c_ui_combo_boxes', [])) > 3:
                 auto_find_cbx = self.i2c_ui_combo_boxes[3]
-                if test_class.title == STARTUP_WAVEFORM_2PORT_TITLE:
+                if test_class.title in STARTUP_WAVEFORM_TITLES:
                     auto_find_cbx.setEnabled(False)
                     for i in range(auto_find_cbx.count()):
                         if str(auto_find_cbx.itemText(i)).strip().lower().startswith('no'):
@@ -2627,7 +2634,11 @@ class AddTestPageHandler(QObject):
         if not hasattr(self, 'get_scope_channels_from_ui'):
             return
         wf_indices = []
-        for wf_cls in (EfficiencyWaveformTest_2Port, StartupWaveformTest_2Port):
+        for wf_cls in (
+            EfficiencyWaveformTest_2Port,
+            StartupWaveformTest_2Port,
+            StartupWaveformTest_ACTurnOn,
+        ):
             try:
                 wf_indices.append(TestTypes.index(wf_cls))
             except ValueError:

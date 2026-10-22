@@ -22,6 +22,7 @@ from psu_tests.test_vds_ids_steady_state import VdsIdsSteadyStateTest, SteadySta
 from psu_tests.test_efficiency_modern import ModernEfficiencyTest
 from psu_tests.test_efficiency_2port_waveform import EfficiencyWaveformTest_2Port
 from psu_tests.test_startup_2port_waveform import StartupWaveformTest_2Port
+from psu_tests.test_startup_ac_turnon_waveform import StartupWaveformTest_ACTurnOn
 
 ###############################################################################
 # Add each test to this list to include it in the setup
@@ -50,6 +51,7 @@ InnoPro_TestTypes = [
 TestTypes = [
     EfficiencyWaveformTest_2Port,
     StartupWaveformTest_2Port,
+    StartupWaveformTest_ACTurnOn,
     LoadRegulationTest,
     LineRegulationTest,
     EfficiencyTest,

@@ -2,12 +2,14 @@
 
 STEADY_STATE_WAVEFORM_2PORT_TITLE = "Steady-State Waveform 2 Port"
 STARTUP_WAVEFORM_2PORT_TITLE = "Startup Waveform 2 Port"
+STARTUP_WAVEFORM_AC_TURNON_TITLE = "Startup Waveform AC Turn-On (DER-1113)"
 EFFICIENCY_2PORT_WAVEFORM_LEGACY_TITLE = "Efficiency 2 Port (Waveform)"
 
 FLOW_TITLES = (
     STEADY_STATE_WAVEFORM_2PORT_TITLE,
     EFFICIENCY_2PORT_WAVEFORM_LEGACY_TITLE,
     STARTUP_WAVEFORM_2PORT_TITLE,
+    STARTUP_WAVEFORM_AC_TURNON_TITLE,
 )
 
 
@@ -83,6 +85,65 @@ def build_startup_flow_text(
     return "\n".join(lines)
 
 
+def build_startup_ac_turnon_flow_text(
+    *,
+    user_prompts: str = "Per-Capture Only",
+    dual_load_mode: str = "",
+    discharge_pulses: int = 2,
+    pre_ac_on_s: float = 1.0,
+    post_ac_on_s: float = 3.0,
+) -> str:
+    pre_test, per_capture = _user_prompts_flags(user_prompts)
+    mode_note = dual_load_mode.strip() or "Dual Load Mode"
+    lines = [
+        "STARTUP WAVEFORM AC TURN-ON (DER-1113) — SEQUENCE",
+        f"Dual Load Mode: {mode_note}",
+        f"User Prompts: {user_prompts.strip() or '(default)'}",
+        f"Pre-Input Delay: {pre_ac_on_s:g} s | Post-Input Soak: {post_ac_on_s:g} s",
+        "",
+        "=== ONCE AT TEST START ===",
+        _step(discharge_pulses > 0, f"[AUTO] Output discharge pulses (×{discharge_pulses})"),
+        "  →",
+        _step(pre_test, "[USER] OK — Oscilloscope setup reminder"),
+        "  →",
+        "[AUTO] Apply scope setup",
+        "",
+        "=== EACH LOAD POINT (Vin × Ch1/Ch2 load) — REPEAT ===",
+        "[AUTO] Discharge output (input OFF)",
+        "  →",
+        "[AUTO] Set e-loads (Ch1 / Ch2)",
+        "  →",
+        "[AUTO] Scope RUN SINGLE",
+        "  →",
+        f"[AUTO] Wait {pre_ac_on_s:g} s",
+        "  →",
+        "[AUTO] Input supply ON at Vin (AC/DC per plan) — startup event",
+        "  →",
+        f"[AUTO] Wait {post_ac_on_s:g} s",
+        "  →",
+        "[AUTO] Discharge output again",
+        "  →",
+        "[USER] Yes/No — Review scope and save PNG?",
+        "  →",
+        "[AUTO] Scope STOP + screenshot (_SUAC.png)",
+        "  →",
+        _step(per_capture, "[USER] Review capture (Proceed / Recapture / Skip / Stop)"),
+        "  →",
+        "[AUTO] Efficiency + Excel row",
+        "",
+        "=== RECAPTURE ===",
+        "Full DER sequence repeats from discharge (no HMP).",
+        "",
+        "=== END OF TEST ===",
+        _step(discharge_pulses > 0, "[AUTO] Final discharge pulses"),
+        "  →",
+        "[AUTO] Save workbook + SUAC waveforms sheet",
+        "",
+        "Notes: Matches legacy DER-1113 Primary Vds/Ids startup (AC turn-on, not bulk-cap HMP connect).",
+    ]
+    return "\n".join(lines)
+
+
 def build_steady_state_flow_text(
     *,
     user_prompts: str = "Pre-Test & Per-Capture",
@@ -142,6 +203,12 @@ def build_flow_text_for_title(
             capture_timeout_s=capture_timeout_s,
             dual_load_mode=dual_load_mode,
             discharge_pulses=discharge_pulses,
+        )
+    if title == STARTUP_WAVEFORM_AC_TURNON_TITLE:
+        return build_startup_ac_turnon_flow_text(
+            user_prompts=user_prompts,
+            dual_load_mode=dual_load_mode,
+            discharge_pulses=discharge_pulses or 2,
         )
     if title in (STEADY_STATE_WAVEFORM_2PORT_TITLE, EFFICIENCY_2PORT_WAVEFORM_LEGACY_TITLE):
         return build_steady_state_flow_text(
