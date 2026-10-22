@@ -538,14 +538,17 @@ class EquipmentHandler():
 
         saved_dc_aux = saved_config.get("dc_source_aux", "")
         self.dc_source_aux = None
-        if saved_dc_aux and saved_dc_aux != "-":
+        if saved_dc_aux == "-":
+            self.dc_source_aux = None
+        elif saved_dc_aux:
             for dc in self.dc_sources:
                 if dc is not None and dc.description == saved_dc_aux:
                     self.dc_source_aux = dc
                     break
-        if self.dc_source_aux is None and len(self.dc_sources) > 1:
-            self._assign_dc_roles_heuristic(preserve_primary=True)
-        self.prefer_hmp_as_aux()
+        if self.dc_source_aux is None and saved_dc_aux != "-":
+            if len(self.dc_sources) > 1:
+                self._assign_dc_roles_heuristic(preserve_primary=True)
+            self.prefer_hmp_as_aux()
 
         # 3. Power Meters
         self.reset_power_meter_roles()

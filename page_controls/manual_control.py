@@ -1,5 +1,6 @@
 
 from sre_parse import State
+import os
 import time
 
 from enum import Enum
@@ -1148,6 +1149,21 @@ class ManualControlPageHandler():
         self.initialize_power_meter_source()
         self.initialize_power_meter_load()
         self._refresh_scope_control_buttons()
+        if getattr(self.parent, 'is_simulation_mode', False) and hasattr(self.equipment, 'seed_manual_control_demo'):
+            if os.environ.get('PI_ATE_SIM_DEMO', '1') != '0':
+                self.equipment.seed_manual_control_demo()
+                self._sync_manual_control_demo_ui()
+                self.ui_powermeter_update()
+                self.ui_eload_update()
+
+    def _sync_manual_control_demo_ui(self):
+        """Match Manual Control fields to the simulated demo bench."""
+        ui = self.ui
+        try:
+            ui.lineedit_manual_control_ac_source_voltage.setText('115')
+            ui.lineedit_manual_control_ac_source_frequency.setText('60')
+        except Exception:
+            pass
 
     def initialize_aux_dc_source(self):
         aux = getattr(self.equipment, 'dc_source_aux', None)
@@ -1342,7 +1358,8 @@ class ManualControlPageHandler():
         eload_frame = ui.frame_manual_control_eload
         pml_frame  = ui.frame_manual_control_pml
         pms_frame  = ui.frame_manual_control_pms
-        
+        flat = manual_control_theme.flat_panel_style()
+
         ac_source_frame.setEnabled(True)
         eload_frame.setEnabled(True)
         pml_frame.setEnabled(True)
@@ -1350,8 +1367,6 @@ class ManualControlPageHandler():
         if hasattr(ui, 'frame_manual_control_dc_source_aux'):
             ui.frame_manual_control_dc_source_aux.setEnabled(True)
             ui.frame_manual_control_dc_source_aux.setStyleSheet(flat)
-
-        flat = manual_control_theme.flat_panel_style()
         ac_source_frame.setStyleSheet(flat)
         eload_frame.setStyleSheet(flat)
         pml_frame.setStyleSheet(flat)
@@ -1361,40 +1376,63 @@ class ManualControlPageHandler():
     ########################################################################
     #                  Equipment Initialization Functions                  #
     ########################################################################
+    def _set_manual_line_input_unassigned(self):
+        ui = self.ui
+        self.ac_source = None
+        self.ac_source_accessible = False
+        ui.label_manual_control_ac_source.setText("INPUT SOURCE — Not assigned")
+        frame = ui.frame_manual_control_ac_source
+        frame.setEnabled(False)
+        frame.setStyleSheet(
+            "QFrame{border:1px dashed rgb(90,90,90); background-color: rgb(22,22,26);}")
+
+    def _apply_manual_line_input_dc_ui(self):
+        ui = self.ui
+        ui.label_manual_control_ac_source.setText("DC SOURCE")
+        ui.label_manual_control_ac_source_frequency.setVisible(False)
+        ui.lineedit_manual_control_ac_source_frequency.setVisible(False)
+        ui.chkbox_manual_control_ac_source_coupling.setChecked(True)
+        ui.chkbox_manual_control_ac_source_coupling.setVisible(False)
+        ui.label_manual_control_ac_source_frequency.setEnabled(False)
+        ui.lineedit_manual_control_ac_source_frequency.setEnabled(False)
+        ui.chkbox_manual_control_dc_source_ramp_enable.setVisible(True)
+        ui.label_manual_control_dc_source_slew_rate.setVisible(True)
+        ui.lineedit_manual_control_dc_source_slew_rate.setVisible(True)
+        ui.label_manual_control_dc_source_estimated_time.setVisible(True)
+
+    def _apply_manual_line_input_ac_ui(self):
+        ui = self.ui
+        ui.label_manual_control_ac_source.setText("AC SOURCE")
+        ui.label_manual_control_ac_source_frequency.setVisible(True)
+        ui.lineedit_manual_control_ac_source_frequency.setVisible(True)
+        ui.chkbox_manual_control_ac_source_coupling.setVisible(True)
+        ui.label_manual_control_ac_source_frequency.setEnabled(True)
+        ui.lineedit_manual_control_ac_source_frequency.setEnabled(True)
+        ui.chkbox_manual_control_dc_source_ramp_enable.setVisible(False)
+        ui.label_manual_control_dc_source_slew_rate.setVisible(False)
+        ui.lineedit_manual_control_dc_source_slew_rate.setVisible(False)
+        ui.label_manual_control_dc_source_estimated_time.setVisible(False)
+
     @ac_source_access
     def initialize_ac_source(self):
+        ui = self.ui
+        frame = ui.frame_manual_control_ac_source
         self.ac_source = self.equipment.ac_source
-        
-        # Reset UI back to default (AC Source) just in case it was previously set to DC Source
-        self.ui.label_manual_control_ac_source.setText("AC SOURCE")
-        self.ui.label_manual_control_ac_source_frequency.setVisible(True)
-        self.ui.lineedit_manual_control_ac_source_frequency.setVisible(True)
-        self.ui.chkbox_manual_control_ac_source_coupling.setVisible(True)
-        self.ui.label_manual_control_ac_source_frequency.setEnabled(True)
-        self.ui.lineedit_manual_control_ac_source_frequency.setEnabled(True)
+        self._apply_manual_line_input_ac_ui()
 
-        self.ui.chkbox_manual_control_dc_source_ramp_enable.setVisible(False)
-        self.ui.label_manual_control_dc_source_slew_rate.setVisible(False)
-        self.ui.lineedit_manual_control_dc_source_slew_rate.setVisible(False)
-        self.ui.label_manual_control_dc_source_estimated_time.setVisible(False)
-        
-        if hasattr(self.equipment, 'dc_source') and self.equipment.dc_source is not None:
+        if self.ac_source is None and getattr(self.equipment, 'dc_source', None) is not None:
             if is_magna_hvdc(self.equipment.dc_source):
                 self.ac_source = self.equipment.dc_source
-                # Modify UI for DC Source
-                self.ui.label_manual_control_ac_source.setText("DC SOURCE")
-                self.ui.label_manual_control_ac_source_frequency.setVisible(False)
-                self.ui.lineedit_manual_control_ac_source_frequency.setVisible(False)
-                self.ui.chkbox_manual_control_ac_source_coupling.setChecked(True)
-                self.ui.chkbox_manual_control_ac_source_coupling.setVisible(False)
-                self.ui.label_manual_control_ac_source_frequency.setEnabled(False)
-                self.ui.lineedit_manual_control_ac_source_frequency.setEnabled(False)
+                self._apply_manual_line_input_dc_ui()
                 self.ac_source.coupling = AC_SOURCE_COUPLING.DC
 
-                self.ui.chkbox_manual_control_dc_source_ramp_enable.setVisible(True)
-                self.ui.label_manual_control_dc_source_slew_rate.setVisible(True)
-                self.ui.lineedit_manual_control_dc_source_slew_rate.setVisible(True)
-                self.ui.label_manual_control_dc_source_estimated_time.setVisible(True)
+        if self.ac_source is None:
+            self._set_manual_line_input_unassigned()
+            return
+
+        self.ac_source_accessible = True
+        frame.setEnabled(True)
+        frame.setStyleSheet(manual_control_theme.flat_panel_style())
 
     @eload_access
     def initialize_eload(self):

@@ -761,7 +761,10 @@ class SimulatedEquipmentHandler(EquipmentHandler):
     def auto_set_ac_source_roles(self): pass
 
     def auto_set_dc_source_roles(self):
-        EquipmentHandler.auto_set_dc_source_roles(self)
+        """Simulation: primary DC unassigned by default; Aux DC = HMP when present."""
+        self.dc_source = None
+        self.dc_source_aux = None
+        self.prefer_hmp_as_aux()
     def auto_set_electronic_load_roles(self): pass
     def auto_set_power_meter_roles(self): pass
     def auto_set_sink_controller_roles(self):
@@ -796,6 +799,32 @@ class SimulatedEquipmentHandler(EquipmentHandler):
         self.electronic_load_2 = self.e_loads[1] if len(self.e_loads) > 1 else None
         self.electronic_load_3 = self.e_loads[2] if len(self.e_loads) > 2 else None
         self.electronic_load_4 = self.e_loads[3] if len(self.e_loads) > 3 else None
+
+    def seed_manual_control_demo(self):
+        """Typical 2-port bench numbers so Manual Control meters show live telemetry in simulation."""
+        s = self.state
+        s.vin = 115.0
+        s.freq = 60.0
+        s.ac_on = True
+        s.nominal_eff = 0.90
+        s.pf = 0.96
+        bench = {
+            1: (5.0, 3.0, True),
+            2: (5.0, 2.0, True),
+            3: (5.0, 0.0, False),
+            4: (5.0, 0.0, False),
+        }
+        for ch, (vout, iout, on) in bench.items():
+            s.loads[ch] = {'target_vout': vout, 'iout': iout, 'load_on': on}
+            el = getattr(self, f'electronic_load_{ch}', None)
+            if el is None:
+                continue
+            el._ch['target_vout'] = vout
+            el._ch['iout'] = iout
+            el._ch['load_on'] = on
+            el.active_channel_mode = 'CCL'
+            el.active_channel_status = '1' if on else '0'
+        print("[SIM] Manual Control demo: 115 VAC in · 5 V @ 3 A + 5 V @ 2 A out (~90% eff)")
 
     def input_supply_eload_discharge_sequence(self, iout_A, coupling=AC_SOURCE_COUPLING.AC):
         self.electronic_load_1.set_cc_high(iout_A)

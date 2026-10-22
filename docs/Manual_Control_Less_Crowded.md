@@ -39,3 +39,7 @@ C:\Users\Charles\ATE\run_simulation.bat
 ```
 
 Open **Manual Equipment Control** and scroll the center; scope should stay visible at the bottom.
+
+### Simulation demo numbers
+
+On entering Manual Control in simulation, the virtual bench defaults to **115 VAC**, **5 V @ 3 A** (load PM CH1) and **5 V @ 2 A** (CH2) so **Pin / ΣPout / Total Eff** and all meter readouts show realistic values. Set `PI_ATE_SIM_DEMO=0` before launch to skip this seed.

@@ -20,6 +20,7 @@ if TYPE_CHECKING:
 # Indicate the availability of the AC source output by changing something in the ui
 red_frame = "QFrame{border:2px solid red;	border-radius: 5px;};"
 green_frame = "QFrame{border:2px solid green;	border-radius: 5px;};"
+SOURCE_NONE_LABEL = "-"
 
 class EquipmentSetupPageHandler():
     """ Handles the page for setting up the equipment
@@ -45,6 +46,9 @@ class EquipmentSetupPageHandler():
         self.initialize_ui_values()
 
         self.check_equipment_availability()
+
+    def _simulation_mode(self) -> bool:
+        return getattr(self.parent, 'is_simulation_mode', False)
 
     def _sync_manual_aux_dc_panel(self):
         mc = getattr(self.parent, "manual_control_handler", None)
@@ -314,31 +318,38 @@ class EquipmentSetupPageHandler():
     def ui_update_ac_source_combo_box(self):
         frame = self.ui.frame_equip_setup_sources_acsource
         combo_box = self.ui.cbx_equip_setup_sources_acsource
-        
+        sim = self._simulation_mode()
+        none_offset = 1 if sim else 0
+
         self.ongoing_ac_source_update = True
-        
+
         combo_box.clear()
         frame.setStyleSheet(red_frame)
-        
+        if sim:
+            combo_box.addItem(SOURCE_NONE_LABEL)
+
         for ac_source in self.equipment.ac_sources:
             if ac_source is not None:
                 frame.setStyleSheet(green_frame)
                 combo_box.addItem(ac_source.description)
-        if self.equipment.ac_source is not None and self.equipment.ac_source in self.equipment.ac_sources:          
-            combo_box.setCurrentIndex(self.equipment.ac_sources.index(self.equipment.ac_source))
-        
+        if self.equipment.ac_source is not None and self.equipment.ac_source in self.equipment.ac_sources:
+            combo_box.setCurrentIndex(self.equipment.ac_sources.index(self.equipment.ac_source) + none_offset)
+        elif sim:
+            combo_box.setCurrentIndex(0)
+
         self.ongoing_ac_source_update = False
-                
-            
+
     def update_ac_source_info(self):
         cbx = self.ui.cbx_equip_setup_sources_acsource
-        selection = cbx.currentIndex()
-        
-        # If no item selected
-        if selection == -1:
+        if cbx.currentIndex() == -1 or self.ongoing_ac_source_update:
             return
-        if self.ongoing_ac_source_update:
-            return
+        if self._simulation_mode():
+            if cbx.currentIndex() <= 0 or cbx.currentText() == SOURCE_NONE_LABEL:
+                self.equipment.ac_source = None
+                return
+            selection = cbx.currentIndex() - 1
+        else:
+            selection = cbx.currentIndex()
         try:
             self.equipment.ac_source = self.equipment.ac_sources[selection]
         except Exception as e:
@@ -347,31 +358,40 @@ class EquipmentSetupPageHandler():
     def ui_update_dc_source_combo_box(self):
         frame = self.ui.frame_equip_setup_sources_dcsource
         combo_box = self.ui.cbx_equip_setup_sources_dcsource
-        
+        sim = self._simulation_mode()
+        none_offset = 1 if sim else 0
+
         self.ongoing_dc_source_update = True
 
         combo_box.clear()
         frame.setStyleSheet(red_frame)
-            
+        if sim:
+            combo_box.addItem(SOURCE_NONE_LABEL)
+
         for dc_source in self.equipment.dc_sources:
             if dc_source is not None:
                 frame.setStyleSheet(green_frame)
                 combo_box.addItem(dc_source.description)
-        if self.equipment.dc_source is not None and self.equipment.dc_source in self.equipment.dc_sources:        
-            combo_box.setCurrentIndex(self.equipment.dc_sources.index(self.equipment.dc_source))
-        
+        if self.equipment.dc_source is not None and self.equipment.dc_source in self.equipment.dc_sources:
+            combo_box.setCurrentIndex(self.equipment.dc_sources.index(self.equipment.dc_source) + none_offset)
+        elif sim:
+            combo_box.setCurrentIndex(0)
+
         self.ongoing_dc_source_update = False
         self.ui_update_dc_source_aux_combo_box()
-            
+
     def update_dc_source_info(self):
         cbx = self.ui.cbx_equip_setup_sources_dcsource
-        selection = cbx.currentIndex()
-        
-        # If no item selected
-        if selection == -1:
+        if cbx.currentIndex() == -1 or self.ongoing_dc_source_update:
             return
-        if self.ongoing_dc_source_update:
-            return
+        if self._simulation_mode():
+            if cbx.currentIndex() <= 0 or cbx.currentText() == SOURCE_NONE_LABEL:
+                self.equipment.dc_source = None
+                self.ui_update_dc_source_aux_combo_box()
+                return
+            selection = cbx.currentIndex() - 1
+        else:
+            selection = cbx.currentIndex()
         try:
             self.equipment.dc_source = self.equipment.dc_sources[selection]
             if (self.equipment.dc_source_aux is not None

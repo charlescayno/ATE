@@ -47,7 +47,7 @@ def test_prefer_hmp_as_aux():
     check("prefer_hmp: restores HMP aux", h.dc_source_aux is not None and h.dc_source_aux.model == "HMP2030")
     h.dc_source_aux = None
     applied = h.apply_saved_equipment_roles({"dc_source": h.dc_source.description, "dc_source_aux": "-"})
-    check("prefer_hmp: after saved aux dash", h.dc_source_aux is not None and h.dc_source_aux.model == "HMP2030")
+    check("prefer_hmp: saved aux dash keeps none", h.dc_source_aux is None)
     check("apply_saved roles ok", applied)
 
 
