@@ -142,5 +142,6 @@ class HmpAuxPanel:
         ui.btn_manual_control_dc_aux_turn_off = w1["output_btn"]
 
         ui.frame_manual_control_dc_source_aux = frame
-        frame.setVisible(False)
+        frame.setVisible(True)
         handler.hmp_aux_channel_widgets = self.channel_widgets
+        handler.hmp_aux_subtitle = sub

@@ -1138,18 +1138,50 @@ class ManualControlPageHandler():
         except Exception:
             pass
 
+    def _set_hmp_aux_hardware_controls_enabled(self, enabled: bool) -> None:
+        for w in getattr(self, "hmp_aux_channel_widgets", {}).values():
+            btn_apply = w.get("btn_apply")
+            btn_out = w.get("output_btn")
+            if btn_apply is not None:
+                btn_apply.setEnabled(enabled)
+            if btn_out is not None:
+                btn_out.setEnabled(enabled)
+
+    def _prompt_assign_aux_dc(self) -> None:
+        self.parent.msg_box_info(
+            title="Aux DC",
+            message=(
+                "No aux DC instrument is assigned.\n\n"
+                "Equipment Setup → Sources → Aux DC → select your HMP (or other aux supply).\n\n"
+                "You can still edit V/I here for presets; Apply and output need an assigned aux."
+            ),
+            message_type=MessageType.INFO,
+        )
+
     def initialize_aux_dc_source(self):
-        aux = getattr(self.equipment, 'dc_source_aux', None)
+        eq = self.equipment
+        if getattr(eq, "dc_source_aux", None) is None and hasattr(eq, "prefer_hmp_as_aux"):
+            eq.prefer_hmp_as_aux()
+        aux = getattr(eq, "dc_source_aux", None)
         self.dc_source_aux = aux
         frame = self.ui.frame_manual_control_dc_source_aux
-        if aux is None:
-            self.dc_source_aux_accessible = False
-            frame.setVisible(False)
-            return
-        self.dc_source_aux_accessible = True
         frame.setVisible(True)
         frame.setEnabled(True)
-        frame.setStyleSheet(Style.normal_frame)
+        sub = getattr(self, "hmp_aux_subtitle", None)
+        if aux is None:
+            self.dc_source_aux_accessible = False
+            frame.setStyleSheet(manual_control_theme.hmp_aux_panel_unassigned_style())
+            frame.setToolTip("Assign Aux DC in Equipment Setup to enable Apply / output")
+            if sub is not None:
+                sub.setText("Not assigned — Setup → Aux DC (fields editable)")
+            self._set_hmp_aux_hardware_controls_enabled(False)
+            return
+        self.dc_source_aux_accessible = True
+        frame.setStyleSheet(manual_control_theme.hmp_aux_panel_style())
+        frame.setToolTip("")
+        if sub is not None:
+            sub.setText("HMP · bias rails")
+        self._set_hmp_aux_hardware_controls_enabled(True)
         self.update_aux_dc_status()
 
     def _aux_dc_setpoints(self, channel: int):
@@ -1191,6 +1223,7 @@ class ManualControlPageHandler():
 
     def aux_dc_apply_settings(self, channel: int = 1):
         if not self.dc_source_aux_accessible or self.dc_source_aux is None:
+            self._prompt_assign_aux_dc()
             return
         try:
             v, i = self._aux_dc_setpoints(channel)
@@ -1204,10 +1237,11 @@ class ManualControlPageHandler():
             print(f"[DC_SOURCE] Aux CH{channel} apply failed: {e}")
             self.dc_source_aux_accessible = False
             self.ui.frame_manual_control_dc_source_aux.setStyleSheet(Style.red_frame)
-            self.ui.frame_manual_control_dc_source_aux.setEnabled(False)
+            self._set_hmp_aux_hardware_controls_enabled(False)
 
     def aux_dc_turn_on(self, channel: int = 1):
         if not self.dc_source_aux_accessible or self.dc_source_aux is None:
+            self._prompt_assign_aux_dc()
             return
         try:
             self.aux_dc_apply_settings(channel)
@@ -1218,6 +1252,7 @@ class ManualControlPageHandler():
 
     def aux_dc_turn_off(self, channel: int = 1):
         if not self.dc_source_aux_accessible or self.dc_source_aux is None:
+            self._prompt_assign_aux_dc()
             return
         try:
             self._aux_dc_off_channel(channel)
@@ -1359,9 +1394,7 @@ class ManualControlPageHandler():
         eload_frame.setEnabled(True)
         pml_frame.setEnabled(True)
         pms_frame.setEnabled(True)
-        if hasattr(ui, 'frame_manual_control_dc_source_aux'):
-            ui.frame_manual_control_dc_source_aux.setEnabled(True)
-            ui.frame_manual_control_dc_source_aux.setStyleSheet(flat)
+        # Aux HMP panel: visibility/enabled state applied in initialize_aux_dc_source()
         ac_source_frame.setStyleSheet(flat)
         eload_frame.setStyleSheet(flat)
         pml_frame.setStyleSheet(flat)

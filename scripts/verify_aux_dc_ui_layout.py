@@ -92,7 +92,11 @@ def main():
     mc.initialize_aux_dc_source()
     app.processEvents()
     shown = frame.isVisible() or not frame.isHidden()
-    check("ui: visible when aux assigned", shown and aux is not None)
+    check("ui: aux frame always visible", shown)
+    check("ui: aux frame interactive (not greyed out)", frame.isEnabled())
+    w1 = mc.hmp_aux_channel_widgets[1]
+    apply_ok = w1["btn_apply"].isEnabled()
+    check("ui: Apply follows aux assignment", apply_ok == (aux is not None))
 
     failed = [n for n, ok in results if not ok]
     OUT.write(f"\n{len(results) - len(failed)}/{len(results)} passed\n")

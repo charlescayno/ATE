@@ -186,6 +186,13 @@ def hmp_aux_panel_style() -> str:
     )
 
 
+def hmp_aux_panel_unassigned_style() -> str:
+    return (
+        f"QFrame#frame_manual_control_dc_source_aux{{background-color:{BG_TILE_OFF};"
+        f" border:none; border-top:1px dashed {LINE_DIM};}}"
+    )
+
+
 def hmp_aux_channel_tile_style(channel: int) -> str:
     accent = {1: GO, 2: SIM, 3: WARN}.get(channel, LINE)
     return (
