@@ -5,6 +5,35 @@ from psu_tests.test_object_imports import *
 from psu_tests.test_efficiency_2port_waveform import EfficiencyWaveformTest_2Port
 
 
+class _StartupYesNoHelper(QObject):
+    """Yes/No on GUI thread (test worker must not call QMessageBox directly)."""
+
+    show_sig = Signal(str, str)
+
+    def __init__(self):
+        super().__init__()
+        self.result = True
+        self._main_window = None
+        self.show_sig.connect(self._show, Qt.BlockingQueuedConnection)
+
+    @Slot(str, str)
+    def _show(self, title: str, message: str):
+        from PySide2.QtWidgets import QMessageBox
+        mw = self._main_window
+        if mw is not None and hasattr(mw, 'msg_box_pick'):
+            res = mw.msg_box_pick(title, message)
+            self.result = res == QMessageBox.Ok
+            return
+        msg_box = QMessageBox()
+        msg_box.setWindowFlags(msg_box.windowFlags() | Qt.WindowStaysOnTopHint)
+        msg_box.setIcon(QMessageBox.Question)
+        msg_box.setTextFormat(Qt.RichText)
+        msg_box.setWindowTitle(title)
+        msg_box.setText(message)
+        msg_box.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
+        self.result = msg_box.exec_() == QMessageBox.Ok
+
+
 class StartupWaveformTest_2Port(EfficiencyWaveformTest_2Port):
     """
     Startup Waveform 2 Port: bulk-cap charge via input ramp (HMP off), connect via HMP aux,
@@ -100,15 +129,23 @@ class StartupWaveformTest_2Port(EfficiencyWaveformTest_2Port):
         self.ws = self.wb[self.sheet_name]
 
     def _ask_yes_no(self, title: str, message: str) -> bool:
-        """Yes = OK, No = Cancel (via main window msg_box_pick)."""
+        """Yes = OK, No = Cancel (main/GUI thread only)."""
         if os.environ.get('PI_ATE_AUTO_CONFIRM') == '1':
             return True
         try:
-            from PySide2.QtWidgets import QMessageBox
-            parent = getattr(self, 'parent', None)
-            if parent is not None and hasattr(parent, 'msg_box_pick'):
-                res = parent.msg_box_pick(title, message)
-                return res == QMessageBox.Ok
+            from PySide2.QtWidgets import QApplication
+            app = QApplication.instance()
+            if app is None:
+                return True
+            helper = getattr(self, '_startup_yes_no_helper', None)
+            if helper is None:
+                helper = _StartupYesNoHelper()
+                helper.moveToThread(app.thread())
+                self._startup_yes_no_helper = helper
+            helper._main_window = getattr(self, 'parent', None)
+            helper.result = True
+            helper.show_sig.emit(title, message)
+            return helper.result
         except Exception as exc:
             print(f"[Warning] Yes/No prompt failed: {exc}")
         return True
@@ -121,15 +158,35 @@ class StartupWaveformTest_2Port(EfficiencyWaveformTest_2Port):
         self.create_message_popup("Bulk Capacitor — Discharge", msg, MessageType.WARNING)
 
     def _hmp_aux_dc(self):
-        aux = getattr(self.equipment, 'dc_source_aux', None)
-        if aux is None or not aux.is_hmp_series():
-            return None
-        return aux
+        eq = self.equipment
+        if hasattr(eq, 'prefer_hmp_as_aux'):
+            eq.prefer_hmp_as_aux()
+
+        aux = getattr(eq, 'dc_source_aux', None)
+        if aux is not None and aux.is_hmp_series():
+            return aux
+
+        input_supply = getattr(self, 'input_supply', None)
+        primary = getattr(eq, 'dc_source', None)
+        for dc in getattr(eq, 'dc_sources', []) or []:
+            if dc is None or not dc.is_hmp_series():
+                continue
+            if dc is input_supply or dc is primary:
+                continue
+            return dc
+
+        return None
+
+    def _hmp_missing_message(self) -> str:
+        return (
+            "[Warning] Startup: no HMP aux DC — assign Rohde & Schwarz HMP2030/4040 as "
+            "Aux DC in Setup Equipment (primary should stay Magna/HVDC, not HMP)."
+        )
 
     def _hmp_off(self, log_msg: str, upcoming: str = ""):
         hmp = self._hmp_aux_dc()
         if hmp is None:
-            print("[Warning] Startup: no HMP aux DC in Equipment Setup")
+            print(self._hmp_missing_message())
             return
         self.update_status_log(log_msg, upcoming=upcoming)
         hmp.turn_off()
@@ -137,7 +194,7 @@ class StartupWaveformTest_2Port(EfficiencyWaveformTest_2Port):
     def _hmp_on(self, log_msg: str, upcoming: str = ""):
         hmp = self._hmp_aux_dc()
         if hmp is None:
-            print("[Warning] Startup: no HMP aux DC in Equipment Setup")
+            print(self._hmp_missing_message())
             return
         self.update_status_log(log_msg, upcoming=upcoming)
         hmp.turn_on()
