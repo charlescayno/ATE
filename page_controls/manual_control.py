@@ -18,6 +18,7 @@ from pyvisa.errors import VisaIOError
 from functools import wraps
 
 from equipment.handler import EquipmentHandler
+from equipment.dc_source import is_magna_hvdc
 from equipment.ac_source import *
 from equipment.power_meter import *
 from equipment.electronic_load import *
@@ -1202,7 +1203,7 @@ class ManualControlPageHandler():
         self.ui.label_manual_control_dc_source_estimated_time.setVisible(False)
         
         if hasattr(self.equipment, 'dc_source') and self.equipment.dc_source is not None:
-            if 'SL1000' in self.equipment.dc_source.model or 'Magna-Power' in getattr(self.equipment.dc_source, 'manufacturer', ''):
+            if is_magna_hvdc(self.equipment.dc_source):
                 self.ac_source = self.equipment.dc_source
                 # Modify UI for DC Source
                 self.ui.label_manual_control_ac_source.setText("DC SOURCE")
@@ -1345,7 +1346,7 @@ class ManualControlPageHandler():
             else:
                 freq = rounded_float(self.ui.lineedit_manual_control_ac_source_frequency.text())
             self.ac_source.frequency = freq
-        elif 'Magna-Power' in getattr(self.ac_source, 'manufacturer', '') or 'SL1000' in getattr(self.ac_source, 'model', ''):
+        elif is_magna_hvdc(self.ac_source):
             # Prompt user to disengage discharge resistor
             res = self.parent.msg_box_pick(
                 title="Discharge Resistor Check",

@@ -1,7 +1,7 @@
 from equipment.ac_source import ACSource, AC_SOURCE_COUPLING
 from equipment.power_meter import PowerMeter
 from equipment.electronic_load import ElectronicLoad, ElectronicLoadMainframe, ElectronicLoadModule
-from equipment.dc_source import DCSource
+from equipment.dc_source import DCSource, is_magna_hvdc
 from equipment.oscilloscope import Oscilloscope
 from equipment.oscilloscope_specs import *
 
@@ -286,11 +286,7 @@ class EquipmentHandler():
 
     @staticmethod
     def _is_magna_dc(dc: DCSource) -> bool:
-        if dc is None:
-            return False
-        m = (getattr(dc, 'model', '') or '').strip()
-        man = (getattr(dc, 'manufacturer', '') or '')
-        return 'SL1000' in m or 'Magna' in man
+        return is_magna_hvdc(dc)
 
     @staticmethod
     def _is_hmp_dc(dc: DCSource) -> bool:

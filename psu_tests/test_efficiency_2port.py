@@ -423,9 +423,8 @@ class EfficiencyTest_2Port(BaseTestObject):
             return True
         if input_supply is None:
             return False
-        manu = getattr(input_supply, 'manufacturer', '') or ''
-        model = getattr(input_supply, 'model', '') or ''
-        return 'Magna-Power' in manu or 'SL1000' in model
+        from equipment.dc_source import is_magna_hvdc
+        return is_magna_hvdc(input_supply)
 
     def confirm_discharge_resistor_disengaged(self):
         import os

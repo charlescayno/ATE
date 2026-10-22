@@ -11,6 +11,19 @@ class DC_SOURCE_STATUS:
 
 HMP_MANUAL_CHANNEL_COUNT = 3
 
+_MAGNA_MODEL_PREFIXES = ('SL', 'TSD', 'TS', 'XR')
+
+
+def is_magna_hvdc(dc) -> bool:
+    """True for Magna-Power primary HV DC supplies (SL, TSD, etc.)."""
+    if dc is None:
+        return False
+    man = (getattr(dc, 'manufacturer', '') or '').upper()
+    if 'MAGNA' in man:
+        return True
+    m = (getattr(dc, 'model', '') or '').strip().upper()
+    return any(m.startswith(p) for p in _MAGNA_MODEL_PREFIXES)
+
 
 def _resolve_dc_source_model(model: str):
     key = (model or '').strip()
