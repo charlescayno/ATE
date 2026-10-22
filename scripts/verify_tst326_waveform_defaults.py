@@ -10,6 +10,7 @@ os.chdir(ROOT)
 from psu_tests.definitions import TestConditionSettings  # noqa: E402 — anchor psu_tests to this repo
 from psu_tests.test_type import TestTypes, get_test_title_list  # noqa: E402
 from psu_tests.test_efficiency_2port_waveform import EfficiencyWaveformTest_2Port  # noqa: E402
+from psu_tests.test_startup_2port_waveform import StartupWaveformTest_2Port  # noqa: E402
 from psu_tests.tests import TestItem  # noqa: E402
 from equipment.simulated_handler import SimulatedEquipmentHandler  # noqa: E402
 
@@ -24,7 +25,7 @@ def main() -> int:
     tc = EfficiencyWaveformTest_2Port.tc_default
     checks = [
         (tc.nominal_output_voltage_V == 48.0, "nominal V 48"),
-        (tc.nominal_load_current_A == 3.0, "nominal I 3"),
+        (tc.nominal_load_current_A == 4.5, "nominal I 4.5"),
         (tc.line_range.name == "TST-326 HVDC", "line range name"),
         (tc.line_range.vin_freq == [[750.0, 50.0], [800.0, 50.0], [860.0, 50.0]], "vin list"),
         (tc.load_range.name == "Full Load", "load range"),
@@ -38,6 +39,10 @@ def main() -> int:
     for ok, label in checks:
         if not ok:
             errors.append(f"tc_default: {label}")
+
+    su = StartupWaveformTest_2Port.tc_default
+    if su.nominal_load_current_A != 4.5 or su.max_load_current_A != 4.5:
+        errors.append("StartupWaveformTest_2Port tc_default nominal I not 4.5 A")
 
     idx = TestTypes.index(EfficiencyWaveformTest_2Port)
     wf = TestConditionSettings().test_condition_list[idx]

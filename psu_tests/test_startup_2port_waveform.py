@@ -78,32 +78,42 @@ class StartupWaveformTest_2Port(EfficiencyWaveformTest_2Port):
 
     def _prompt_bulk_cap_discharge_to_input(self):
         msg = (
-            "<b>Discharge outputs to input bulk capacitor</b><br><br>"
-            "Follow bench procedure to discharge the DUT outputs into the "
-            "<b>input bulk capacitor</b> as required for startup testing.<br><br>"
-            "Click OK when complete."
+            "<b>Discharge DUT outputs to input bulk cap</b><br><br>"
+            "Click OK when done."
         )
         self.create_message_popup("Bulk Capacitor — Output Discharge", msg, MessageType.WARNING)
 
     def _prompt_bulk_cap_disconnect(self):
         msg = (
-            "<b>Disconnect input bulk capacitor</b><br><br>"
-            "Disengage the bulk capacitor from the DUT input path before the first startup capture.<br><br>"
-            "Click OK when the bulk cap is disconnected."
+            "<b>Disconnect input bulk cap from DUT</b><br><br>"
+            "Click OK when done."
         )
         self.create_message_popup("Bulk Capacitor — Disconnect", msg, MessageType.WARNING)
+
+    def _hmp_aux_dc(self):
+        aux = getattr(self.equipment, 'dc_source_aux', None)
+        if aux is None or not aux.is_hmp_series():
+            return None
+        return aux
+
+    def _turn_on_hmp_for_bulk_cap_connect(self):
+        hmp = self._hmp_aux_dc()
+        if hmp is None:
+            print("[Warning] Startup bulk-cap connect: no HMP aux DC assigned in Equipment Setup")
+            return
+        self.update_status_log("HMP output ON (bulk cap → DUT)", upcoming="Acquisition")
+        hmp.turn_on()
 
     def _prompt_input_switch(self, vin_set: float):
         coupling_label = "DC" if str(self.coupling).upper() == "DC" else "AC"
         msg = (
             "<b>WARNING — HIGH VOLTAGE</b><br><br>"
-            f"Input supply is at <b>{vin_set:g} V {coupling_label}</b>. "
-            "The DUT input must stay isolated until you intentionally close the input switch.<br><br>"
-            "Use proper PPE and bench safety practice. Confirm the setup matches the test plan, "
-            "then close the input switch to capture startup.<br><br>"
-            "Click OK after the switch is closed."
+            f"Input rail at <b>{vin_set:g} V {coupling_label}</b>. "
+            "Connect the <b>pre-charged bulk cap</b> to the DUT?<br><br>"
+            "Click OK to connect (HMP ON). Use PPE."
         )
         self.create_message_popup("Close Input Switch (HV)", msg, MessageType.WARNING)
+        self._turn_on_hmp_for_bulk_cap_connect()
 
     def _wait_for_scope_capture(self, vin_set: float, i1_A: float, i2_A: float) -> bool:
         if os.environ.get('PI_ATE_AUTO_CONFIRM') == '1':
@@ -148,7 +158,7 @@ class StartupWaveformTest_2Port(EfficiencyWaveformTest_2Port):
         return False
 
     def _apply_vin_setpoint(self, vin_set: float, vin_freq_row):
-        self.update_status_log(f"Setting Input {vin_set:g} V{self.coupling}", upcoming="Arm scope")
+        self.update_status_log(f"Setting Input {vin_set:g} V{self.coupling}", upcoming="Set loads")
         if self._bulk_cap_ramp_applies():
             self._bulk_cap_ramp_to_voltage(vin_set)
         else:
@@ -167,16 +177,20 @@ class StartupWaveformTest_2Port(EfficiencyWaveformTest_2Port):
             f"{prefix}{vin_set:g}V{self.coupling}_Ch1_{i1_A:g}A_Ch2_{i2_A:g}A"
             f"{pwr}{self.PNG_SUFFIX}.png")
 
-    def capture_startup_at_point(self, vin_set, i1_A, i2_A) -> list:
-        """Arm, switch prompt, acquisition wait, review prompt, screenshot."""
+    def capture_startup_at_point(self, vin_set, i1_A, i2_A, scope_pre_armed=False) -> list:
+        """Switch prompt, acquisition wait, review prompt, screenshot (scope armed by caller)."""
         n_meas = len(self.scope_measurement_labels)
         trig_level = self._read_trigger_level()
+        skip_arm_once = scope_pre_armed
 
         while True:
             if self.reapply_scope_before_capture:
                 self.apply_scope_setup()
-            self.update_status_log("Arming oscilloscope (single)...", upcoming="Set loads")
-            self.oscilloscope.run_single()
+                skip_arm_once = False
+            if not skip_arm_once:
+                self.update_status_log("Arming oscilloscope (single)...", upcoming="Set loads")
+                self.oscilloscope.run_single()
+            skip_arm_once = False
 
             self._set_loads(i1_A, i2_A)
             self.update_status_log("Waiting for input switch...", upcoming="Acquisition")
@@ -289,17 +303,21 @@ class StartupWaveformTest_2Port(EfficiencyWaveformTest_2Port):
                     self._prompt_bulk_cap_disconnect()
                     first_point = False
 
-                self.update_status_log("Discharging unit...", upcoming="Input ramp")
+                self.update_status_log("Discharging unit...", upcoming="Arm scope")
                 if self.usbpd_test:
                     self.input_supply_eload_discharge_sequence()
                 else:
                     self.input_supply_eload_discharge_sequence()
 
+                self.update_status_log("Arming oscilloscope (single)...", upcoming="Input ramp")
+                self.oscilloscope.run_single()
+
                 self._apply_vin_setpoint(vin_set, self.vin_freq)
 
                 self.update_status_log(
                     f"Setting Loads Ch1 {i1_A:g} A / Ch2 {i2_A:g} A", upcoming="Startup capture")
-                scope_row = self.capture_startup_at_point(vin_set, i1_A, i2_A)
+                scope_row = self.capture_startup_at_point(
+                    vin_set, i1_A, i2_A, scope_pre_armed=True)
 
                 sleep(self.settle_time)
                 self.update_status_log("Measuring efficiency...", upcoming="Save row")

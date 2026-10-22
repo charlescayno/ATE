@@ -127,8 +127,8 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
     tc_default = TestConditions(
         name=title,
         nominal_output_voltage_V=48.0,
-        nominal_load_current_A=3.0,
-        max_load_current_A=3.0,
+        nominal_load_current_A=4.5,
+        max_load_current_A=4.5,
         line_range=LineSettings.TST_326_HVDC,
         load_range=LoadSettings.LOAD_SINGLE_VALUE_100_PCT,
         soak_time=SoaktimeSettings.TST_326,
