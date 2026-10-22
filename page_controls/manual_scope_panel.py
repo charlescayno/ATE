@@ -76,6 +76,10 @@ class ManualScopePanel:
         title = QLabel("OSCILLOSCOPE", frame)
         title.setStyleSheet("font-weight: bold; font-size: 11px; color: rgb(220,220,220); border: none;")
         header.addWidget(title)
+        self.label_status = QLabel("—", frame)
+        self.label_status.setStyleSheet("font-weight: bold; color: rgb(180,180,180); font-size: 10px;")
+        header.addWidget(self.label_status)
+        header.addStretch(1)
 
         self.btn_run = QPushButton("Run", frame)
         self.btn_run_single = QPushButton("Run Single", frame)
@@ -83,10 +87,6 @@ class ManualScopePanel:
         for btn in (self.btn_run, self.btn_run_single, self.btn_stop):
             btn.setStyleSheet(compact)
             header.addWidget(btn)
-        self.label_status = QLabel("—", frame)
-        self.label_status.setStyleSheet("font-weight: bold; color: rgb(180,180,180); font-size: 10px;")
-        header.addWidget(self.label_status)
-        header.addStretch(1)
         outer.addLayout(header)
 
         self.body = QWidget(frame)
