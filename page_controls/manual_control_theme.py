@@ -5,7 +5,12 @@ ALL-CAPS section labels, minimal chrome, clear abort (red) / nominal (green) sta
 """
 from __future__ import annotations
 
+import re
+
 from PySide2.QtGui import QFont
+
+_ELOAD_SECTION = re.compile(r"^label_manual_control_eload(_\d+)?$")
+_LOAD_PM_SECTION = re.compile(r"^label_load_power_meter(_\d+)?$")
 
 # Palette (ground-control / telemetry)
 BG_VOID = "#0a0a0c"
@@ -40,6 +45,60 @@ def label_font(point_size: int = 10, bold: bool = True) -> QFont:
     f.setBold(bold)
     f.setLetterSpacing(QFont.PercentageSpacing, 108)
     return f
+
+
+def input_font(point_size: int = 10, bold: bool = False) -> QFont:
+    f = QFont("Consolas", point_size)
+    f.setStyleHint(QFont.Monospace)
+    f.setBold(bold)
+    return f
+
+
+def field_label_style() -> str:
+    return (
+        f"color:{TEXT_LABEL}; border:none; font-family:{FONT_UI}; font-size:9px;"
+        f" font-weight:600;"
+    )
+
+
+def input_style() -> str:
+    return (
+        f"background-color:{BG_VOID}; color:{TEXT}; font-family:{FONT_TELEMETRY};"
+        f" font-size:11px; border:1px solid {LINE}; border-radius:2px; padding:2px 4px;"
+    )
+
+
+def compact_button_style() -> str:
+    return (
+        f"background-color:{BG_TILE}; color:{TEXT}; border:1px solid {LINE};"
+        f" border-radius:2px; padding:2px 6px; font-family:{FONT_UI}; font-size:10px;"
+        f" font-weight:600; min-height:22px; max-height:26px;"
+    )
+
+
+def _is_telemetry_label(name: str) -> bool:
+    if not name:
+        return False
+    if "_display_" in name:
+        return True
+    if name.startswith("label_pml_total_") and name != "label_pml_total_eff":
+        return True
+    if "label_manual_control_dc_aux_status_ch" in name:
+        return True
+    return False
+
+
+def _is_section_title(name: str) -> bool:
+    if name in (
+        "label_manual_control_ac_source",
+        "label_manual_control_dc_source_aux",
+        "label_source_power_meter",
+        "label_2",
+    ):
+        return True
+    if _LOAD_PM_SECTION.match(name) or _ELOAD_SECTION.match(name):
+        return True
+    return False
 
 
 def tile_style(object_name: str, *, assigned: bool = True, active: bool = False) -> str:
@@ -116,10 +175,14 @@ def gear_style() -> str:
 
 def dialog_style() -> str:
     return (
-        f"QDialog{{background-color:{BG_PANEL};}}"
-        f" QLabel{{color:{TEXT}; font-family:{FONT_UI};}}"
+        f"QDialog{{background-color:{BG_PANEL}; font-family:{FONT_UI};}}"
+        f" QLabel{{color:{TEXT}; font-family:{FONT_UI}; font-size:10px;}}"
+        f" QLineEdit, QComboBox, QSpinBox{{background-color:{BG_VOID}; color:{TEXT};"
+        f" font-family:{FONT_TELEMETRY}; font-size:11px; border:1px solid {LINE};"
+        f" border-radius:2px; padding:2px 4px;}}"
         f" QPushButton{{color:{TEXT}; background-color:{BG_TILE}; border:1px solid {LINE};"
-        f" border-radius:2px; padding:4px 14px; font-family:{FONT_UI};}}"
+        f" border-radius:2px; padding:4px 14px; font-family:{FONT_UI}; font-size:10px;"
+        f" font-weight:600;}}"
         f" QPushButton:hover{{background-color:#1c1c22; border-color:{TEXT_MUTED};}}"
     )
 
@@ -147,17 +210,93 @@ def section_title_style() -> str:
 
 def page_stylesheet() -> str:
     return (
-        f"QWidget#page_manual_control{{background-color:{BG_VOID};}}"
+        f"QWidget#page_manual_control{{background-color:{BG_VOID}; font-family:{FONT_UI};"
+        f" font-size:10px;}}"
         f" QScrollArea{{background-color:{BG_VOID}; border:none;}}"
         f" QWidget#widget_manual_control_equipment_scroll{{background-color:{BG_VOID};}}"
-        f" QLabel{{color:{TEXT_LABEL};}}"
-        f" QLineEdit, QComboBox, QSpinBox{{background-color:{BG_VOID}; color:{TEXT};"
+        f" QLabel{{color:{TEXT_LABEL}; font-family:{FONT_UI}; font-size:10px;}}"
+        f" QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox{{background-color:{BG_VOID};"
+        f" color:{TEXT}; font-family:{FONT_TELEMETRY}; font-size:11px;"
         f" border:1px solid {LINE}; border-radius:2px; padding:2px 4px;}}"
+        f" QComboBox QAbstractItemView{{background-color:{BG_PANEL}; color:{TEXT};"
+        f" font-family:{FONT_TELEMETRY}; selection-background-color:#1c1c22;}}"
         f" QPushButton{{background-color:{BG_TILE}; color:{TEXT}; border:1px solid {LINE};"
-        f" border-radius:2px; padding:4px 10px; font-family:{FONT_UI}; font-size:10px;}}"
+        f" border-radius:2px; padding:4px 10px; font-family:{FONT_UI}; font-size:10px;"
+        f" font-weight:600;}}"
         f" QPushButton:hover{{border-color:{TEXT_MUTED}; background-color:#1a1a20;}}"
-        f" QCheckBox{{color:{TEXT}; spacing:4px;}}"
+        f" QCheckBox{{color:{TEXT}; spacing:4px; font-family:{FONT_UI}; font-size:10px;}}"
+        f" QToolButton{{font-family:{FONT_UI};}}"
     )
+
+
+def apply_page_fonts(handler) -> None:
+    """Set QFont on manual-control widgets so legacy .ui font roles do not win."""
+    from PySide2.QtWidgets import (
+        QCheckBox,
+        QComboBox,
+        QDoubleSpinBox,
+        QLabel,
+        QLineEdit,
+        QPushButton,
+        QSpinBox,
+        QWidget,
+    )
+
+    ui = handler.ui
+    roots = [ui.page_manual_control]
+    for panel_name in ("pml_grid", "pms_panel", "eload_grid", "scope_panel"):
+        panel = getattr(handler, panel_name, None)
+        if panel is None:
+            continue
+        dlg = getattr(panel, "dialog", None)
+        if dlg is not None:
+            roots.append(dlg)
+        dialogs = getattr(panel, "dialogs", None)
+        if isinstance(dialogs, dict):
+            roots.extend(dialogs.values())
+
+    seen = set()
+
+    def walk(root: QWidget):
+        if root is None or id(root) in seen:
+            return
+        seen.add(id(root))
+
+        for lbl in root.findChildren(QLabel):
+            name = lbl.objectName() or ""
+            if _is_telemetry_label(name):
+                lbl.setFont(telemetry_font(14))
+                if "total_eff" not in name:
+                    lbl.setStyleSheet(telemetry_label_style())
+            elif _is_section_title(name):
+                lbl.setFont(label_font(10))
+                if name != "label_2":
+                    lbl.setStyleSheet(section_title_style())
+            elif name.startswith("label_"):
+                lbl.setFont(label_font(9, bold=False))
+
+        for w in root.findChildren(QLineEdit):
+            w.setFont(input_font(11))
+        for w in root.findChildren(QComboBox):
+            w.setFont(input_font(10))
+        for spin_type in (QSpinBox, QDoubleSpinBox):
+            for w in root.findChildren(spin_type):
+                w.setFont(input_font(10))
+        for w in root.findChildren(QPushButton):
+            if w.objectName() == "btn_manual_control_estop":
+                continue
+            w.setFont(label_font(9, bold=True))
+        for w in root.findChildren(QCheckBox):
+            w.setFont(label_font(9, bold=False))
+
+    ui.page_manual_control.setFont(label_font(10, bold=False))
+    for r in roots:
+        walk(r)
+
+    eff = getattr(ui, "label_pml_total_eff", None)
+    if eff is not None:
+        eff.setFont(telemetry_font(12))
+        eff.setStyleSheet(f"color:{GO}; border:none; font-family:{FONT_TELEMETRY}; font-weight:700;")
 
 
 def apply_page_theme(handler) -> None:
@@ -197,12 +336,12 @@ def apply_page_theme(handler) -> None:
     if eff is not None:
         eff.setStyleSheet(f"color:{GO}; border:none; font-weight:700;")
 
+    apply_page_fonts(handler)
+
     from PySide2.QtWidgets import QLabel
 
     for lbl in ui.page_manual_control.findChildren(QLabel):
         name = lbl.objectName() or ""
         if "label_pms_display_" in name or "label_pml_display_" in name:
-            lbl.setFont(telemetry_font(14))
-            lbl.setStyleSheet(telemetry_label_style())
             lbl.setMaximumHeight(32)
             lbl.setMinimumHeight(24)

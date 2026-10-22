@@ -24,7 +24,7 @@ from equipment.ac_source import *
 from equipment.power_meter import *
 from equipment.electronic_load import *
 import inject_ui
-from page_controls import manual_control_theme, pml_grid, eload_grid, manual_scope_panel
+from page_controls import manual_control_theme, pml_grid, eload_grid, manual_scope_panel, pms_panel
 from equipment.eload_specs import ELoadTypes
 
 from user_settings.save_load import (write_to_default_config, read_from_default_config) 
@@ -237,6 +237,7 @@ class ManualControlPageHandler():
         inject_ui.inject_ui(self)
         self.pml_grid = pml_grid.PmlGrid(self)
         self.pml_pout_W = {n: None for n in pml_grid.CHANNELS}
+        self.pms_panel = pms_panel.PmsPanel(self)
 
         # Bind UI elements to functionss
         self.bind_ui_elements()
@@ -300,7 +301,8 @@ class ManualControlPageHandler():
         self.ui.chkbox_manual_control_dc_source_ramp_enable = QCheckBox(self.ui.frame_manual_control_ac_source_params)
         self.ui.chkbox_manual_control_dc_source_ramp_enable.setObjectName(u"chkbox_manual_control_dc_source_ramp_enable")
         self.ui.chkbox_manual_control_dc_source_ramp_enable.setText("Enable Ramp")
-        self.ui.chkbox_manual_control_dc_source_ramp_enable.setStyleSheet("color: white;")
+        self.ui.chkbox_manual_control_dc_source_ramp_enable.setStyleSheet(
+            f"color: {manual_control_theme.TEXT}; font-family: {manual_control_theme.FONT_UI};")
         self.ui.chkbox_manual_control_dc_source_ramp_enable.setVisible(False)
         self.ui.gridLayout_3.addWidget(self.ui.chkbox_manual_control_dc_source_ramp_enable, 3, 0, 1, 2)
         
@@ -315,7 +317,8 @@ class ManualControlPageHandler():
         self.ui.lineedit_manual_control_dc_source_slew_rate.setVisible(False)
         self.ui.label_manual_control_dc_source_estimated_time = QLabel(self.ui.frame_manual_control_ac_source_params)
         self.ui.label_manual_control_dc_source_estimated_time.setText("Estimated Time: N/A")
-        self.ui.label_manual_control_dc_source_estimated_time.setStyleSheet("color: white; border: none; padding-top: 5px;")
+        self.ui.label_manual_control_dc_source_estimated_time.setStyleSheet(
+            manual_control_theme.field_label_style() + " padding-top: 5px;")
         self.ui.label_manual_control_dc_source_estimated_time.setAlignment(Qt.AlignLeft | Qt.AlignTop)
         self.ui.label_manual_control_dc_source_estimated_time.setVisible(False)
         self.ui.gridLayout_3.addWidget(self.ui.lineedit_manual_control_dc_source_slew_rate, 4, 1, 1, 1)
@@ -327,7 +330,8 @@ class ManualControlPageHandler():
         params = self.ui.frame_manual_control_ac_source_params
         self.ui.chkbox_manual_control_auto_discharge = QCheckBox(params)
         self.ui.chkbox_manual_control_auto_discharge.setText("Auto-discharge on source OFF")
-        self.ui.chkbox_manual_control_auto_discharge.setStyleSheet("color: white;")
+        self.ui.chkbox_manual_control_auto_discharge.setStyleSheet(
+            f"color: {manual_control_theme.TEXT}; font-family: {manual_control_theme.FONT_UI};")
         self.ui.chkbox_manual_control_auto_discharge.setChecked(True)
         self.ui.gridLayout_3.addWidget(self.ui.chkbox_manual_control_auto_discharge, 7, 0, 1, 2)
         self.ui.label_manual_control_discharge_current = QLabel(params)
@@ -397,7 +401,7 @@ class ManualControlPageHandler():
         frame = QFrame(ui.frame_manual_control_lower)
         frame.setObjectName("frame_manual_control_dc_source_aux")
         frame.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
-        frame.setStyleSheet(ui.frame_manual_control_ac_source.styleSheet())
+        frame.setStyleSheet(manual_control_theme.flat_panel_style())
 
         outer = QVBoxLayout(frame)
         outer.setContentsMargins(2, 2, 2, 2)
@@ -407,19 +411,18 @@ class ManualControlPageHandler():
         title.setObjectName("label_manual_control_dc_source_aux")
         title.setMaximumHeight(22)
         title.setAlignment(Qt.AlignCenter)
-        title.setStyleSheet(ui.label_manual_control_ac_source.styleSheet())
+        title.setStyleSheet(manual_control_theme.section_title_style())
+        title.setFont(manual_control_theme.label_font(10))
         outer.addWidget(title)
 
-        le_style = ui.lineedit_manual_control_ac_source_voltage.styleSheet()
-        lbl_style = ui.label_manual_control_ac_source_voltage.styleSheet()
+        le_style = manual_control_theme.input_style()
+        lbl_style = manual_control_theme.field_label_style()
         compact_le_h = 22
-        btn_compact = (
-            "QPushButton { min-height: 22px; max-height: 24px; padding: 2px 6px; font-size: 11px; }"
-        )
+        btn_on_style = manual_control_theme.compact_button_style()
 
         params = QFrame(frame)
         params.setObjectName("frame_manual_control_dc_aux_params")
-        params.setStyleSheet(ui.frame_manual_control_ac_source_params.styleSheet())
+        params.setStyleSheet("QFrame{border:none;}")
         grid = QGridLayout(params)
         grid.setContentsMargins(4, 4, 4, 4)
         grid.setHorizontalSpacing(4)
@@ -436,8 +439,7 @@ class ManualControlPageHandler():
                 grid.addWidget(h, 0, col)
 
         self.hmp_aux_channel_widgets = {}
-        btn_on_style = ui.btn_manual_control_ac_source_turn_on.styleSheet() + btn_compact
-        btn_off_style = ui.btn_manual_control_ac_source_turn_off.styleSheet() + btn_compact
+        btn_off_style = manual_control_theme.compact_button_style()
 
         for ch in range(1, HMP_MANUAL_CHANNEL_COUNT + 1):
             row = ch
@@ -468,8 +470,8 @@ class ManualControlPageHandler():
             btn_off.setStyleSheet(btn_off_style)
             lbl_status = QLabel("OFF", params)
             lbl_status.setObjectName(f"label_manual_control_dc_aux_status_ch{ch}")
-            lbl_status.setStyleSheet(
-                "color: rgb(140,140,140); border: none; font-size: 11px; font-weight: bold;")
+            lbl_status.setStyleSheet(manual_control_theme.telemetry_label_style())
+            lbl_status.setFont(manual_control_theme.telemetry_font(11))
             lbl_status.setAlignment(Qt.AlignCenter)
             lbl_status.setMinimumWidth(32)
 
@@ -1746,7 +1748,12 @@ class ManualControlPageHandler():
         scope_widgets = []
         if getattr(self, 'scope_panel', None) is not None:
             scope_widgets = self.scope_panel.dialog_state_widgets()
-        candidates += self.pml_grid.dialog_state_widgets() + self.eload_grid.dialog_state_widgets() + scope_widgets
+        candidates += (
+            self.pml_grid.dialog_state_widgets()
+            + self.pms_panel.dialog_state_widgets()
+            + self.eload_grid.dialog_state_widgets()
+            + scope_widgets
+        )
         for widget in candidates:
                 obj_name = widget.objectName()
                 if not obj_name or widget in self.state_widgets: continue

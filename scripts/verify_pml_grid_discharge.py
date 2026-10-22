@@ -170,6 +170,13 @@ def test_ui():
     grid.gears[2].click(); app.processEvents()
     check("ui: gear opens CH2 settings dialog", grid.dialogs[2].isVisible())
     grid.dialogs[2].close()
+
+    pms = mc.pms_panel
+    check("ui: source PM settings in gear dialog", ui.frame_pms_control.parent() is pms.dialog)
+    pms.gear.click()
+    app.processEvents()
+    check("ui: source PM gear opens settings dialog", pms.dialog.isVisible())
+    pms.dialog.close()
     check("ui: discharge controls default (auto ON, 1.0 A)",
           ui.chkbox_manual_control_auto_discharge.isChecked() and ui.lineedit_manual_control_discharge_current.text() == '1.0')
 
