@@ -17,6 +17,7 @@ from PySide2.QtWidgets import (
 
 from equipment.dc_source import HMP_MANUAL_CHANNEL_COUNT
 from page_controls import manual_control_theme as mc_theme
+from page_controls.mc_value_box import make_value_box
 
 
 class HmpAuxPanel:
@@ -55,10 +56,8 @@ class HmpAuxPanel:
         head_lay.addStretch(1)
         outer.addWidget(head)
 
-        le_style = mc_theme.input_style()
-        field_lbl = mc_theme.field_label_style() + " border:none;"
-        btn_apply_style = mc_theme.compact_button_style()
-        row_h = 24
+        btn_apply_style = mc_theme.hmp_aux_apply_button_style()
+        row_h = 26
 
         for ch in range(1, HMP_MANUAL_CHANNEL_COUNT + 1):
             tile = QFrame(frame)
@@ -73,39 +72,25 @@ class HmpAuxPanel:
             badge.setFixedWidth(36)
             badge.setStyleSheet(
                 f"color:{mc_theme.TEXT}; border:none; font-family:{mc_theme.FONT_TELEMETRY};"
-                f" font-size:11px; font-weight:700;"
+                f" font-size:12px; font-weight:700;"
             )
             row.addWidget(badge, 0, Qt.AlignVCenter)
 
-            def _field_pair(parent, label_text, obj_name, default_text):
-                wrap = QWidget(parent)
-                vl = QVBoxLayout(wrap)
-                vl.setContentsMargins(0, 0, 0, 0)
-                vl.setSpacing(1)
-                cap = QLabel(label_text, wrap)
-                cap.setStyleSheet(field_lbl)
-                cap.setFont(mc_theme.label_font(8, bold=False))
-                le = QLineEdit(wrap)
-                le.setObjectName(obj_name)
-                le.setText(default_text)
-                le.setFixedHeight(row_h)
-                le.setValidator(handler.validator)
-                le.setStyleSheet(le_style)
-                vl.addWidget(cap)
-                vl.addWidget(le)
-                return wrap, le
-
-            v_wrap, le_v = _field_pair(
+            v_wrap, le_v, _ = make_value_box(
                 tile,
-                "VOLT",
-                f"lineedit_manual_control_dc_aux_voltage_ch{ch}",
-                "0",
+                unit="V",
+                object_name=f"lineedit_manual_control_dc_aux_voltage_ch{ch}",
+                default_text="0",
+                validator=handler.validator,
+                row_height=row_h,
             )
-            i_wrap, le_i = _field_pair(
+            i_wrap, le_i, _ = make_value_box(
                 tile,
-                "CURR",
-                f"lineedit_manual_control_dc_aux_current_ch{ch}",
-                "1.0",
+                unit="A",
+                object_name=f"lineedit_manual_control_dc_aux_current_ch{ch}",
+                default_text="1.0",
+                validator=handler.validator,
+                row_height=row_h,
             )
             row.addWidget(v_wrap, 1)
             row.addWidget(i_wrap, 1)
@@ -126,7 +111,7 @@ class HmpAuxPanel:
             btn_out.setFixedHeight(row_h)
             btn_out.setToolTip("Toggle channel output")
             btn_out.setStyleSheet(mc_theme.aux_output_button_style(on=False))
-            btn_out.setFont(mc_theme.telemetry_font(10))
+            btn_out.setFont(mc_theme.telemetry_font(11))
             al.addWidget(btn_apply)
             al.addWidget(btn_out)
             row.addWidget(actions, 0, Qt.AlignTop)
@@ -137,6 +122,8 @@ class HmpAuxPanel:
             self.channel_widgets[ch] = {
                 "le_v": le_v,
                 "le_i": le_i,
+                "btn_apply": btn_apply,
+                "apply_style": btn_apply_style,
                 "output_btn": btn_out,
                 "status": btn_out,
             }

@@ -1130,12 +1130,34 @@ class ManualControlPageHandler():
         else:
             aux.turn_off()
 
+    def _aux_dc_apply_feedback(self, channel: int):
+        w = self.hmp_aux_channel_widgets.get(channel)
+        if not w:
+            return
+        btn = w.get("btn_apply")
+        if btn is None:
+            return
+        base_style = w.get("apply_style") or manual_control_theme.hmp_aux_apply_button_style()
+        btn.setText("Applied")
+        btn.setStyleSheet(manual_control_theme.hmp_aux_apply_ok_style())
+        btn.setEnabled(False)
+
+        def restore():
+            if btn is None:
+                return
+            btn.setText("Apply")
+            btn.setStyleSheet(base_style)
+            btn.setEnabled(True)
+
+        QTimer.singleShot(750, restore)
+
     def aux_dc_apply_settings(self, channel: int = 1):
         if not self.dc_source_aux_accessible or self.dc_source_aux is None:
             return
         try:
             v, i = self._aux_dc_setpoints(channel)
             self._aux_dc_apply_channel(channel, v, i)
+            self._aux_dc_apply_feedback(channel)
         except Exception as e:
             print(f"[DC_SOURCE] Aux CH{channel} apply failed: {e}")
             self.dc_source_aux_accessible = False

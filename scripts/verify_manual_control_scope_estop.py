@@ -37,6 +37,7 @@ def main() -> int:
             "btn_manual_control_scope_run_single",
             "btn_manual_control_scope_stop",
             "btn_manual_control_scope_capture",
+            "btn_manual_control_scope_open_folder",
             "cbx_manual_control_scope_trigger_mode",
             "cbx_manual_control_scope_trigger_edge",
             "lineedit_manual_control_scope_trigger_level",

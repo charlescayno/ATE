@@ -85,6 +85,24 @@ def compact_button_style() -> str:
     )
 
 
+def hmp_aux_apply_button_style() -> str:
+    return (
+        f"QPushButton{{background-color:{BG_TILE}; color:{TEXT}; border:1px solid {LINE};"
+        f" border-radius:2px; padding:2px 8px; font-family:{FONT_UI}; font-size:11px;"
+        f" font-weight:600; min-height:24px; max-height:28px;}}"
+        f" QPushButton:hover{{border-color:{TEXT_MUTED}; background-color:#1a1a20;}}"
+        f" QPushButton:pressed{{background-color:#1c1c22;}}"
+    )
+
+
+def hmp_aux_apply_ok_style() -> str:
+    return (
+        f"QPushButton{{background-color:#14532d; color:{GO}; border:1px solid {GO};"
+        f" border-radius:2px; padding:2px 8px; font-family:{FONT_UI}; font-size:11px;"
+        f" font-weight:700; min-height:24px; max-height:28px;}}"
+    )
+
+
 def aux_output_button_style(*, on: bool) -> str:
     """Single HMP channel output toggle — green when ON, muted when OFF."""
     if on:
@@ -130,9 +148,20 @@ def _is_section_title(name: str) -> bool:
     return False
 
 
-def tile_style(object_name: str, *, assigned: bool = True, active: bool = False) -> str:
+def tile_style(
+    object_name: str,
+    *,
+    assigned: bool = True,
+    active: bool = False,
+    off: bool = False,
+) -> str:
     bg = BG_TILE if assigned else BG_TILE_OFF
-    border = f"border-left: 3px solid {GO};" if active else ""
+    if active:
+        border = f"border-left: 3px solid {GO};"
+    elif off:
+        border = f"border-left: 3px solid {ABORT};"
+    else:
+        border = ""
     bottom = f"border-bottom: 1px solid {LINE};" if assigned else f"border-bottom: 1px dashed {LINE_DIM};"
     return (
         f"QFrame#{object_name}{{background-color:{bg}; border:none; {border} {bottom}}}"
@@ -158,6 +187,35 @@ def hmp_aux_channel_tile_style(channel: int) -> str:
     return (
         f"QFrame#frame_hmp_aux_ch{channel}{{background-color:{BG_TILE}; border:none;"
         f" border-left:3px solid {accent}; border-radius:2px;}}"
+    )
+
+
+def hmp_aux_value_box_style() -> str:
+    """Bordered setpoint cell — value + unit inside one box (like e-load / PM level rows)."""
+    return (
+        f"QFrame{{background-color:{BG_VOID}; border:1px solid {LINE}; border-radius:2px;}}"
+    )
+
+
+def hmp_aux_value_edit_style() -> str:
+    return (
+        f"background:transparent; color:{TEXT}; font-family:{FONT_TELEMETRY};"
+        f" font-size:12px; border:none; padding:0 2px;"
+    )
+
+
+def hmp_aux_value_unit_style() -> str:
+    return (
+        f"color:{TEXT_MUTED}; border:none; font-family:{FONT_TELEMETRY};"
+        f" font-size:11px; font-weight:600; padding-right:2px;"
+    )
+
+
+def hmp_aux_caption_style() -> str:
+    """In-box field name (e.g. Level) — unit is shown separately, not in the caption."""
+    return (
+        f"color:{TEXT_LABEL}; border:none; font-family:{FONT_UI}; font-size:10px;"
+        f" font-weight:600; padding-right:2px;"
     )
 
 

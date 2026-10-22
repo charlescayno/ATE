@@ -11,6 +11,7 @@ from PIL import Image, ImageDraw
 
 from equipment.definitions import EquipmentType
 from equipment.ac_source import AC_SOURCE_COUPLING
+from equipment.eload_specs import EloadStatus
 from equipment.handler import EquipmentHandler
 
 
@@ -309,7 +310,7 @@ class SimulatedElectronicLoadModule:
         self.details = self.description
         self.address = f'GPIB0::{2 + channel_idx}::INSTR'
         self._active_level = '1'
-        self.active_channel_status = 1
+        self.active_channel_status = EloadStatus.OFF
         self.active_channel_short = 0
         self.crh_max_r = 50000.0
         self.crh_max_v = 80.0
@@ -361,10 +362,12 @@ class SimulatedElectronicLoadModule:
     def turn_on(self):
         print(f"[E_LOAD] Electronic Load Simulated (CH {self.channel}): Output ON")
         self._ch['load_on'] = True
+        self.active_channel_status = EloadStatus.ON
 
     def turn_off(self):
         print(f"[E_LOAD] Electronic Load Simulated (CH {self.channel}): Output OFF")
         self._ch['load_on'] = False
+        self.active_channel_status = EloadStatus.OFF
 
     def turn_on_all(self):
         for ld in self.state.loads.values():
@@ -395,6 +398,7 @@ class SimulatedElectronicLoadModule:
     def set_cc_high(self, current: float):
         print(f"[E_LOAD] Electronic Load Simulated (CH {self.channel}): CCH {current} A")
         self._ch['load_on'] = False
+        self.active_channel_status = EloadStatus.OFF
         self.active_channel_mode = 'CCH'
         self._ch['iout'] = float(current)
 
@@ -893,7 +897,7 @@ class SimulatedEquipmentHandler(EquipmentHandler):
             el._ch['iout'] = iout
             el._ch['load_on'] = on
             el.active_channel_mode = 'CCL'
-            el.active_channel_status = '1' if on else '0'
+            el.active_channel_status = EloadStatus.ON if on else EloadStatus.OFF
         print(f"[SIM] Manual Control demo: {line_msg} · 5 V @ 3 A + 5 V @ 2 A out (~90% eff)")
 
     def input_supply_eload_discharge_sequence(self, iout_A, coupling=AC_SOURCE_COUPLING.AC):

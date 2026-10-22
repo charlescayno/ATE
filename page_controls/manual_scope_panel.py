@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import os
 import re
+import sys
 from typing import TYPE_CHECKING
 
 from PySide2.QtCore import Qt
@@ -24,6 +25,7 @@ from PySide2.QtWidgets import (
 from equipment.oscilloscope_specs import LeCroyOscilloscope, RohdeSchwarzOscilloscope, TriggerMode
 from equipment.scope_auto_trigger import AutoFindTriggerSettings, find_trigger_level
 from page_controls import manual_control_theme as mc_theme
+from page_controls.mc_value_box import make_value_box
 from page_controls.scope_auto_find_dialog import ScopeAutoFindSettingsDialog
 from psu_tests.definitions import MessageType
 
@@ -153,12 +155,27 @@ class ManualScopePanel:
         self.cbx_trigger_channel = self.body.findChild(QComboBox, "cbx_manual_control_scope_trigger_channel")
         self.cbx_trigger_edge = self.body.findChild(QComboBox, "cbx_manual_control_scope_trigger_edge")
 
-        trig_row.addWidget(QLabel("Level (V)", self.body))
-        self.lineedit_trigger_level = TriggerLevelEdit(self.body)
-        self.lineedit_trigger_level.setObjectName("lineedit_manual_control_scope_trigger_level")
-        self.lineedit_trigger_level.setText("0.0")
-        self.lineedit_trigger_level.setMaximumWidth(72)
-        trig_row.addWidget(self.lineedit_trigger_level)
+        level_box, self.lineedit_trigger_level, self._label_trigger_level_unit = make_value_box(
+            self.body,
+            caption="Level",
+            unit="V",
+            object_name="lineedit_manual_control_scope_trigger_level",
+            default_text="0.0",
+            validator=None,
+            row_height=26,
+            max_width=140,
+        )
+        if not isinstance(self.lineedit_trigger_level, TriggerLevelEdit):
+            le = TriggerLevelEdit(self.body)
+            le.setObjectName("lineedit_manual_control_scope_trigger_level")
+            le.setText(self.lineedit_trigger_level.text())
+            le.setFixedHeight(26)
+            le.setStyleSheet(self.lineedit_trigger_level.styleSheet())
+            le.setFont(self.lineedit_trigger_level.font())
+            level_box.layout().replaceWidget(self.lineedit_trigger_level, le)
+            self.lineedit_trigger_level.deleteLater()
+            self.lineedit_trigger_level = le
+        trig_row.addWidget(level_box)
         self.btn_apply_trigger = QPushButton("Apply trigger", self.body)
         self.btn_apply_trigger.setStyleSheet(compact)
         trig_row.addWidget(self.btn_apply_trigger)
@@ -189,6 +206,12 @@ class ManualScopePanel:
         self.btn_capture.setObjectName("btn_manual_control_scope_capture")
         self.btn_capture.setStyleSheet(compact)
         cap_row.addWidget(self.btn_capture)
+        self.btn_open_folder = QPushButton("Open folder", self.body)
+        self.btn_open_folder.setObjectName("btn_manual_control_scope_open_folder")
+        self.btn_open_folder.setToolTip(
+            f"Open waveform save folder in Explorer ({self._default_capture_dir})")
+        self.btn_open_folder.setStyleSheet(compact)
+        cap_row.addWidget(self.btn_open_folder)
         body_l.addLayout(cap_row)
 
         self.label_capture_path = QLabel("", self.body)
@@ -210,6 +233,7 @@ class ManualScopePanel:
         ui.btn_manual_control_scope_stop = self.btn_stop
         ui.label_manual_control_scope_status = self.label_status
         ui.btn_manual_control_scope_capture = self.btn_capture
+        ui.btn_manual_control_scope_open_folder = self.btn_open_folder
         ui.cbx_manual_control_scope_trigger_mode = self.cbx_trigger_mode
         ui.cbx_manual_control_scope_trigger_channel = self.cbx_trigger_channel
         ui.cbx_manual_control_scope_trigger_edge = self.cbx_trigger_edge
@@ -235,6 +259,7 @@ class ManualScopePanel:
         self.btn_auto_find_trigger.clicked.connect(self.auto_find_trigger)
         self.btn_auto_find_settings.clicked.connect(self._open_auto_find_settings)
         self.btn_capture.clicked.connect(self.capture_waveform)
+        self.btn_open_folder.clicked.connect(self.open_capture_folder)
         self.btn_collapse.toggled.connect(self._set_body_visible)
         self._set_body_visible(True)
 
@@ -243,6 +268,7 @@ class ManualScopePanel:
         self.btn_collapse.setText("▼" if expanded else "▶")
         for w in (
             self.btn_capture,
+            self.btn_open_folder,
             self.lineedit_filename,
             self.label_capture_path,
             self.btn_apply_trigger,
@@ -289,6 +315,7 @@ class ManualScopePanel:
             self.btn_auto_find_trigger,
             self.btn_auto_find_settings,
             self.btn_capture,
+            self.btn_open_folder,
             self.cbx_trigger_mode,
             self.cbx_trigger_channel,
             self.cbx_trigger_edge,
@@ -296,6 +323,7 @@ class ManualScopePanel:
             self.lineedit_filename,
         ):
             w.setEnabled(ok and not self._auto_find_running)
+        self.btn_open_folder.setEnabled(not self._auto_find_running)
         if not ok:
             self._set_status("Not assigned", "rgb(140,140,140)")
             self.label_capture_path.setText("")
@@ -478,6 +506,30 @@ class ManualScopePanel:
         name = re.sub(r'[<>:"/\\|?*]', "_", name)
         return name
 
+    def _capture_output_dir(self) -> str:
+        out_dir = self._default_capture_dir
+        try:
+            os.makedirs(out_dir, exist_ok=True)
+        except OSError as exc:
+            print(f"[SCOPE] Cannot create folder {out_dir}: {exc}")
+            out_dir = os.path.expanduser("~")
+            os.makedirs(out_dir, exist_ok=True)
+        return out_dir
+
+    def open_capture_folder(self):
+        folder = self._capture_output_dir()
+        try:
+            if sys.platform == "win32":
+                os.startfile(folder)
+            else:
+                from PySide2.QtGui import QDesktopServices
+                from PySide2.QtCore import QUrl
+
+                QDesktopServices.openUrl(QUrl.fromLocalFile(folder))
+        except OSError as exc:
+            print(f"[SCOPE] Cannot open folder {folder}: {exc}")
+            self.label_capture_path.setText(f"Cannot open folder: {exc}")
+
     def _unique_filename(self, directory: str, filename: str) -> str:
         """If path exists, append _1, _2, ... before the extension."""
         full = os.path.join(directory, filename)
@@ -495,13 +547,7 @@ class ManualScopePanel:
         if scope is None:
             return
         filename = self._sanitize_filename(self.lineedit_filename.text())
-        out_dir = self._default_capture_dir
-        try:
-            os.makedirs(out_dir, exist_ok=True)
-        except OSError as exc:
-            print(f"[SCOPE] Cannot create folder {out_dir}: {exc}")
-            out_dir = os.path.expanduser("~")
-        path = out_dir
+        path = self._capture_output_dir()
         filename = self._unique_filename(path, filename)
         try:
             scope.get_screenshot(filename, path)

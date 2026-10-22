@@ -228,8 +228,8 @@ class EloadChannel:
         self.status.setText(f"● ON  {mode} L{level}" if on else f"● OFF  {mode}")
         self.status.setStyleSheet(
             f"color:{mc_theme.GO}; font-family:{mc_theme.FONT_TELEMETRY};"
-            if on else f"color:{mc_theme.TEXT_MUTED}; font-family:{mc_theme.FONT_TELEMETRY};")
-        style = mc_theme.tile_style(tile.objectName(), assigned=True, active=on)
+            if on else f"color:{mc_theme.ABORT}; font-family:{mc_theme.FONT_TELEMETRY};")
+        style = mc_theme.tile_style(tile.objectName(), assigned=True, active=on, off=not on)
         if tile.styleSheet() != style:
             tile.setStyleSheet(style)
 
