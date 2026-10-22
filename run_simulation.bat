@@ -10,5 +10,7 @@ if not exist "%PY%" (
 )
 set PI_ATE_SIMULATION=1
 set PI_ATE_SIM_LINE_INPUT=DC
-echo [INFO] Simulation mode (DC line input) — using %PY%
+set PI_ATE_SIM_SLEW=1
+set PI_ATE_SIM_SLEW_VS=4
+echo [INFO] Simulation mode (DC line input, slew demo) — using %PY%
 "%PY%" main.py -s %*

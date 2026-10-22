@@ -24,6 +24,22 @@ def sim_line_input_is_dc() -> bool:
     )
 
 
+def sim_slew_enabled() -> bool:
+    """When true, Manual Control uses software slew from 0 V so source PM ramps visibly."""
+    return os.environ.get("PI_ATE_SIM_SLEW", "1").strip().lower() not in (
+        "0",
+        "false",
+        "no",
+    )
+
+
+def sim_slew_rate_vs() -> float:
+    try:
+        return float(os.environ.get("PI_ATE_SIM_SLEW_VS", "4"))
+    except ValueError:
+        return 4.0
+
+
 class VirtualCircuitState:
     """Shared physical state of the simulated Unit Under Test (UUT) and bench instruments."""
     def __init__(self):
@@ -830,15 +846,26 @@ class SimulatedEquipmentHandler(EquipmentHandler):
         }
         if sim_line_input_is_dc():
             vin = 48.0
-            s.vin = vin
             s.freq = 0.0
-            s.ac_on = False
+            if sim_slew_enabled():
+                s.vin = 0.0
+                s.ac_on = False
+                if self.dc_source is not None:
+                    self.dc_source.voltage = 0.0
+                    self.dc_source.turn_off()
+                line_msg = (
+                    f"{vin:g} VDC setpoint — source OFF at 0 V "
+                    f"(enable ramp + DC ON to slew ~{sim_slew_rate_vs():g} V/s)"
+                )
+            else:
+                s.vin = vin
+                s.ac_on = False
+                if self.dc_source is not None:
+                    self.dc_source.voltage = vin
+                    self.dc_source.turn_on()
+                line_msg = f"{vin:g} VDC in"
             if self.ac_source is not None:
                 self.ac_source.turn_off()
-            if self.dc_source is not None:
-                self.dc_source.voltage = vin
-                self.dc_source.turn_on()
-            line_msg = f"{vin:g} VDC in"
         else:
             s.vin = 115.0
             s.freq = 60.0

@@ -164,12 +164,7 @@ def test_ui():
     grid = mc.pml_grid
 
     check("ui: tab widget removed from layout", not ui.tabWidget_pml.isVisible() and ui.tabWidget_pml.count() == 0)
-    check("ui: hide unused load PM checkbox", hasattr(grid, 'chk_hide_unused'))
-    grid.chk_hide_unused.setChecked(False)
-    app.processEvents()
-    mc.refresh_pml_tile_visibility()
-    app.processEvents()
-    check("ui: all 4 tiles visible when not hiding unused",
+    check("ui: all 4 load PM tiles visible when assigned",
           all(grid.widgets[n]['tile'].isVisible() for n in (1, 2, 3, 4)))
     check("ui: settings frames moved into gear dialogs",
           all(grid.widgets[n]['control'].parent() is grid.dialogs[n] for n in (1, 2, 3, 4)))

@@ -391,116 +391,9 @@ class ManualControlPageHandler():
         self.ui.lineedit_manual_usbpd_request_param2.setValidator(self.validator)
 
     def _build_aux_dc_source_panel(self):
-        from functools import partial
-        from PySide2.QtWidgets import (QFrame, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
-                                       QPushButton, QGridLayout, QSizePolicy)
-        from PySide2.QtCore import Qt, QSize
-        from equipment.dc_source import HMP_MANUAL_CHANNEL_COUNT
+        from page_controls.hmp_aux_panel import HmpAuxPanel
 
-        ui = self.ui
-        frame = QFrame(ui.frame_manual_control_lower)
-        frame.setObjectName("frame_manual_control_dc_source_aux")
-        frame.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
-        frame.setStyleSheet(manual_control_theme.flat_panel_style())
-
-        outer = QVBoxLayout(frame)
-        outer.setContentsMargins(2, 2, 2, 2)
-        outer.setSpacing(2)
-
-        title = QLabel("AUX DC (HMP)", frame)
-        title.setObjectName("label_manual_control_dc_source_aux")
-        title.setMaximumHeight(22)
-        title.setAlignment(Qt.AlignCenter)
-        title.setStyleSheet(manual_control_theme.section_title_style())
-        title.setFont(manual_control_theme.label_font(10))
-        outer.addWidget(title)
-
-        le_style = manual_control_theme.input_style()
-        lbl_style = manual_control_theme.field_label_style()
-        compact_le_h = 22
-        btn_on_style = manual_control_theme.compact_button_style()
-
-        params = QFrame(frame)
-        params.setObjectName("frame_manual_control_dc_aux_params")
-        params.setStyleSheet("QFrame{border:none;}")
-        grid = QGridLayout(params)
-        grid.setContentsMargins(4, 4, 4, 4)
-        grid.setHorizontalSpacing(4)
-        grid.setVerticalSpacing(3)
-
-        hdr = QLabel("Ch", params)
-        hdr.setStyleSheet(lbl_style + " border: none;")
-        grid.addWidget(hdr, 0, 0)
-        for col, text in ((1, "V"), (2, "A"), (4, "OUT")):
-            h = QLabel(text, params)
-            h.setStyleSheet(lbl_style + " border: none;")
-            h.setAlignment(Qt.AlignCenter)
-            grid.addWidget(h, 0, col)
-
-        self.hmp_aux_channel_widgets = {}
-
-        for ch in range(1, HMP_MANUAL_CHANNEL_COUNT + 1):
-            row = ch
-            lbl_ch = QLabel(f"{ch}", params)
-            lbl_ch.setAlignment(Qt.AlignCenter)
-            lbl_ch.setStyleSheet(lbl_style + " border: none; font-weight: bold;")
-            le_v = QLineEdit(params)
-            le_v.setObjectName(f"lineedit_manual_control_dc_aux_voltage_ch{ch}")
-            le_v.setText("0")
-            le_v.setFixedHeight(compact_le_h)
-            le_v.setValidator(self.validator)
-            le_v.setStyleSheet(le_style)
-            le_i = QLineEdit(params)
-            le_i.setObjectName(f"lineedit_manual_control_dc_aux_current_ch{ch}")
-            le_i.setText("1.0")
-            le_i.setFixedHeight(compact_le_h)
-            le_i.setValidator(self.validator)
-            le_i.setStyleSheet(le_style)
-            btn_apply = QPushButton("Set", params)
-            btn_apply.setObjectName(f"btn_manual_control_dc_aux_apply_ch{ch}")
-            btn_apply.setStyleSheet(btn_on_style)
-            btn_apply.setToolTip("Apply V / I for this channel")
-            btn_out = QPushButton("OFF", params)
-            btn_out.setObjectName(f"btn_manual_control_dc_aux_output_ch{ch}")
-            btn_out.setCheckable(True)
-            btn_out.setChecked(False)
-            btn_out.setToolTip("Toggle channel output")
-            btn_out.setStyleSheet(manual_control_theme.aux_output_button_style(on=False))
-            btn_out.setFont(manual_control_theme.telemetry_font(11))
-
-            grid.addWidget(lbl_ch, row, 0)
-            grid.addWidget(le_v, row, 1)
-            grid.addWidget(le_i, row, 2)
-            grid.addWidget(btn_apply, row, 3)
-            grid.addWidget(btn_out, row, 4)
-
-            btn_apply.clicked.connect(partial(self.aux_dc_apply_settings, ch))
-            btn_out.toggled.connect(partial(self._aux_dc_output_toggled, ch))
-
-            self.hmp_aux_channel_widgets[ch] = {
-                'le_v': le_v,
-                'le_i': le_i,
-                'output_btn': btn_out,
-                'status': btn_out,
-            }
-
-        grid.setColumnStretch(1, 1)
-        grid.setColumnStretch(2, 1)
-        outer.addWidget(params)
-
-        # Legacy single-channel widget names (CH1) for older verify/scripts
-        w1 = self.hmp_aux_channel_widgets[1]
-        ui.lineedit_manual_control_dc_aux_voltage = w1['le_v']
-        ui.lineedit_manual_control_dc_aux_current = w1['le_i']
-        ui.label_manual_control_dc_aux_status = w1['output_btn']
-        ui.frame_manual_control_dc_aux_buttons = w1['output_btn']
-        ui.btn_manual_control_dc_aux_apply = frame.findChild(QPushButton, "btn_manual_control_dc_aux_apply_ch1")
-        ui.btn_manual_control_dc_aux_output = w1['output_btn']
-        ui.btn_manual_control_dc_aux_turn_on = w1['output_btn']
-        ui.btn_manual_control_dc_aux_turn_off = w1['output_btn']
-
-        ui.frame_manual_control_dc_source_aux = frame
-        frame.setVisible(False)
+        HmpAuxPanel(self).install()
         self._stack_aux_under_dc_source()
 
     def _wrap_equipment_in_scroll_area(self):
@@ -799,25 +692,15 @@ class ManualControlPageHandler():
         self.pml_grid.set_totals(pin, total, eff, len(pouts))
 
     def refresh_pml_tile_visibility(self):
-        """Apply hide-unused option; unassigned channels always hidden."""
+        """Show tiles only for channels with an assigned load power meter."""
         grid = self.pml_grid
-        hide_unused = grid.hide_unused_load_pm
         for n in pml_grid.CHANNELS:
             pm = getattr(self.equipment, f'power_meter_load_{n}', None)
             if pm is None:
                 grid.set_assigned(n, False)
-                continue
-            if not grid.assigned.get(n, False):
-                grid.set_assigned(n, True)
-            unused = False
-            if hide_unused:
-                pout = self.pml_pout_W.get(n)
-                unused = pout is None or pout < pml_grid.UNUSED_POUT_W
-            if unused:
-                grid.set_unused_hidden(n, True)
             else:
                 grid.tile_visible[n] = True
-                grid.set_unused_hidden(n, False)
+                grid.set_assigned(n, True)
 
     @power_meter_source_access
     def ui_power_meter_source_update(self):
@@ -1183,6 +1066,13 @@ class ManualControlPageHandler():
 
             if sim_line_input_is_dc() and is_magna_hvdc(getattr(self, 'ac_source', None)):
                 ui.lineedit_manual_control_ac_source_voltage.setText('48')
+                from equipment.simulated_handler import sim_slew_enabled, sim_slew_rate_vs
+                if sim_slew_enabled():
+                    ui.chkbox_manual_control_dc_source_ramp_enable.setChecked(True)
+                    ui.lineedit_manual_control_dc_source_slew_rate.setText(
+                        f'{sim_slew_rate_vs():g}'
+                    )
+                    self.update_estimated_ramp_time()
             else:
                 ui.lineedit_manual_control_ac_source_voltage.setText('115')
                 ui.lineedit_manual_control_ac_source_frequency.setText('60')
@@ -1320,8 +1210,9 @@ class ManualControlPageHandler():
         # If we are actively software-ramping the DC source, skip polling other
         # equipment on the GPIB bus to avoid VisaIOError timeouts from bus flooding.
         if getattr(self, 'is_ramping', False):
+            self.power_meter_source_update()
             return
-            
+
         self.power_meter_load_update()
         self.power_meter_load_2_update()
         self.power_meter_load_3_update()
@@ -1601,12 +1492,8 @@ class ManualControlPageHandler():
                 freq = rounded_float(self.ui.lineedit_manual_control_ac_source_frequency.text())
             self.ac_source.frequency = freq
         elif is_magna_hvdc(self.ac_source):
-            # Prompt user to disengage discharge resistor
-            res = self.parent.msg_box_pick(
-                title="Discharge Resistor Check",
-                message="<h2>⚠️ ATTENTION</h2><br><span style='font-size: 14pt; font-weight: bold;'>Is the discharge resistor disengaged?</span><br><br><span style='font-size: 12pt; color: #cc0000;'>Please disengage it before powering up.</span>"
-            )
-            if res != 1024: # QMessageBox.Ok
+            from page_controls.safety_dialog import confirm_discharge_resistor_disengaged
+            if not confirm_discharge_resistor_disengaged(self.parent):
                 return
             
             # Apply Slew rate if enabled

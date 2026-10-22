@@ -1,20 +1,19 @@
 """Manual Control load power meter grid.
 
-Replaces the CH1-CH4 load power meter tabs with a 2x2 grid of compact tiles,
+Replaces the CH1-CH4 load power meter tabs with a single row (4×1) of compact tiles,
 a total strip (Pin | Sum Pout | Total Eff) and a per-meter settings dialog
 (voltage/current range, integration, averaging, mode) opened from a gear button.
 Also hosts the non-blocking output discharge sequencer used by Manual Control.
 """
 from PySide2.QtCore import Qt, QTimer
 from PySide2.QtGui import QFont
-from PySide2.QtWidgets import (QCheckBox, QDialog, QFrame, QGridLayout, QHBoxLayout, QLabel,
+from PySide2.QtWidgets import (QDialog, QFrame, QGridLayout, QHBoxLayout, QLabel,
                                QPushButton, QSizePolicy, QToolButton, QVBoxLayout, QWidget)
 
 from page_controls import manual_control_theme as mc_theme
 
 CHANNELS = (1, 2, 3, 4)
 PIN_LIMIT_W = 10e3
-UNUSED_POUT_W = 0.05
 
 GEAR_STYLE = mc_theme.gear_style()
 DIALOG_STYLE = mc_theme.dialog_style()
@@ -72,7 +71,6 @@ class PmlGrid:
         self.gears = {}
         self.assigned = {n: True for n in CHANNELS}
         self.tile_visible = {n: True for n in CHANNELS}
-        self.hide_unused_load_pm = True
         self._grid = None
         self._build()
 
@@ -99,10 +97,9 @@ class PmlGrid:
         for n in CHANNELS:
             self._compact_tile(n)
             self.widgets[n]['tile'].show()
-        for col in range(2):
-            self._grid.setColumnStretch(col, 0)
-        for row in range(2):
-            self._grid.setRowStretch(row, 0)
+        for col in range(len(CHANNELS)):
+            self._grid.setColumnStretch(col, 1)
+        self._grid.setRowStretch(0, 0)
         v.addLayout(self._grid, 0)
         self._relayout_visible_tiles()
 
@@ -127,25 +124,10 @@ class PmlGrid:
             lbl.setAlignment(Qt.AlignCenter)
             h.addWidget(lbl, 1)
         self.label_eff.setStyleSheet("color: rgb(85, 255, 127);")
-        self.chk_hide_unused = QCheckBox("Hide unused", strip)
-        self.chk_hide_unused.setObjectName("chkbox_manual_control_hide_unused_load_pm")
-        self.chk_hide_unused.setChecked(self.hide_unused_load_pm)
-        self.chk_hide_unused.setToolTip(
-            "Hide load PM channels with no meter assigned, or ~0 W output when enabled.")
-        self.chk_hide_unused.setStyleSheet(
-            f"color:{mc_theme.TEXT}; font-family:{mc_theme.FONT_UI}; font-size:{mc_theme.PT_UI}px;")
-        self.chk_hide_unused.toggled.connect(self._on_hide_unused_toggled)
-        h.addWidget(self.chk_hide_unused, 0)
         self.ui.label_pml_total_pin = self.label_pin
         self.ui.label_pml_total_pout = self.label_pout
         self.ui.label_pml_total_eff = self.label_eff
-        self.ui.chkbox_manual_control_hide_unused_load_pm = self.chk_hide_unused
         return strip
-
-    def _on_hide_unused_toggled(self, checked: bool):
-        self.hide_unused_load_pm = checked
-        if hasattr(self.handler, 'refresh_pml_tile_visibility'):
-            self.handler.refresh_pml_tile_visibility()
 
     def _relayout_visible_tiles(self):
         if self._grid is None:
@@ -153,15 +135,11 @@ class PmlGrid:
         for n in CHANNELS:
             self._grid.removeWidget(self.widgets[n]['tile'])
         col = 0
-        row = 0
         for n in CHANNELS:
             if not self.tile_visible.get(n, True):
                 continue
-            self._grid.addWidget(self.widgets[n]['tile'], row, col)
+            self._grid.addWidget(self.widgets[n]['tile'], 0, col)
             col += 1
-            if col >= 2:
-                col = 0
-                row += 1
 
     def is_tile_shown(self, n: int) -> bool:
         return self.tile_visible.get(n, False) and self.widgets[n]['tile'].isVisible()
@@ -170,8 +148,8 @@ class PmlGrid:
         w = self.widgets[n]
         tile = w['tile']
         tile.setMinimumSize(0, 0)
-        tile.setMaximumWidth(520)
-        tile.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)
+        tile.setMaximumWidth(16777215)
+        tile.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
         tile.setStyleSheet(mc_theme.tile_style(tile.objectName(), assigned=True))
 
         # Header: title + gear
@@ -198,7 +176,7 @@ class PmlGrid:
         self.gears[n] = gear
         setattr(self.ui, f"btn_pml_settings{_sfx(n)}", gear)
 
-        # Readouts: smaller rows so the 2x2 grid fits
+        # Readouts: compact rows for the 4×1 strip
         w['display'].setMinimumSize(0, 0)
         w['display'].setMaximumWidth(16777215)
         for lbl in w['labels']:
@@ -206,11 +184,7 @@ class PmlGrid:
             lbl.setStyleSheet(mc_theme.telemetry_label_style())
             lbl.setMinimumHeight(30)
             lbl.setMaximumHeight(40)
-        w['select'].setMaximumWidth(92)
-        for cbx in w['cbx']:
-            cbx.setMinimumHeight(28)
-            cbx.setMaximumHeight(34)
-            cbx.setFont(mc_theme.input_font(mc_theme.PT_COMBO))
+        mc_theme.remove_display_select_column(w['select'])
 
         # Settings move into the gear dialog
         self.dialogs[n] = PmlSettingsDialog(self.handler.parent, n, w['control'])
@@ -250,17 +224,6 @@ class PmlGrid:
             self._relayout_visible_tiles()
             return
         self._apply_tile_visibility(n)
-
-    def set_unused_hidden(self, n: int, hide_as_unused: bool):
-        """When hide-unused is on, collapse tiles with ~0 W (meter still assigned)."""
-        if hide_as_unused:
-            self.tile_visible[n] = False
-            self.widgets[n]['tile'].hide()
-            self.dialogs[n].hide()
-        else:
-            self.tile_visible[n] = True
-            self.widgets[n]['tile'].show()
-        self._relayout_visible_tiles()
 
     def _apply_tile_visibility(self, n: int):
         if not self.assigned.get(n, False):

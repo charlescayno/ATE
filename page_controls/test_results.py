@@ -86,8 +86,17 @@ class TestResultsPageHandler():
         ui.plotwidget_test_results_plots.setSizePolicy(sizePolicy)
         ui.plotwidget_test_results_plots.setStyleSheet(u"")
 
-        ui.layout_test_results_plot.\
-            addWidget(ui.plotwidget_test_results_plots)
+        lay = ui.layout_test_results_plot
+        insert_at = 1
+        for i in range(lay.count()):
+            w = lay.itemAt(i).widget()
+            if w is ui.table_test_results_data:
+                insert_at = i
+                break
+            if w is ui.plotwidget_test_results_plots:
+                insert_at = i
+                break
+        lay.insertWidget(insert_at, ui.plotwidget_test_results_plots, 1)
         
         self.plot_widget = self.ui.plotwidget_test_results_plots
         self.legend = self.plot_widget.addLegend()
@@ -113,11 +122,6 @@ class TestResultsPageHandler():
     def bind_ui_elements(self):
         """Bind the ui elements to the methods 
         that will be run for each event"""
-        # Bind buttons for showing plot or data
-        self.ui.btn_test_results_show_data.clicked.connect(
-            self.show_data_btn_clicked)
-        self.ui.btn_test_results_show_plots.clicked.connect(
-            self.show_plots_btn_clicked)
         self.ui.table_test_results_test_list.itemSelectionChanged.connect(
             self.update_test_data)
         self.ui.table_test_results_test_list.cellClicked.connect(
@@ -144,7 +148,6 @@ class TestResultsPageHandler():
         self.ui.table_test_results_test_list.setColumnWidth(0, 50)
 
         self._remove_test_results_view_toggles()
-        self.show_plots_btn_clicked()
 
     def _remove_test_results_view_toggles(self):
         """Remove chart/grid view switchers; show plot + data table together."""
@@ -157,33 +160,33 @@ class TestResultsPageHandler():
 
         stack = ui.stacked_widget_test_results
         stack.removeWidget(ui.page_test_results_data_table)
-        ui.layout_test_results_plot.addWidget(ui.table_test_results_data, 1)
-        ui.table_test_results_data.setMinimumHeight(140)
+
+        plot_lay = ui.layout_test_results_plot
+        plot_row = 1
+        for i in range(plot_lay.count()):
+            w = plot_lay.itemAt(i).widget()
+            if w is ui.plotwidget_test_results_plots:
+                plot_row = i + 1
+                break
+        plot_lay.insertWidget(plot_row, ui.table_test_results_data, 0)
+        ui.table_test_results_data.setMinimumHeight(120)
+        ui.table_test_results_data.setMaximumHeight(280)
+        plot_lay.setStretch(max(0, plot_row - 1), 1)
 
         vlay.removeWidget(stack)
         vlay.addWidget(ui.page_test_results_plots, 1)
         stack.deleteLater()
+        ui.stacked_widget_test_results = None
     
     ###########################################################################
     #                   Widget Visibility Functions                           #
     ###########################################################################
     def show_plots_btn_clicked(self):
-        ui = self.ui
-        # Set the stacked widget page to the plots page
-        ui.stacked_widget_test_results.setCurrentWidget(
-            ui.page_test_results_plots)
-        # Disable the show plots button and enable the show data button
-        ui.btn_test_results_show_data.setEnabled(True)
-        ui.btn_test_results_show_plots.setEnabled(False)
+        stack = getattr(self.ui, 'stacked_widget_test_results', None)
+        if stack is not None:
+            stack.setCurrentWidget(self.ui.page_test_results_plots)
 
     def show_data_btn_clicked(self):
-        ui = self.ui
-        # Set the stacked widget page to the plots page
-        ui.stacked_widget_test_results.setCurrentWidget(
-            ui.page_test_results_data_table)
-        # Disable the show plots button and enable the show data button
-        ui.btn_test_results_show_data.setEnabled(False)
-        ui.btn_test_results_show_plots.setEnabled(True)
         self.update_test_data()
 
     ###########################################################################
@@ -288,7 +291,10 @@ class TestResultsPageHandler():
 
         # Get the combo box selection
         self.cbx_selection_i = ui.cbx_test_results_plots.currentIndex()
-        if 0 <= self.cbx_selection_i < len(test_item.plottables):
+        if (
+            self.plot_widget is not None
+            and 0 <= self.cbx_selection_i < len(test_item.plottables)
+        ):
             selected_plottable = test_item.plottables[self.cbx_selection_i]
             # If there is a change in combo box selection,
             # Update the whole plot

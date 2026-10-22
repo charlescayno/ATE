@@ -14,14 +14,8 @@ class _DischargeResistorPromptHelper(QObject):
 
     @Slot()
     def _prompt(self):
-        from PySide2.QtWidgets import QMessageBox
-        message = (
-            "<h2>⚠️ ATTENTION</h2><br>"
-            "<span style='font-size: 14pt; font-weight: bold;'>Is the discharge resistor disengaged?</span><br><br>"
-            "<span style='font-size: 12pt; color: #cc0000;'>Please disengage it before powering up.</span>"
-        )
-        res = self._main_window.msg_box_pick("Discharge Resistor Check", message)
-        self.confirmed = res == QMessageBox.Ok
+        from page_controls.safety_dialog import confirm_discharge_resistor_disengaged
+        self.confirmed = confirm_discharge_resistor_disengaged(self._main_window)
 
 
 class EfficiencyTest_2Port(BaseTestObject):

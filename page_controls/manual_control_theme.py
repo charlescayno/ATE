@@ -146,6 +146,21 @@ def strip_style() -> str:
     )
 
 
+def hmp_aux_panel_style() -> str:
+    return (
+        f"QFrame#frame_manual_control_dc_source_aux{{background-color:{BG_PANEL};"
+        f" border:none; border-top:1px solid {LINE};}}"
+    )
+
+
+def hmp_aux_channel_tile_style(channel: int) -> str:
+    accent = {1: GO, 2: SIM, 3: WARN}.get(channel, LINE)
+    return (
+        f"QFrame#frame_hmp_aux_ch{channel}{{background-color:{BG_TILE}; border:none;"
+        f" border-left:3px solid {accent}; border-radius:2px;}}"
+    )
+
+
 def header_bar_style(object_name: str = "label_manual_control") -> str:
     return (
         f"QFrame#{object_name}{{background-color:{BG_PANEL}; border:none;"
@@ -199,6 +214,59 @@ def gear_style() -> str:
         f"QToolButton{{border:none; color:{TEXT_MUTED}; font-size:15px;}}"
         f" QToolButton:hover{{color:{ACCENT};}}"
         f" QToolButton:disabled{{color:#404048;}}"
+    )
+
+
+def safety_dialog_style() -> str:
+    return (
+        f"QDialog{{background-color:{BG_PANEL}; font-family:{FONT_UI}; border:1px solid {LINE};}}"
+    )
+
+
+def safety_dialog_tag_style() -> str:
+    return (
+        f"color:{WARN}; border:none; font-family:{FONT_UI}; font-size:10px;"
+        f" font-weight:700; letter-spacing:3px;"
+    )
+
+
+def safety_dialog_title_style() -> str:
+    return (
+        f"color:{ACCENT}; border:none; font-family:{FONT_UI}; font-size:16px;"
+        f" font-weight:700; letter-spacing:0.5px;"
+    )
+
+
+def safety_dialog_question_style() -> str:
+    return (
+        f"color:{TEXT}; border:none; font-family:{FONT_UI}; font-size:13px;"
+        f" font-weight:600;"
+    )
+
+
+def safety_dialog_detail_style() -> str:
+    return (
+        f"color:{TEXT_MUTED}; border:none; font-family:{FONT_UI}; font-size:11px;"
+        f" line-height:140%;"
+    )
+
+
+def safety_dialog_confirm_button_style() -> str:
+    return (
+        f"QPushButton{{min-height:32px; padding:6px 18px; font-family:{FONT_UI};"
+        f" font-size:11px; font-weight:700; letter-spacing:0.5px; color:{BG_VOID};"
+        f" background-color:{GO}; border:1px solid {GO}; border-radius:2px;}}"
+        f" QPushButton:hover{{background-color:#6ee7a0; border-color:#6ee7a0;}}"
+        f" QPushButton:pressed{{background-color:#22c55e;}}"
+    )
+
+
+def safety_dialog_cancel_button_style() -> str:
+    return (
+        f"QPushButton{{min-height:32px; padding:6px 18px; font-family:{FONT_UI};"
+        f" font-size:11px; font-weight:600; color:{TEXT}; background-color:{BG_TILE};"
+        f" border:1px solid {LINE}; border-radius:2px; margin-right:8px;}}"
+        f" QPushButton:hover{{background-color:#1c1c22; border-color:{TEXT_MUTED};}}"
     )
 
 
@@ -387,3 +455,17 @@ def apply_page_theme(handler) -> None:
         if "label_pms_display_" in name or "label_pml_display_" in name:
             lbl.setMaximumHeight(40)
             lbl.setMinimumHeight(30)
+
+
+def remove_display_select_column(select_frame):
+    """Remove legacy per-row PM display selector combos (chevron column)."""
+    from PySide2.QtWidgets import QFrame
+
+    if not isinstance(select_frame, QFrame):
+        return
+    select_frame.hide()
+    parent = select_frame.parentWidget()
+    if parent is not None:
+        lay = parent.layout()
+        if lay is not None:
+            lay.removeWidget(select_frame)

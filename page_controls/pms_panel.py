@@ -81,16 +81,7 @@ class PmsPanel:
             lbl.setStyleSheet(mc_theme.telemetry_label_style())
             lbl.setMinimumHeight(30)
             lbl.setMaximumHeight(40)
-        ui.frame_pms_display_select.setMaximumWidth(92)
-        for cbx in (
-            ui.cbx_pms_display_a,
-            ui.cbx_pms_display_b,
-            ui.cbx_pms_display_c,
-            ui.cbx_pms_display_d,
-        ):
-            cbx.setMinimumHeight(28)
-            cbx.setMaximumHeight(34)
-            cbx.setFont(mc_theme.input_font(mc_theme.PT_COMBO))
+        mc_theme.remove_display_select_column(ui.frame_pms_display_select)
 
         self.dialog = PmsSettingsDialog(self.handler.parent, ui.frame_pms_control)
 
