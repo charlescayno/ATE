@@ -47,6 +47,15 @@ class EquipmentSetupPageHandler():
 
         self.check_equipment_availability()
 
+    def _ensure_hmp_aux_dc_role(self):
+        """Pick Rohde&Schwarz HMP as Aux DC when present and not the primary DC source."""
+        eq = self.equipment
+        if eq.dc_source_aux is not None:
+            return
+        prefer = getattr(eq, "prefer_hmp_as_aux", None)
+        if callable(prefer):
+            prefer()
+
     def _simulation_mode(self) -> bool:
         return getattr(self.parent, 'is_simulation_mode', False)
 
@@ -290,6 +299,8 @@ class EquipmentSetupPageHandler():
         else:
             self.equipment.auto_set_equipment_roles()
 
+        self._ensure_hmp_aux_dc_role()
+
         # Update the combo boxes according to the equipment roles
         self.ui_update_equipment_combo_boxes()
 
@@ -428,6 +439,7 @@ class EquipmentSetupPageHandler():
 
     def ui_update_dc_source_aux_combo_box(self):
         from PySide2.QtCore import Qt
+        self._ensure_hmp_aux_dc_role()
         frame = self.ui.frame_equip_setup_sources_dcsource_aux
         combo_box = self.ui.cbx_equip_setup_sources_dcsource_aux
         self.ongoing_dc_source_aux_update = True
@@ -442,10 +454,16 @@ class EquipmentSetupPageHandler():
             frame.setStyleSheet(green_frame)
             combo_box.addItem(dc_source.description)
         if self.equipment.dc_source_aux is not None:
+            aux_desc = self.equipment.dc_source_aux.description
+            matched = False
             for i in range(combo_box.count()):
-                if combo_box.itemText(i) == self.equipment.dc_source_aux.description:
+                if combo_box.itemText(i) == aux_desc:
                     combo_box.setCurrentIndex(i)
+                    matched = True
                     break
+            if not matched:
+                combo_box.addItem(aux_desc)
+                combo_box.setCurrentIndex(combo_box.count() - 1)
         else:
             combo_box.setCurrentIndex(0)
         self.ongoing_dc_source_aux_update = False

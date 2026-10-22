@@ -143,13 +143,26 @@ class TestResultsPageHandler():
         
         self.ui.table_test_results_test_list.setColumnWidth(0, 50)
 
-        # Plots-only: hide Show Plots / Show Data toggles (chart + grid icons).
-        self.ui.btn_test_results_show_plots.setVisible(False)
-        self.ui.btn_test_results_show_data.setVisible(False)
-        if hasattr(self.ui, 'frame_test_results_left_buttons'):
-            self.ui.frame_test_results_left_buttons.setVisible(False)
-
+        self._remove_test_results_view_toggles()
         self.show_plots_btn_clicked()
+
+    def _remove_test_results_view_toggles(self):
+        """Remove chart/grid view switchers; show plot + data table together."""
+        ui = self.ui
+        btn_frame = getattr(ui, 'frame_test_results_left_buttons', None)
+        vlay = ui.verticalLayout_93
+        if btn_frame is not None:
+            vlay.removeWidget(btn_frame)
+            btn_frame.deleteLater()
+
+        stack = ui.stacked_widget_test_results
+        stack.removeWidget(ui.page_test_results_data_table)
+        ui.layout_test_results_plot.addWidget(ui.table_test_results_data, 1)
+        ui.table_test_results_data.setMinimumHeight(140)
+
+        vlay.removeWidget(stack)
+        vlay.addWidget(ui.page_test_results_plots, 1)
+        stack.deleteLater()
     
     ###########################################################################
     #                   Widget Visibility Functions                           #

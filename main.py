@@ -350,9 +350,7 @@ class MainWindow(QMainWindow):
         UIFunctions.addNewMenu(
             self, "Test Results", "btn_test_results", 
             "url(:/20x20/icons/20x20/cil-library.png)", True)
-        UIFunctions.addNewMenu(
-            self, "Oscilloscope", "btn_oscilloscope_control", 
-            "url(:/20x20/icons/20x20/cil-chart-line.png)", True)
+        # Oscilloscope controls live on Manual Equipment Control (bottom panel).
         # UIFunctions.addNewMenu(
         #     self, "I2C Controls", "btn_i2c_controls", 
         #     "url(:/20x20/icons/20x20/cil-lightbulb.png)", True)
