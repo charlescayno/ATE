@@ -23,7 +23,7 @@ from equipment.ac_source import *
 from equipment.power_meter import *
 from equipment.electronic_load import *
 import inject_ui
-from page_controls import pml_grid, eload_grid
+from page_controls import pml_grid, eload_grid, manual_scope_panel
 from equipment.eload_specs import ELoadTypes
 
 from user_settings.save_load import (write_to_default_config, read_from_default_config) 
@@ -241,7 +241,11 @@ class ManualControlPageHandler():
         self.bind_ui_elements()
         self.eload_grid = eload_grid.EloadGrid(self)
         self._build_aux_dc_source_panel()
+        self._build_estop_toolbar()
+        self.scope_panel = manual_scope_panel.ManualScopePanel(self)
+        self._wrap_equipment_in_scroll_area()
         self.dc_source_aux_accessible = False
+        self.oscilloscope_accessible = True
 
         # Use the equipment from the parent
         self.equipment:EquipmentHandler = parent.equipment
@@ -499,6 +503,127 @@ class ManualControlPageHandler():
         ui.frame_manual_control_dc_source_aux = frame
         frame.setVisible(False)
         self._stack_aux_under_dc_source()
+
+    def _wrap_equipment_in_scroll_area(self):
+        """Scroll meters/source/loads; keep header + oscilloscope panel fixed on screen."""
+        from PySide2.QtWidgets import QFrame, QScrollArea, QVBoxLayout, QWidget
+        from PySide2.QtCore import Qt
+
+        ui = self.ui
+        layout = ui.verticalLayout_12
+        upper = ui.frame_manual_control_upper
+        lower = ui.frame_manual_control_lower
+
+        scroll = QScrollArea(ui.page_manual_control)
+        scroll.setObjectName("scroll_manual_control_equipment")
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+
+        inner = QWidget()
+        inner.setObjectName("widget_manual_control_equipment_scroll")
+        inner_layout = QVBoxLayout(inner)
+        inner_layout.setContentsMargins(0, 0, 0, 0)
+        inner_layout.setSpacing(0)
+
+        layout.removeWidget(upper)
+        layout.removeWidget(lower)
+        inner_layout.addWidget(upper)
+        inner_layout.addWidget(lower)
+
+        scroll.setWidget(inner)
+        layout.insertWidget(1, scroll, 1)
+        ui.scroll_manual_control_equipment = scroll
+
+    def _build_estop_toolbar(self):
+        from PySide2.QtWidgets import QFrame, QHBoxLayout, QPushButton
+
+        ui = self.ui
+        ui.label_manual_control.setMaximumHeight(56)
+
+        bar = QFrame(ui.label_manual_control)
+        bar.setObjectName("frame_manual_control_estop")
+        h = QHBoxLayout(bar)
+        h.setContentsMargins(12, 0, 12, 4)
+        h.addStretch(1)
+
+        self.btn_estop = QPushButton("E-STOP", bar)
+        self.btn_estop.setObjectName("btn_manual_control_estop")
+        self.btn_estop.setMinimumWidth(96)
+        self.btn_estop.setStyleSheet(
+            "QPushButton { min-height: 28px; max-height: 32px; padding: 4px 14px; font-size: 12px;"
+            " font-weight: bold; color: white; background-color: rgb(180, 40, 40);"
+            " border: 2px solid rgb(220, 80, 80); border-radius: 6px; }"
+            " QPushButton:hover { background-color: rgb(210, 55, 55); }"
+            " QPushButton:pressed { background-color: rgb(120, 25, 25); }")
+        h.addWidget(self.btn_estop)
+
+        ui.verticalLayout_14.addWidget(bar)
+        ui.frame_manual_control_estop = bar
+        self.btn_estop.clicked.connect(self.emergency_stop_all)
+        ui.btn_manual_control_estop = self.btn_estop
+
+    def get_oscilloscope(self):
+        return getattr(self.equipment, 'oscilloscope', None) if self.equipment else None
+
+    def _refresh_scope_control_buttons(self):
+        if getattr(self, 'scope_panel', None) is not None:
+            self.scope_panel.refresh_controls()
+
+    def scope_run_continuous(self):
+        if getattr(self, 'scope_panel', None):
+            self.scope_panel.run_continuous()
+
+    def scope_run_single(self):
+        if getattr(self, 'scope_panel', None):
+            self.scope_panel.run_single()
+
+    def scope_stop(self):
+        if getattr(self, 'scope_panel', None):
+            self.scope_panel.stop()
+
+    def emergency_stop_all(self):
+        """All outputs off: source, aux HMP, e-loads, scope stop; cancel ramp and discharge."""
+        print("[E-STOP] Manual Equipment Control — shutting down outputs")
+        self.is_ramping = False
+        self.ac_source_request = AC_SOURCE_REQUEST.NO_REQUEST
+
+        self.scope_stop()
+
+        source = getattr(self, 'ac_source', None)
+        if source is not None:
+            try:
+                source.turn_off()
+            except Exception as exc:
+                print(f"[E-STOP] Source OFF failed: {exc}")
+
+        if getattr(self, 'dc_source_aux_accessible', False) and self.dc_source_aux is not None:
+            try:
+                from equipment.dc_source import HMP_MANUAL_CHANNEL_COUNT
+                channels = range(1, HMP_MANUAL_CHANNEL_COUNT + 1)
+                if not self._aux_dc_use_channels():
+                    channels = (1,)
+                for ch in channels:
+                    self._aux_dc_off_channel(ch)
+                self.update_aux_dc_status()
+            except Exception as exc:
+                print(f"[E-STOP] Aux DC OFF failed: {exc}")
+
+        for n in (1, 2, 3, 4):
+            ld = getattr(self.equipment, f'electronic_load_{n}', None)
+            if ld is None:
+                continue
+            try:
+                ld.turn_off()
+            except Exception as exc:
+                print(f"[E-STOP] E-Load CH{n} OFF failed: {exc}")
+
+        if getattr(self, 'discharge', None) is not None:
+            self.discharge.cancel()
+
+        self.eload_grid.refresh_status()
+        if getattr(self, 'scope_panel', None):
+            self.scope_panel._set_status("E-STOP", "rgb(255,80,80)")
 
     def _stack_aux_under_dc_source(self):
         from PySide2.QtWidgets import QFrame, QVBoxLayout, QSizePolicy
@@ -961,6 +1086,7 @@ class ManualControlPageHandler():
         self.power_meter_source = None
         self.electronic_load = None
 
+        self.oscilloscope_accessible = getattr(self.equipment, 'oscilloscope', None) is not None
         self.initialize_equipment_ui_frames()
         self.refresh_pml_assignment()
         self.refresh_eload_assignment()
@@ -972,6 +1098,7 @@ class ManualControlPageHandler():
         self.initialize_eload()
         self.initialize_power_meter_source()
         self.initialize_power_meter_load()
+        self._refresh_scope_control_buttons()
 
     def initialize_aux_dc_source(self):
         aux = getattr(self.equipment, 'dc_source_aux', None)
@@ -1528,7 +1655,10 @@ class ManualControlPageHandler():
         candidates = []
         for t in (QLineEdit, QComboBox, QCheckBox):
             candidates += self.ui.page_manual_control.findChildren(t)
-        candidates += self.pml_grid.dialog_state_widgets() + self.eload_grid.dialog_state_widgets()
+        scope_widgets = []
+        if getattr(self, 'scope_panel', None) is not None:
+            scope_widgets = self.scope_panel.dialog_state_widgets()
+        candidates += self.pml_grid.dialog_state_widgets() + self.eload_grid.dialog_state_widgets() + scope_widgets
         for widget in candidates:
                 obj_name = widget.objectName()
                 if not obj_name or widget in self.state_widgets: continue

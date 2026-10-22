@@ -465,7 +465,10 @@ class EloadGrid:
             tile.setStyleSheet(UNASSIGNED_STYLE.format(name=tile.objectName()))
             ch.w['title'].setText(f"E-LOAD CH{n} - Not assigned")
             ch.status.setText("")
+            tile.hide()
             self.dialogs[n].hide()
+        if assigned:
+            tile.show()
 
     def refresh_status(self):
         for ch in self.channels.values():

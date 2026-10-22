@@ -63,6 +63,9 @@ class FakeLoad:
     def reset_values(self):
         self._rec('reset')
 
+    def idle_after_discharge(self):
+        self._rec('idle_cc')
+
     @property
     def cc(self):
         return 0
@@ -120,6 +123,11 @@ def test_driver_commands():
     ld.restore_state(snap)
     check("driver: restore -> MODE CCL, L1 2.5, LOAD ON", 'MODE CCL' in cmds and 'CURR:STAT:L1 2.5' in cmds and st['LOAD'] == '1'
           and cmds.index('MODE CCL') < cmds.index('CURR:STAT:L1 2.5'), cmds)
+    cmds.clear()
+    ld.idle_after_discharge()
+    check("driver: idle_after_discharge -> CCL 0 A, no CRH/CRL",
+          'MODE CCL' in cmds and 'CURR:STAT:L1 0' in cmds and st['MODE'] == 'CCL'
+          and not any('CRH' in c or 'CRL' in c for c in cmds), cmds)
 
 
 def test_psu_discharge():
@@ -139,6 +147,8 @@ def test_psu_discharge():
         check(f"{mod.__name__.split('.')[-1]}: discharge uses CCH at test current, no SHORT/auto-range",
               names.count('cch') == 2 and all(e[2] == cch_a for e in log if e[1] == 'cch')
               and 'SHORT' not in names and 'AUTO_RANGE_CC' not in names, log)
+        check(f"{mod.__name__.split('.')[-1]}: post-discharge idle_cc, not reset/CRH",
+              names.count('idle_cc') == 1 and 'reset' not in names, log)
 
 
 def test_ui():

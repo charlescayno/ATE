@@ -1171,7 +1171,7 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
             sleep(0.5)
         for ld in loads:
             try:
-                ld.reset_values()
+                ld.idle_after_discharge()
             except Exception:
                 pass
 

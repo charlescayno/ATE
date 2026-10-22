@@ -823,6 +823,17 @@ class ElectronicLoadModule(Equipment):
         self._active_level = '1'
         self._cc = current
 
+    def idle_after_discharge(self):
+        '''After discharge pulses: load OFF in CCL at 0 A (never CRH/CRL).'''
+        self.turn_off()
+        self.write(f'{self.prog_func.channel} {self.channel}')
+        self.write(f'{self.prog_func.load} OFF')
+        self.write(f'{self.prog_func.mode} CCL')
+        self.write(f'{self.prog_func.current_static}:L1 0')
+        self.active_channel_mode = 'CCL'
+        self._active_level = '1'
+        self._cc = 0.0
+
     def snapshot_state(self) -> dict:
         self.write(f'{self.prog_func.channel} {self.channel}')
         mode = self.write(f'{self.prog_func.mode}?')

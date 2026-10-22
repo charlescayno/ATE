@@ -481,7 +481,7 @@ class VdsIdsSteadyStateTest(BaseTestObject):
                     except Exception:
                         pass
             try:
-                self.electronic_load.reset_values()
+                self.electronic_load.idle_after_discharge()
             except Exception:
                 pass
 

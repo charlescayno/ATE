@@ -862,7 +862,7 @@ class EquipmentHandler():
         sleep(3)
         self.electronic_load_1.turn_off()
         sleep(0.5)
-        self.electronic_load_1.reset_values()
+        self.electronic_load_1.idle_after_discharge()
         self.power_meter_load_1.set_current_range_max()
         self.power_meter_load_1.current_auto_range_enable()
             

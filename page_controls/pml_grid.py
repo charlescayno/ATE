@@ -202,7 +202,10 @@ class PmlGrid:
             for lbl in w['labels']:
                 lbl.setText('—')
             tile.setEnabled(False)
+            tile.hide()
             self.dialogs[n].hide()
+        if assigned:
+            tile.show()
 
     def set_share(self, n, share_pct):
         self.widgets[n]['labels'][3].setText('None' if share_pct is None else f'{share_pct:.1f}% Share')
@@ -277,3 +280,18 @@ class DischargeSequencer:
                 self._emit(f"{name}: {action} failed ({e})")
         self._emit(action)
         self.timer.start(hold_ms)
+
+    def cancel(self):
+        """Abort an in-progress discharge sequence (e.g. manual E-STOP)."""
+        if self.timer.isActive():
+            self.timer.stop()
+        self.steps = []
+        loads = getattr(self, 'loads', None) or []
+        for name, ld in loads:
+            try:
+                ld.turn_off()
+            except Exception as e:
+                self._emit(f"{name}: cancel off failed ({e})")
+        if self.running:
+            self._emit("cancelled")
+        self.running = False
