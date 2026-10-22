@@ -13,6 +13,17 @@ from equipment.definitions import EquipmentType
 from equipment.ac_source import AC_SOURCE_COUPLING
 from equipment.handler import EquipmentHandler
 
+
+def sim_line_input_is_dc() -> bool:
+    """When true, virtual bench uses Magna primary DC (not AC) for Manual Control demo."""
+    return os.environ.get("PI_ATE_SIM_LINE_INPUT", "DC").strip().upper() in (
+        "DC",
+        "1",
+        "YES",
+        "TRUE",
+    )
+
+
 class VirtualCircuitState:
     """Shared physical state of the simulated Unit Under Test (UUT) and bench instruments."""
     def __init__(self):
@@ -159,12 +170,16 @@ class SimulatedDCSource:
         self.output_status = 1
         if self.is_hmp_series():
             self._hmp_channels[self._hmp_active]['on'] = 1
+        if not self.aux_rail:
+            self.state.ac_on = True
         print(f"[DC_SOURCE] DC Source Simulated: Output ON")
 
     def turn_off(self):
         self.output_status = 0
         if self.is_hmp_series():
             self._hmp_channels[self._hmp_active]['on'] = 0
+        if not self.aux_rail:
+            self.state.ac_on = False
         print(f"[DC_SOURCE] DC Source Simulated: Output OFF")
 
 
@@ -761,9 +776,11 @@ class SimulatedEquipmentHandler(EquipmentHandler):
     def auto_set_ac_source_roles(self): pass
 
     def auto_set_dc_source_roles(self):
-        """Simulation: primary DC unassigned by default; Aux DC = HMP when present."""
+        """Simulation: primary Magna DC when PI_ATE_SIM_LINE_INPUT=DC; Aux = HMP when present."""
         self.dc_source = None
         self.dc_source_aux = None
+        if sim_line_input_is_dc() and self.dc_sources:
+            self.dc_source = self.dc_sources[0]
         self.prefer_hmp_as_aux()
     def auto_set_electronic_load_roles(self): pass
     def auto_set_power_meter_roles(self): pass
@@ -803,9 +820,6 @@ class SimulatedEquipmentHandler(EquipmentHandler):
     def seed_manual_control_demo(self):
         """Typical 2-port bench numbers so Manual Control meters show live telemetry in simulation."""
         s = self.state
-        s.vin = 115.0
-        s.freq = 60.0
-        s.ac_on = True
         s.nominal_eff = 0.90
         s.pf = 0.96
         bench = {
@@ -814,6 +828,26 @@ class SimulatedEquipmentHandler(EquipmentHandler):
             3: (5.0, 0.0, False),
             4: (5.0, 0.0, False),
         }
+        if sim_line_input_is_dc():
+            vin = 48.0
+            s.vin = vin
+            s.freq = 0.0
+            s.ac_on = False
+            if self.ac_source is not None:
+                self.ac_source.turn_off()
+            if self.dc_source is not None:
+                self.dc_source.voltage = vin
+                self.dc_source.turn_on()
+            line_msg = f"{vin:g} VDC in"
+        else:
+            s.vin = 115.0
+            s.freq = 60.0
+            s.ac_on = True
+            if self.ac_source is not None:
+                self.ac_source.turn_on()
+            if self.dc_source is not None:
+                self.dc_source.turn_off()
+            line_msg = "115 VAC in"
         for ch, (vout, iout, on) in bench.items():
             s.loads[ch] = {'target_vout': vout, 'iout': iout, 'load_on': on}
             el = getattr(self, f'electronic_load_{ch}', None)
@@ -824,7 +858,7 @@ class SimulatedEquipmentHandler(EquipmentHandler):
             el._ch['load_on'] = on
             el.active_channel_mode = 'CCL'
             el.active_channel_status = '1' if on else '0'
-        print("[SIM] Manual Control demo: 115 VAC in · 5 V @ 3 A + 5 V @ 2 A out (~90% eff)")
+        print(f"[SIM] Manual Control demo: {line_msg} · 5 V @ 3 A + 5 V @ 2 A out (~90% eff)")
 
     def input_supply_eload_discharge_sequence(self, iout_A, coupling=AC_SOURCE_COUPLING.AC):
         self.electronic_load_1.set_cc_high(iout_A)

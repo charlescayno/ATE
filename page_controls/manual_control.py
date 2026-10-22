@@ -431,15 +431,13 @@ class ManualControlPageHandler():
         hdr = QLabel("Ch", params)
         hdr.setStyleSheet(lbl_style + " border: none;")
         grid.addWidget(hdr, 0, 0)
-        for col, text in enumerate(("V", "A", "", "", "", "Out"), start=1):
-            if text:
-                h = QLabel(text, params)
-                h.setStyleSheet(lbl_style + " border: none;")
-                h.setAlignment(Qt.AlignCenter)
-                grid.addWidget(h, 0, col)
+        for col, text in ((1, "V"), (2, "A"), (4, "OUT")):
+            h = QLabel(text, params)
+            h.setStyleSheet(lbl_style + " border: none;")
+            h.setAlignment(Qt.AlignCenter)
+            grid.addWidget(h, 0, col)
 
         self.hmp_aux_channel_widgets = {}
-        btn_off_style = manual_control_theme.compact_button_style()
 
         for ch in range(1, HMP_MANUAL_CHANNEL_COUNT + 1):
             row = ch
@@ -462,33 +460,28 @@ class ManualControlPageHandler():
             btn_apply.setObjectName(f"btn_manual_control_dc_aux_apply_ch{ch}")
             btn_apply.setStyleSheet(btn_on_style)
             btn_apply.setToolTip("Apply V / I for this channel")
-            btn_on = QPushButton("On", params)
-            btn_on.setObjectName(f"btn_manual_control_dc_aux_turn_on_ch{ch}")
-            btn_on.setStyleSheet(btn_on_style)
-            btn_off = QPushButton("Off", params)
-            btn_off.setObjectName(f"btn_manual_control_dc_aux_turn_off_ch{ch}")
-            btn_off.setStyleSheet(btn_off_style)
-            lbl_status = QLabel("OFF", params)
-            lbl_status.setObjectName(f"label_manual_control_dc_aux_status_ch{ch}")
-            lbl_status.setStyleSheet(manual_control_theme.telemetry_label_style())
-            lbl_status.setFont(manual_control_theme.telemetry_font(11))
-            lbl_status.setAlignment(Qt.AlignCenter)
-            lbl_status.setMinimumWidth(32)
+            btn_out = QPushButton("OFF", params)
+            btn_out.setObjectName(f"btn_manual_control_dc_aux_output_ch{ch}")
+            btn_out.setCheckable(True)
+            btn_out.setChecked(False)
+            btn_out.setToolTip("Toggle channel output")
+            btn_out.setStyleSheet(manual_control_theme.aux_output_button_style(on=False))
+            btn_out.setFont(manual_control_theme.telemetry_font(11))
 
             grid.addWidget(lbl_ch, row, 0)
             grid.addWidget(le_v, row, 1)
             grid.addWidget(le_i, row, 2)
             grid.addWidget(btn_apply, row, 3)
-            grid.addWidget(btn_on, row, 4)
-            grid.addWidget(btn_off, row, 5)
-            grid.addWidget(lbl_status, row, 6)
+            grid.addWidget(btn_out, row, 4)
 
             btn_apply.clicked.connect(partial(self.aux_dc_apply_settings, ch))
-            btn_on.clicked.connect(partial(self.aux_dc_turn_on, ch))
-            btn_off.clicked.connect(partial(self.aux_dc_turn_off, ch))
+            btn_out.toggled.connect(partial(self._aux_dc_output_toggled, ch))
 
             self.hmp_aux_channel_widgets[ch] = {
-                'le_v': le_v, 'le_i': le_i, 'status': lbl_status, 'buttons': lbl_status,
+                'le_v': le_v,
+                'le_i': le_i,
+                'output_btn': btn_out,
+                'status': btn_out,
             }
 
         grid.setColumnStretch(1, 1)
@@ -499,11 +492,12 @@ class ManualControlPageHandler():
         w1 = self.hmp_aux_channel_widgets[1]
         ui.lineedit_manual_control_dc_aux_voltage = w1['le_v']
         ui.lineedit_manual_control_dc_aux_current = w1['le_i']
-        ui.label_manual_control_dc_aux_status = w1['status']
-        ui.frame_manual_control_dc_aux_buttons = w1['buttons']
+        ui.label_manual_control_dc_aux_status = w1['output_btn']
+        ui.frame_manual_control_dc_aux_buttons = w1['output_btn']
         ui.btn_manual_control_dc_aux_apply = frame.findChild(QPushButton, "btn_manual_control_dc_aux_apply_ch1")
-        ui.btn_manual_control_dc_aux_turn_on = frame.findChild(QPushButton, "btn_manual_control_dc_aux_turn_on_ch1")
-        ui.btn_manual_control_dc_aux_turn_off = frame.findChild(QPushButton, "btn_manual_control_dc_aux_turn_off_ch1")
+        ui.btn_manual_control_dc_aux_output = w1['output_btn']
+        ui.btn_manual_control_dc_aux_turn_on = w1['output_btn']
+        ui.btn_manual_control_dc_aux_turn_off = w1['output_btn']
 
         ui.frame_manual_control_dc_source_aux = frame
         frame.setVisible(False)
@@ -1162,8 +1156,13 @@ class ManualControlPageHandler():
         """Match Manual Control fields to the simulated demo bench."""
         ui = self.ui
         try:
-            ui.lineedit_manual_control_ac_source_voltage.setText('115')
-            ui.lineedit_manual_control_ac_source_frequency.setText('60')
+            from equipment.simulated_handler import sim_line_input_is_dc
+
+            if sim_line_input_is_dc() and is_magna_hvdc(getattr(self, 'ac_source', None)):
+                ui.lineedit_manual_control_ac_source_voltage.setText('48')
+            else:
+                ui.lineedit_manual_control_ac_source_voltage.setText('115')
+                ui.lineedit_manual_control_ac_source_frequency.setText('60')
         except Exception:
             pass
 
@@ -1249,6 +1248,25 @@ class ManualControlPageHandler():
         except Exception as e:
             print(f"[DC_SOURCE] Aux CH{channel} OFF failed: {e}")
 
+    def _aux_dc_output_toggled(self, channel: int, checked: bool):
+        if not self.dc_source_aux_accessible or self.dc_source_aux is None:
+            w = self.hmp_aux_channel_widgets.get(channel)
+            if w:
+                self._sync_aux_output_button(w, False)
+            return
+        if checked:
+            self.aux_dc_turn_on(channel)
+        else:
+            self.aux_dc_turn_off(channel)
+
+    def _sync_aux_output_button(self, w, on: bool):
+        btn = w['output_btn']
+        btn.blockSignals(True)
+        btn.setChecked(on)
+        btn.setText("ON" if on else "OFF")
+        btn.setStyleSheet(manual_control_theme.aux_output_button_style(on=on))
+        btn.blockSignals(False)
+
     def update_aux_dc_status(self):
         if not getattr(self, 'dc_source_aux_accessible', False) or self.dc_source_aux is None:
             return
@@ -1267,10 +1285,7 @@ class ManualControlPageHandler():
                     self.dc_source_aux.update_status()
                     on_val = self.dc_source_aux.output_status
                 on = on_val == DC_SOURCE_STATUS.ON
-                w['status'].setText("ON" if on else "OFF")
-                w['status'].setStyleSheet(
-                    "color: rgb(85,255,127); border: none; font-size: 11px; font-weight: bold;" if on
-                    else "color: rgb(140,140,140); border: none; font-size: 11px; font-weight: bold;")
+                self._sync_aux_output_button(w, on)
         except Exception:
             pass
 

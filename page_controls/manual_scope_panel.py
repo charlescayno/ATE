@@ -59,32 +59,34 @@ class ManualScopePanel:
         compact = btn_style + " QPushButton { min-height: 24px; max-height: 26px; padding: 2px 10px; font-size: 10px; }"
         lbl_style = "color: rgb(190,190,190); font-size: 10px; border: none;"
 
-        header = QHBoxLayout()
-        self.btn_collapse = QToolButton(frame)
+        self.header_widget = QWidget(frame)
+        header = QHBoxLayout(self.header_widget)
+        header.setContentsMargins(0, 0, 0, 0)
+        self.btn_collapse = QToolButton(self.header_widget)
         self.btn_collapse.setCheckable(True)
         self.btn_collapse.setChecked(True)
         self.btn_collapse.setText("▼")
         self.btn_collapse.setToolTip("Collapse / expand oscilloscope panel")
         self.btn_collapse.setStyleSheet(mc_theme.gear_style())
         header.addWidget(self.btn_collapse)
-        title = QLabel("OSCILLOSCOPE", frame)
+        title = QLabel("OSCILLOSCOPE", self.header_widget)
         title.setStyleSheet(mc_theme.section_title_style())
         title.setFont(mc_theme.label_font(11))
         header.addWidget(title)
-        self.label_status = QLabel("—", frame)
+        self.label_status = QLabel("—", self.header_widget)
         self.label_status.setStyleSheet(
             f"color:{mc_theme.TEXT_MUTED}; border:none; font-family:{mc_theme.FONT_TELEMETRY};"
             f" font-size:10px; font-weight:600;")
         header.addWidget(self.label_status)
         header.addStretch(1)
 
-        self.btn_run = QPushButton("Run", frame)
-        self.btn_run_single = QPushButton("Run Single", frame)
-        self.btn_stop = QPushButton("Stop", frame)
+        self.btn_run = QPushButton("Run", self.header_widget)
+        self.btn_run_single = QPushButton("Run Single", self.header_widget)
+        self.btn_stop = QPushButton("Stop", self.header_widget)
         for btn in (self.btn_run, self.btn_run_single, self.btn_stop):
             btn.setStyleSheet(compact)
             header.addWidget(btn)
-        outer.addLayout(header)
+        outer.addWidget(self.header_widget)
 
         self.body = QWidget(frame)
         body_l = QVBoxLayout(self.body)
@@ -169,10 +171,28 @@ class ManualScopePanel:
         self.btn_apply_trigger.clicked.connect(self._apply_trigger_mode_and_level)
         self.btn_capture.clicked.connect(self.capture_waveform)
         self.btn_collapse.toggled.connect(self._set_body_visible)
+        self._set_body_visible(True)
 
     def _set_body_visible(self, expanded: bool):
         self.body.setVisible(expanded)
         self.btn_collapse.setText("▼" if expanded else "▶")
+        for w in (
+            self.btn_capture,
+            self.lineedit_filename,
+            self.label_capture_path,
+            self.btn_apply_trigger,
+            self.lineedit_trigger_level,
+            self.cbx_trigger_mode,
+            self.cbx_trigger_channel,
+            self.cbx_trigger_edge,
+        ):
+            w.setVisible(expanded)
+        frame = self.ui.frame_manual_control_oscilloscope
+        if expanded:
+            frame.setMaximumHeight(16777215)
+            frame.setMinimumHeight(0)
+        else:
+            frame.setMaximumHeight(self.header_widget.sizeHint().height() + 20)
 
     def _apply_trigger_mode_and_level(self):
         # edge_trigger() drivers force NORM briefly; re-apply mode after edge setup.

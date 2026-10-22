@@ -76,6 +76,26 @@ def compact_button_style() -> str:
     )
 
 
+def aux_output_button_style(*, on: bool) -> str:
+    """Single HMP channel output toggle — green when ON, muted when OFF."""
+    if on:
+        return (
+            f"QPushButton{{background-color:#14532d; color:{GO}; border:1px solid {GO};"
+            f" border-radius:2px; padding:2px 10px; font-family:{FONT_TELEMETRY};"
+            f" font-size:11px; font-weight:700; min-height:22px; max-height:26px;"
+            f" min-width:44px;}}"
+            f" QPushButton:hover{{background-color:#166534;}}"
+            f" QPushButton:pressed{{background-color:#15803d;}}"
+        )
+    return (
+        f"QPushButton{{background-color:{BG_TILE}; color:{TEXT_MUTED}; border:1px solid {LINE};"
+        f" border-radius:2px; padding:2px 10px; font-family:{FONT_TELEMETRY};"
+        f" font-size:11px; font-weight:700; min-height:22px; max-height:26px;"
+        f" min-width:44px;}}"
+        f" QPushButton:hover{{border-color:{TEXT_MUTED}; color:{TEXT};}}"
+    )
+
+
 def _is_telemetry_label(name: str) -> bool:
     if not name:
         return False
