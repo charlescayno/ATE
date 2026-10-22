@@ -97,8 +97,8 @@ def run_case(mode_key: str, out_dir: str) -> list:
     hmp = getattr(test.equipment, 'dc_source_aux', None)
     if hmp is None or not hmp.is_hmp_series():
         errors.append(f"mode {mode_key}: expected HMP dc_source_aux for bulk-cap connect")
-    elif getattr(hmp, 'output_status', 0) != 1:
-        errors.append(f"mode {mode_key}: HMP should be ON after startup captures")
+    elif getattr(hmp, 'output_status', 0) != 0:
+        errors.append(f"mode {mode_key}: HMP should be OFF after test (last capture)")
 
     n_points = len(test.load_pairs)
     wb = openpyxl.load_workbook(test.data_file_path)
