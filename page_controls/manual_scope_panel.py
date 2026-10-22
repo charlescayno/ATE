@@ -38,6 +38,46 @@ TRIGGER_EDGES = ("Rising", "Falling", "Either")
 TRIGGER_EDGE_SCPI = {"Rising": "POS", "Falling": "NEG", "Either": "EITH"}
 
 
+class TriggerLevelEdit(QLineEdit):
+    """Trigger level field — mouse wheel adjusts volts (WheelFocus, like legacy scope UI)."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.setFocusPolicy(Qt.WheelFocus)
+        self.setToolTip(
+            "Scroll to change level (V). Ctrl: fine 0.01 V · Shift: coarse 1 V · default 0.1 V"
+        )
+        self._wheel_apply_callback = None
+
+    def set_wheel_apply_callback(self, callback):
+        self._wheel_apply_callback = callback
+
+    def _step_for_event(self, event) -> float:
+        mods = event.modifiers()
+        if mods & Qt.ControlModifier:
+            return 0.01
+        if mods & Qt.ShiftModifier:
+            return 1.0
+        return 0.1
+
+    def wheelEvent(self, event):
+        delta_y = event.angleDelta().y()
+        if delta_y == 0:
+            return
+        step = self._step_for_event(event)
+        try:
+            val = float(self.text().strip())
+        except ValueError:
+            val = 0.0
+        val += step if delta_y > 0 else -step
+        val = max(-50.0, min(50.0, val))
+        text = f"{val:.4f}".rstrip("0").rstrip(".")
+        self.setText(text)
+        event.accept()
+        if self._wheel_apply_callback is not None:
+            self._wheel_apply_callback()
+
+
 class ManualScopePanel:
     def __init__(self, handler: "ManualControlPageHandler"):
         self.handler = handler
@@ -114,7 +154,7 @@ class ManualScopePanel:
         self.cbx_trigger_edge = self.body.findChild(QComboBox, "cbx_manual_control_scope_trigger_edge")
 
         trig_row.addWidget(QLabel("Level (V)", self.body))
-        self.lineedit_trigger_level = QLineEdit(self.body)
+        self.lineedit_trigger_level = TriggerLevelEdit(self.body)
         self.lineedit_trigger_level.setObjectName("lineedit_manual_control_scope_trigger_level")
         self.lineedit_trigger_level.setText("0.0")
         self.lineedit_trigger_level.setMaximumWidth(72)
@@ -190,6 +230,8 @@ class ManualScopePanel:
         self.btn_run_single.clicked.connect(self.run_single)
         self.btn_stop.clicked.connect(self.stop)
         self.btn_apply_trigger.clicked.connect(self._apply_trigger_mode_and_level)
+        self.lineedit_trigger_level.set_wheel_apply_callback(
+            self._apply_trigger_from_wheel)
         self.btn_auto_find_trigger.clicked.connect(self.auto_find_trigger)
         self.btn_auto_find_settings.clicked.connect(self._open_auto_find_settings)
         self.btn_capture.clicked.connect(self.capture_waveform)
@@ -223,6 +265,12 @@ class ManualScopePanel:
         # edge_trigger() drivers force NORM briefly; re-apply mode after edge setup.
         self.apply_edge_trigger()
         self.apply_trigger_mode()
+
+    def _apply_trigger_from_wheel(self):
+        """Live edge update while scrolling level (skip full mode re-apply)."""
+        if self._auto_find_running:
+            return
+        self.apply_edge_trigger()
 
     def get_scope(self):
         return self.handler.get_oscilloscope()
