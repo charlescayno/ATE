@@ -786,15 +786,38 @@ class ManualControlPageHandler():
         self.ui_pml_total_update()
 
     def ui_pml_total_update(self):
+        self.refresh_pml_tile_visibility()
         accessible = {n: getattr(self, 'power_meter_load_accessible' if n == 1 else f'power_meter_load_{n}_accessible', False)
                       for n in pml_grid.CHANNELS}
-        pouts = {n: p for n, p in self.pml_pout_W.items() if accessible[n] and p is not None}
+        shown = {n: accessible[n] and self.pml_grid.is_tile_shown(n) for n in pml_grid.CHANNELS}
+        pouts = {n: p for n, p in self.pml_pout_W.items() if shown[n] and p is not None}
         pin = getattr(self, 'Pin_W', None) if getattr(self, 'power_meter_source_accessible', False) else None
         total, eff, shares = pml_grid.compute_efficiency(pin, pouts)
         for n in pml_grid.CHANNELS:
-            if accessible[n]:
+            if shown[n]:
                 self.pml_grid.set_share(n, shares.get(n))
         self.pml_grid.set_totals(pin, total, eff, len(pouts))
+
+    def refresh_pml_tile_visibility(self):
+        """Apply hide-unused option; unassigned channels always hidden."""
+        grid = self.pml_grid
+        hide_unused = grid.hide_unused_load_pm
+        for n in pml_grid.CHANNELS:
+            pm = getattr(self.equipment, f'power_meter_load_{n}', None)
+            if pm is None:
+                grid.set_assigned(n, False)
+                continue
+            if not grid.assigned.get(n, False):
+                grid.set_assigned(n, True)
+            unused = False
+            if hide_unused:
+                pout = self.pml_pout_W.get(n)
+                unused = pout is None or pout < pml_grid.UNUSED_POUT_W
+            if unused:
+                grid.set_unused_hidden(n, True)
+            else:
+                grid.tile_visible[n] = True
+                grid.set_unused_hidden(n, False)
 
     @power_meter_source_access
     def ui_power_meter_source_update(self):

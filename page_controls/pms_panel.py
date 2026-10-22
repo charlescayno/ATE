@@ -48,7 +48,7 @@ class PmsPanel:
         ui.label_source_power_meter.setParent(header)
         ui.label_source_power_meter.setText("SOURCE PM")
         ui.label_source_power_meter.setStyleSheet(mc_theme.section_title_style())
-        ui.label_source_power_meter.setFont(mc_theme.label_font(10))
+        ui.label_source_power_meter.setFont(mc_theme.label_font(mc_theme.PT_SECTION))
         ui.label_source_power_meter.setMaximumHeight(16777215)
         hl.addWidget(ui.label_source_power_meter, 1)
 
@@ -77,19 +77,20 @@ class PmsPanel:
             ui.label_pms_display_c,
             ui.label_pms_display_d,
         ):
-            lbl.setFont(mc_theme.telemetry_font(15))
+            lbl.setFont(mc_theme.telemetry_font(mc_theme.PT_TELEMETRY))
             lbl.setStyleSheet(mc_theme.telemetry_label_style())
-            lbl.setMinimumHeight(24)
-            lbl.setMaximumHeight(30)
-        ui.frame_pms_display_select.setMaximumWidth(78)
+            lbl.setMinimumHeight(30)
+            lbl.setMaximumHeight(40)
+        ui.frame_pms_display_select.setMaximumWidth(92)
         for cbx in (
             ui.cbx_pms_display_a,
             ui.cbx_pms_display_b,
             ui.cbx_pms_display_c,
             ui.cbx_pms_display_d,
         ):
-            cbx.setMinimumHeight(24)
-            cbx.setMaximumHeight(30)
+            cbx.setMinimumHeight(28)
+            cbx.setMaximumHeight(34)
+            cbx.setFont(mc_theme.input_font(mc_theme.PT_COMBO))
 
         self.dialog = PmsSettingsDialog(self.handler.parent, ui.frame_pms_control)
 

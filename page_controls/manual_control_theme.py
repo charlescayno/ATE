@@ -32,6 +32,15 @@ SIM = "#93c5fd"
 FONT_UI = '"Segoe UI", "Helvetica Neue", Arial, sans-serif'
 FONT_TELEMETRY = '"Consolas", "Cascadia Mono", "Courier New", monospace'
 
+# Readable mission-control sizes (Manual Equipment Control)
+PT_UI = 11
+PT_SECTION = 11
+PT_TELEMETRY = 18
+PT_TELEMETRY_STRIP = 14
+PT_INPUT = 12
+PT_COMBO = 12
+PT_FIELD = 10
+
 
 def telemetry_font(point_size: int = 15, bold: bool = True) -> QFont:
     f = QFont("Consolas", point_size)
@@ -216,14 +225,17 @@ def header_strip_style(object_name: str) -> str:
     )
 
 
-def telemetry_label_style(*, accent: bool = False) -> str:
+def telemetry_label_style(*, accent: bool = False, point_size: int = PT_TELEMETRY) -> str:
     color = GO if accent else TEXT
-    return f"color:{color}; border:none; font-family:{FONT_TELEMETRY};"
+    return (
+        f"color:{color}; border:none; font-family:{FONT_TELEMETRY};"
+        f" font-size:{point_size}px; font-weight:600;"
+    )
 
 
 def section_title_style() -> str:
     return (
-        f"color:{TEXT_MUTED}; border:none; font-family:{FONT_UI}; font-size:10px;"
+        f"color:{TEXT_MUTED}; border:none; font-family:{FONT_UI}; font-size:{PT_SECTION}px;"
         f" font-weight:600; letter-spacing:1px;"
     )
 
@@ -231,20 +243,20 @@ def section_title_style() -> str:
 def page_stylesheet() -> str:
     return (
         f"QWidget#page_manual_control{{background-color:{BG_VOID}; font-family:{FONT_UI};"
-        f" font-size:10px;}}"
+        f" font-size:{PT_UI}px;}}"
         f" QScrollArea{{background-color:{BG_VOID}; border:none;}}"
         f" QWidget#widget_manual_control_equipment_scroll{{background-color:{BG_VOID};}}"
-        f" QLabel{{color:{TEXT_LABEL}; font-family:{FONT_UI}; font-size:10px;}}"
+        f" QLabel{{color:{TEXT_LABEL}; font-family:{FONT_UI}; font-size:{PT_UI}px;}}"
         f" QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox{{background-color:{BG_VOID};"
-        f" color:{TEXT}; font-family:{FONT_TELEMETRY}; font-size:11px;"
-        f" border:1px solid {LINE}; border-radius:2px; padding:2px 4px;}}"
+        f" color:{TEXT}; font-family:{FONT_TELEMETRY}; font-size:{PT_INPUT}px;"
+        f" border:1px solid {LINE}; border-radius:2px; padding:3px 6px; min-height:26px;}}"
         f" QComboBox QAbstractItemView{{background-color:{BG_PANEL}; color:{TEXT};"
         f" font-family:{FONT_TELEMETRY}; selection-background-color:#1c1c22;}}"
         f" QPushButton{{background-color:{BG_TILE}; color:{TEXT}; border:1px solid {LINE};"
-        f" border-radius:2px; padding:4px 10px; font-family:{FONT_UI}; font-size:10px;"
-        f" font-weight:600;}}"
+        f" border-radius:2px; padding:4px 10px; font-family:{FONT_UI}; font-size:{PT_UI}px;"
+        f" font-weight:600; min-height:26px;}}"
         f" QPushButton:hover{{border-color:{TEXT_MUTED}; background-color:#1a1a20;}}"
-        f" QCheckBox{{color:{TEXT}; spacing:4px; font-family:{FONT_UI}; font-size:10px;}}"
+        f" QCheckBox{{color:{TEXT}; spacing:4px; font-family:{FONT_UI}; font-size:{PT_UI}px;}}"
         f" QToolButton{{font-family:{FONT_UI};}}"
     )
 
@@ -285,38 +297,48 @@ def apply_page_fonts(handler) -> None:
         for lbl in root.findChildren(QLabel):
             name = lbl.objectName() or ""
             if _is_telemetry_label(name):
-                lbl.setFont(telemetry_font(14))
-                if "total_eff" not in name:
-                    lbl.setStyleSheet(telemetry_label_style())
+                if name.startswith("label_pml_total_"):
+                    lbl.setFont(telemetry_font(PT_TELEMETRY_STRIP))
+                    lbl.setStyleSheet(
+                        telemetry_label_style(
+                            accent="total_eff" in name, point_size=PT_TELEMETRY_STRIP
+                        )
+                    )
+                else:
+                    lbl.setFont(telemetry_font(PT_TELEMETRY))
+                    if "total_eff" not in name:
+                        lbl.setStyleSheet(telemetry_label_style())
             elif _is_section_title(name):
-                lbl.setFont(label_font(10))
+                lbl.setFont(label_font(PT_SECTION))
                 if name != "label_2":
                     lbl.setStyleSheet(section_title_style())
             elif name.startswith("label_"):
-                lbl.setFont(label_font(9, bold=False))
+                lbl.setFont(label_font(PT_FIELD, bold=False))
 
         for w in root.findChildren(QLineEdit):
-            w.setFont(input_font(11))
+            w.setFont(input_font(PT_INPUT))
         for w in root.findChildren(QComboBox):
-            w.setFont(input_font(10))
+            w.setFont(input_font(PT_COMBO))
         for spin_type in (QSpinBox, QDoubleSpinBox):
             for w in root.findChildren(spin_type):
-                w.setFont(input_font(10))
+                w.setFont(input_font(PT_COMBO))
         for w in root.findChildren(QPushButton):
             if w.objectName() == "btn_manual_control_estop":
                 continue
-            w.setFont(label_font(9, bold=True))
+            w.setFont(label_font(PT_UI, bold=True))
         for w in root.findChildren(QCheckBox):
-            w.setFont(label_font(9, bold=False))
+            w.setFont(label_font(PT_UI, bold=False))
 
-    ui.page_manual_control.setFont(label_font(10, bold=False))
+    ui.page_manual_control.setFont(label_font(PT_UI, bold=False))
     for r in roots:
         walk(r)
 
     eff = getattr(ui, "label_pml_total_eff", None)
     if eff is not None:
-        eff.setFont(telemetry_font(12))
-        eff.setStyleSheet(f"color:{GO}; border:none; font-family:{FONT_TELEMETRY}; font-weight:700;")
+        eff.setFont(telemetry_font(PT_TELEMETRY_STRIP, bold=True))
+        eff.setStyleSheet(
+            telemetry_label_style(accent=True, point_size=PT_TELEMETRY_STRIP)
+        )
 
 
 def apply_page_theme(handler) -> None:
@@ -363,5 +385,5 @@ def apply_page_theme(handler) -> None:
     for lbl in ui.page_manual_control.findChildren(QLabel):
         name = lbl.objectName() or ""
         if "label_pms_display_" in name or "label_pml_display_" in name:
-            lbl.setMaximumHeight(32)
-            lbl.setMinimumHeight(24)
+            lbl.setMaximumHeight(40)
+            lbl.setMinimumHeight(30)

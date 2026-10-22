@@ -7,13 +7,14 @@ Also hosts the non-blocking output discharge sequencer used by Manual Control.
 """
 from PySide2.QtCore import Qt, QTimer
 from PySide2.QtGui import QFont
-from PySide2.QtWidgets import (QDialog, QFrame, QGridLayout, QHBoxLayout, QLabel,
+from PySide2.QtWidgets import (QCheckBox, QDialog, QFrame, QGridLayout, QHBoxLayout, QLabel,
                                QPushButton, QSizePolicy, QToolButton, QVBoxLayout, QWidget)
 
 from page_controls import manual_control_theme as mc_theme
 
 CHANNELS = (1, 2, 3, 4)
 PIN_LIMIT_W = 10e3
+UNUSED_POUT_W = 0.05
 
 GEAR_STYLE = mc_theme.gear_style()
 DIALOG_STYLE = mc_theme.dialog_style()
@@ -70,6 +71,9 @@ class PmlGrid:
         self.dialogs = {}
         self.gears = {}
         self.assigned = {n: True for n in CHANNELS}
+        self.tile_visible = {n: True for n in CHANNELS}
+        self.hide_unused_load_pm = True
+        self._grid = None
         self._build()
 
     def _build(self):
@@ -89,18 +93,18 @@ class PmlGrid:
         v.setSpacing(2)
         v.addWidget(self._build_strip(container))
 
-        grid = QGridLayout()
-        grid.setSpacing(4)
-        grid.setContentsMargins(0, 0, 0, 0)
+        self._grid = QGridLayout()
+        self._grid.setSpacing(4)
+        self._grid.setContentsMargins(0, 0, 0, 0)
         for n in CHANNELS:
             self._compact_tile(n)
-            grid.addWidget(self.widgets[n]['tile'], (n - 1) // 2, (n - 1) % 2)
             self.widgets[n]['tile'].show()
         for col in range(2):
-            grid.setColumnStretch(col, 0)
+            self._grid.setColumnStretch(col, 0)
         for row in range(2):
-            grid.setRowStretch(row, 0)
-        v.addLayout(grid, 0)
+            self._grid.setRowStretch(row, 0)
+        v.addLayout(self._grid, 0)
+        self._relayout_visible_tiles()
 
         container.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)
         upper.insertWidget(idx, container, 0)
@@ -111,12 +115,10 @@ class PmlGrid:
         strip = QFrame(parent)
         strip.setObjectName("frame_pml_total")
         strip.setStyleSheet(STRIP_STYLE)
-        strip.setMaximumHeight(36)
+        strip.setMaximumHeight(44)
         h = QHBoxLayout(strip)
         h.setContentsMargins(4, 0, 4, 2)
-        font = QFont()
-        font.setPointSize(12)
-        font.setBold(True)
+        font = mc_theme.telemetry_font(mc_theme.PT_TELEMETRY_STRIP, bold=True)
         self.label_pin = QLabel("Pin: None", strip)
         self.label_pout = QLabel("ΣPout: None", strip)
         self.label_eff = QLabel("Total Eff: None", strip)
@@ -125,10 +127,44 @@ class PmlGrid:
             lbl.setAlignment(Qt.AlignCenter)
             h.addWidget(lbl, 1)
         self.label_eff.setStyleSheet("color: rgb(85, 255, 127);")
+        self.chk_hide_unused = QCheckBox("Hide unused", strip)
+        self.chk_hide_unused.setObjectName("chkbox_manual_control_hide_unused_load_pm")
+        self.chk_hide_unused.setChecked(self.hide_unused_load_pm)
+        self.chk_hide_unused.setToolTip(
+            "Hide load PM channels with no meter assigned, or ~0 W output when enabled.")
+        self.chk_hide_unused.setStyleSheet(
+            f"color:{mc_theme.TEXT}; font-family:{mc_theme.FONT_UI}; font-size:{mc_theme.PT_UI}px;")
+        self.chk_hide_unused.toggled.connect(self._on_hide_unused_toggled)
+        h.addWidget(self.chk_hide_unused, 0)
         self.ui.label_pml_total_pin = self.label_pin
         self.ui.label_pml_total_pout = self.label_pout
         self.ui.label_pml_total_eff = self.label_eff
+        self.ui.chkbox_manual_control_hide_unused_load_pm = self.chk_hide_unused
         return strip
+
+    def _on_hide_unused_toggled(self, checked: bool):
+        self.hide_unused_load_pm = checked
+        if hasattr(self.handler, 'refresh_pml_tile_visibility'):
+            self.handler.refresh_pml_tile_visibility()
+
+    def _relayout_visible_tiles(self):
+        if self._grid is None:
+            return
+        for n in CHANNELS:
+            self._grid.removeWidget(self.widgets[n]['tile'])
+        col = 0
+        row = 0
+        for n in CHANNELS:
+            if not self.tile_visible.get(n, True):
+                continue
+            self._grid.addWidget(self.widgets[n]['tile'], row, col)
+            col += 1
+            if col >= 2:
+                col = 0
+                row += 1
+
+    def is_tile_shown(self, n: int) -> bool:
+        return self.tile_visible.get(n, False) and self.widgets[n]['tile'].isVisible()
 
     def _compact_tile(self, n):
         w = self.widgets[n]
@@ -146,7 +182,7 @@ class PmlGrid:
         w['title'].setParent(header)
         w['title'].setText(f"LOAD PM CH{n}")
         w['title'].setStyleSheet(mc_theme.section_title_style())
-        w['title'].setFont(mc_theme.label_font(10))
+        w['title'].setFont(mc_theme.label_font(mc_theme.PT_SECTION))
         hl.addWidget(w['title'], 1)
         gear = QToolButton(header)
         gear.setObjectName(f"btn_pml_settings{_sfx(n)}")
@@ -166,14 +202,15 @@ class PmlGrid:
         w['display'].setMinimumSize(0, 0)
         w['display'].setMaximumWidth(16777215)
         for lbl in w['labels']:
-            lbl.setFont(mc_theme.telemetry_font(15))
+            lbl.setFont(mc_theme.telemetry_font(mc_theme.PT_TELEMETRY))
             lbl.setStyleSheet(mc_theme.telemetry_label_style())
-            lbl.setMinimumHeight(24)
-            lbl.setMaximumHeight(30)
-        w['select'].setMaximumWidth(78)
+            lbl.setMinimumHeight(30)
+            lbl.setMaximumHeight(40)
+        w['select'].setMaximumWidth(92)
         for cbx in w['cbx']:
-            cbx.setMinimumHeight(24)
-            cbx.setMaximumHeight(30)
+            cbx.setMinimumHeight(28)
+            cbx.setMaximumHeight(34)
+            cbx.setFont(mc_theme.input_font(mc_theme.PT_COMBO))
 
         # Settings move into the gear dialog
         self.dialogs[n] = PmlSettingsDialog(self.handler.parent, n, w['control'])
@@ -207,10 +244,31 @@ class PmlGrid:
             for lbl in w['labels']:
                 lbl.setText('—')
             tile.setEnabled(False)
+            self.tile_visible[n] = False
             tile.hide()
             self.dialogs[n].hide()
-        if assigned:
-            tile.show()
+            self._relayout_visible_tiles()
+            return
+        self._apply_tile_visibility(n)
+
+    def set_unused_hidden(self, n: int, hide_as_unused: bool):
+        """When hide-unused is on, collapse tiles with ~0 W (meter still assigned)."""
+        if hide_as_unused:
+            self.tile_visible[n] = False
+            self.widgets[n]['tile'].hide()
+            self.dialogs[n].hide()
+        else:
+            self.tile_visible[n] = True
+            self.widgets[n]['tile'].show()
+        self._relayout_visible_tiles()
+
+    def _apply_tile_visibility(self, n: int):
+        if not self.assigned.get(n, False):
+            return
+        if self.tile_visible.get(n, True):
+            self.widgets[n]['tile'].show()
+        else:
+            self.widgets[n]['tile'].hide()
 
     def set_share(self, n, share_pct):
         self.widgets[n]['labels'][3].setText('None' if share_pct is None else f'{share_pct:.1f}% Share')

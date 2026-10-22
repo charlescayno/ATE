@@ -56,6 +56,35 @@ class EquipmentSetupPageHandler():
         if callable(prefer):
             prefer()
 
+    def _sim_line_input_dc(self) -> bool:
+        import os
+        return os.environ.get("PI_ATE_SIM_LINE_INPUT", "DC").strip().upper() in (
+            "DC",
+            "1",
+            "YES",
+            "TRUE",
+        )
+
+    def _ensure_sim_primary_dc_role(self):
+        """In simulation with DC line input, default primary DC to Magna (first non-aux rail)."""
+        if not self._simulation_mode() or not self._sim_line_input_dc():
+            return
+        eq = self.equipment
+        if eq.dc_source is not None:
+            return
+        primary = None
+        for dc in eq.dc_sources or []:
+            if dc is None or getattr(dc, "aux_rail", False):
+                continue
+            primary = dc
+            break
+        if primary is None and eq.dc_sources:
+            primary = eq.dc_sources[0]
+        if primary is not None:
+            eq.dc_source = primary
+        if self._sim_line_input_dc():
+            eq.ac_source = None
+
     def _simulation_mode(self) -> bool:
         return getattr(self.parent, 'is_simulation_mode', False)
 
@@ -299,6 +328,7 @@ class EquipmentSetupPageHandler():
         else:
             self.equipment.auto_set_equipment_roles()
 
+        self._ensure_sim_primary_dc_role()
         self._ensure_hmp_aux_dc_role()
 
         # Update the combo boxes according to the equipment roles
@@ -372,6 +402,9 @@ class EquipmentSetupPageHandler():
         sim = self._simulation_mode()
         none_offset = 1 if sim else 0
 
+        if sim:
+            self._ensure_sim_primary_dc_role()
+
         self.ongoing_dc_source_update = True
 
         combo_box.clear()
@@ -385,6 +418,12 @@ class EquipmentSetupPageHandler():
                 combo_box.addItem(dc_source.description)
         if self.equipment.dc_source is not None and self.equipment.dc_source in self.equipment.dc_sources:
             combo_box.setCurrentIndex(self.equipment.dc_sources.index(self.equipment.dc_source) + none_offset)
+        elif sim and self._sim_line_input_dc() and self.equipment.dc_source is not None:
+            desc = self.equipment.dc_source.description
+            for i in range(combo_box.count()):
+                if combo_box.itemText(i) == desc:
+                    combo_box.setCurrentIndex(i)
+                    break
         elif sim:
             combo_box.setCurrentIndex(0)
 
