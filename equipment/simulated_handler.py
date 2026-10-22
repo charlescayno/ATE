@@ -546,6 +546,8 @@ class SimulatedOscilloscope:
         self.channel_display_labels = {i: f"CH{i}" for i in range(1, 5)}
         self.channel_enabled = {i: (i <= 2) for i in range(1, 5)}
         self._trigger_mode = 'AUTO'
+        self._sim_trigger_level = 0.0
+        self._sim_trigger_ch = 1
         self._time_scale = 1e-6
         self._time_position = 0.0
         self.record_length = 10000
@@ -555,7 +557,13 @@ class SimulatedOscilloscope:
         return self._trigger_mode
 
     def trigger_status(self):
-        return 0  # Trigger locked/completed
+        """1 while level is below channel peak (still triggering); 0 when swept past."""
+        try:
+            _labels, values = self.get_measure(self._sim_trigger_ch)
+            peak = float(values[0]) if values else 10.0
+        except (TypeError, ValueError, IndexError):
+            peak = 10.0
+        return 1 if self._sim_trigger_level < peak * 0.98 else 0
 
     def time_scale(self, scale=None):
         if scale is not None:
@@ -571,7 +579,8 @@ class SimulatedOscilloscope:
         pass
 
     def edge_trigger(self, channel=1, level=0.0, slope='POS'):
-        pass
+        self._sim_trigger_ch = int(channel)
+        self._sim_trigger_level = float(level)
 
     def trigger_level(self, channel=None, level=None):
         return 0.0

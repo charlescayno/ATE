@@ -7,7 +7,9 @@ from typing import TYPE_CHECKING
 
 from PySide2.QtCore import Qt
 from PySide2.QtWidgets import (
+    QApplication,
     QComboBox,
+    QDialog,
     QFrame,
     QHBoxLayout,
     QLabel,
@@ -20,7 +22,9 @@ from PySide2.QtWidgets import (
 )
 
 from equipment.oscilloscope_specs import LeCroyOscilloscope, RohdeSchwarzOscilloscope, TriggerMode
+from equipment.scope_auto_trigger import AutoFindTriggerSettings, find_trigger_level
 from page_controls import manual_control_theme as mc_theme
+from page_controls.scope_auto_find_dialog import ScopeAutoFindSettingsDialog
 from psu_tests.definitions import MessageType
 
 if TYPE_CHECKING:
@@ -40,6 +44,8 @@ class ManualScopePanel:
         self.ui = handler.ui
         self._default_capture_dir = os.path.join(
             os.path.expanduser("~"), "Documents", "PI_ATE", "manual_waveforms")
+        self.auto_find_settings = AutoFindTriggerSettings()
+        self._auto_find_running = False
         self._build()
         self._bind()
 
@@ -116,6 +122,19 @@ class ManualScopePanel:
         self.btn_apply_trigger = QPushButton("Apply trigger", self.body)
         self.btn_apply_trigger.setStyleSheet(compact)
         trig_row.addWidget(self.btn_apply_trigger)
+        self.btn_auto_find_trigger = QPushButton("Auto find", self.body)
+        self.btn_auto_find_trigger.setObjectName("btn_manual_control_scope_auto_find_trigger")
+        self.btn_auto_find_trigger.setToolTip(
+            "Sweep trigger level on the selected source (same algorithm as waveform tests)")
+        self.btn_auto_find_trigger.setStyleSheet(compact)
+        trig_row.addWidget(self.btn_auto_find_trigger)
+        self.btn_auto_find_settings = QToolButton(self.body)
+        self.btn_auto_find_settings.setObjectName("btn_manual_control_scope_auto_find_settings")
+        self.btn_auto_find_settings.setText("⚙")
+        self.btn_auto_find_settings.setToolTip("Auto-find trigger delta and settle times")
+        self.btn_auto_find_settings.setStyleSheet(mc_theme.gear_style())
+        self.btn_auto_find_settings.setCursor(Qt.PointingHandCursor)
+        trig_row.addWidget(self.btn_auto_find_settings)
         trig_row.addStretch(1)
         body_l.addLayout(trig_row)
 
@@ -156,6 +175,8 @@ class ManualScopePanel:
         ui.cbx_manual_control_scope_trigger_edge = self.cbx_trigger_edge
         ui.lineedit_manual_control_scope_trigger_level = self.lineedit_trigger_level
         ui.lineedit_manual_control_scope_filename = self.lineedit_filename
+        ui.btn_manual_control_scope_auto_find_trigger = self.btn_auto_find_trigger
+        ui.btn_manual_control_scope_auto_find_settings = self.btn_auto_find_settings
 
     def _make_combo(self, name: str, items):
         cbx = QComboBox(self.body)
@@ -169,6 +190,8 @@ class ManualScopePanel:
         self.btn_run_single.clicked.connect(self.run_single)
         self.btn_stop.clicked.connect(self.stop)
         self.btn_apply_trigger.clicked.connect(self._apply_trigger_mode_and_level)
+        self.btn_auto_find_trigger.clicked.connect(self.auto_find_trigger)
+        self.btn_auto_find_settings.clicked.connect(self._open_auto_find_settings)
         self.btn_capture.clicked.connect(self.capture_waveform)
         self.btn_collapse.toggled.connect(self._set_body_visible)
         self._set_body_visible(True)
@@ -181,6 +204,8 @@ class ManualScopePanel:
             self.lineedit_filename,
             self.label_capture_path,
             self.btn_apply_trigger,
+            self.btn_auto_find_trigger,
+            self.btn_auto_find_settings,
             self.lineedit_trigger_level,
             self.cbx_trigger_mode,
             self.cbx_trigger_channel,
@@ -213,6 +238,8 @@ class ManualScopePanel:
             self.btn_run_single,
             self.btn_stop,
             self.btn_apply_trigger,
+            self.btn_auto_find_trigger,
+            self.btn_auto_find_settings,
             self.btn_capture,
             self.cbx_trigger_mode,
             self.cbx_trigger_channel,
@@ -220,7 +247,7 @@ class ManualScopePanel:
             self.lineedit_trigger_level,
             self.lineedit_filename,
         ):
-            w.setEnabled(ok)
+            w.setEnabled(ok and not self._auto_find_running)
         if not ok:
             self._set_status("Not assigned", "rgb(140,140,140)")
             self.label_capture_path.setText("")
@@ -342,6 +369,57 @@ class ManualScopePanel:
         """Backward-compatible alias for edge trigger + mode."""
         self.apply_edge_trigger()
         self.apply_trigger_mode()
+
+    def _open_auto_find_settings(self):
+        dlg = ScopeAutoFindSettingsDialog(self.handler.parent, self.auto_find_settings)
+        if dlg.exec_() == QDialog.Accepted:
+            dlg.apply_to_settings()
+
+    def _pump_events(self):
+        app = QApplication.instance()
+        if app is not None:
+            app.processEvents()
+
+    def auto_find_trigger(self):
+        scope = self.get_scope()
+        if scope is None or self._auto_find_running:
+            return
+        if not hasattr(scope, "get_measure") or not hasattr(scope, "edge_trigger"):
+            self.handler.parent.msg_box_info(
+                title="Oscilloscope",
+                message="Auto-find requires a scope with measurements and edge trigger support.",
+                message_type=MessageType.INFO,
+            )
+            return
+
+        ch = self._trigger_channel_index()
+        edge = self._trigger_edge_scpi()
+        self._auto_find_running = True
+        self.refresh_controls()
+        self._set_status("AUTO FIND…", "rgb(255,220,85)")
+
+        def on_progress(msg: str):
+            self._set_status(msg[:48], "rgb(255,220,85)")
+            self._pump_events()
+
+        try:
+            level = find_trigger_level(
+                scope,
+                ch,
+                edge,
+                self.auto_find_settings,
+                pump_events=self._pump_events,
+                on_progress=on_progress,
+            )
+            self.lineedit_trigger_level.setText(f"{level:g}")
+            self.apply_edge_trigger()
+            self.apply_trigger_mode()
+            self._set_status(f"AUTO CH{ch} {level:g} V", "rgb(85,255,127)")
+        except Exception as exc:
+            self._mark_scope_failed(exc, "Auto find trigger")
+        finally:
+            self._auto_find_running = False
+            self.refresh_controls()
 
     def _sanitize_filename(self, name: str) -> str:
         name = (name or "").strip()

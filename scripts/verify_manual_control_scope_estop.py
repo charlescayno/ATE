@@ -41,6 +41,8 @@ def main() -> int:
             "cbx_manual_control_scope_trigger_edge",
             "lineedit_manual_control_scope_trigger_level",
             "lineedit_manual_control_scope_filename",
+            "btn_manual_control_scope_auto_find_trigger",
+            "btn_manual_control_scope_auto_find_settings",
         ):
             if not hasattr(ui, name):
                 errors.append(f"missing ui.{name}")
