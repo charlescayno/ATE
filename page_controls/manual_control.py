@@ -341,9 +341,8 @@ class ManualControlPageHandler():
         self.ui.lineedit_manual_control_dc_source_slew_rate.textChanged.connect(self.update_estimated_ramp_time)
         self.ui.lineedit_manual_control_ac_source_voltage.textChanged.connect(self.update_estimated_ramp_time)
 
-        # Setup Equipment
-        self.ui.btn_manual_control_setup_equipment.clicked.\
-            connect(self.initialize_gpib_equipment)
+        if hasattr(self.ui, 'frame_manual_control_setup_equipment'):
+            self.ui.frame_manual_control_setup_equipment.hide()
 
         # Link UI buttons to controls
         self.ui.btn_usbpdsink_request.clicked.\
@@ -422,7 +421,7 @@ class ManualControlPageHandler():
         hdr = QLabel("Ch", params)
         hdr.setStyleSheet(lbl_style + " border: none;")
         grid.addWidget(hdr, 0, 0)
-        for col, text in enumerate(("V", "A", "", "", ""), start=1):
+        for col, text in enumerate(("V", "A", "", "", "", "Out"), start=1):
             if text:
                 h = QLabel(text, params)
                 h.setStyleSheet(lbl_style + " border: none;")
@@ -460,11 +459,12 @@ class ManualControlPageHandler():
             btn_off = QPushButton("Off", params)
             btn_off.setObjectName(f"btn_manual_control_dc_aux_turn_off_ch{ch}")
             btn_off.setStyleSheet(btn_off_style)
-            lbl_status = QLabel("Off", params)
+            lbl_status = QLabel("OFF", params)
             lbl_status.setObjectName(f"label_manual_control_dc_aux_status_ch{ch}")
-            lbl_status.setStyleSheet("color: rgb(140,140,140); border: none; font-size: 11px;")
+            lbl_status.setStyleSheet(
+                "color: rgb(140,140,140); border: none; font-size: 11px; font-weight: bold;")
             lbl_status.setAlignment(Qt.AlignCenter)
-            lbl_status.setMinimumWidth(28)
+            lbl_status.setMinimumWidth(32)
 
             grid.addWidget(lbl_ch, row, 0)
             grid.addWidget(le_v, row, 1)
@@ -1073,11 +1073,10 @@ class ManualControlPageHandler():
                     self.dc_source_aux.update_status()
                     on_val = self.dc_source_aux.output_status
                 on = on_val == DC_SOURCE_STATUS.ON
-                w['status'].setText("On" if on else "Off")
+                w['status'].setText("ON" if on else "OFF")
                 w['status'].setStyleSheet(
-                    "color: rgb(85,255,127); border: none; font-size: 11px;" if on
-                    else "color: rgb(140,140,140); border: none; font-size: 11px;")
-                w['buttons'].setStyleSheet(Style.normal_frame)
+                    "color: rgb(85,255,127); border: none; font-size: 11px; font-weight: bold;" if on
+                    else "color: rgb(140,140,140); border: none; font-size: 11px; font-weight: bold;")
         except Exception:
             pass
 

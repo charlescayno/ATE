@@ -753,10 +753,15 @@ class SimulatedEquipmentHandler(EquipmentHandler):
     def check_scope_availability(self, address='', get_default=False):
         return True
     def apply_saved_equipment_roles(self, config):
-        return True
-    def auto_set_equipment_roles(self): pass
+        return EquipmentHandler.apply_saved_equipment_roles(self, config)
+
+    def auto_set_equipment_roles(self):
+        EquipmentHandler.auto_set_equipment_roles(self)
+
     def auto_set_ac_source_roles(self): pass
-    def auto_set_dc_source_roles(self): pass
+
+    def auto_set_dc_source_roles(self):
+        EquipmentHandler.auto_set_dc_source_roles(self)
     def auto_set_electronic_load_roles(self): pass
     def auto_set_power_meter_roles(self): pass
     def auto_set_sink_controller_roles(self):

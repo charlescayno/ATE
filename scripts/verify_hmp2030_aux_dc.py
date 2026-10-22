@@ -39,6 +39,18 @@ def test_handler_roles_sim():
     check("sim: two dc_sources listed", len(h.dc_sources) == 2)
 
 
+def test_prefer_hmp_as_aux():
+    from equipment.simulated_handler import SimulatedEquipmentHandler
+    h = SimulatedEquipmentHandler(parent=None)
+    h.dc_source_aux = None
+    h.prefer_hmp_as_aux()
+    check("prefer_hmp: restores HMP aux", h.dc_source_aux is not None and h.dc_source_aux.model == "HMP2030")
+    h.dc_source_aux = None
+    applied = h.apply_saved_equipment_roles({"dc_source": h.dc_source.description, "dc_source_aux": "-"})
+    check("prefer_hmp: after saved aux dash", h.dc_source_aux is not None and h.dc_source_aux.model == "HMP2030")
+    check("apply_saved roles ok", applied)
+
+
 def test_aux_manual_setpoints():
     from equipment.simulated_handler import SimulatedEquipmentHandler
     h = SimulatedEquipmentHandler(parent=None)
@@ -113,6 +125,7 @@ def test_hmp_scpi_commands():
 if __name__ == "__main__":
     test_dc_source_model_lookup()
     test_handler_roles_sim()
+    test_prefer_hmp_as_aux()
     test_aux_manual_setpoints()
     test_hmp_scpi_commands()
     failed = [n for n, ok in results if not ok]

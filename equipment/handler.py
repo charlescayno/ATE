@@ -545,6 +545,7 @@ class EquipmentHandler():
                     break
         if self.dc_source_aux is None and len(self.dc_sources) > 1:
             self._assign_dc_roles_heuristic(preserve_primary=True)
+        self.prefer_hmp_as_aux()
 
         # 3. Power Meters
         self.reset_power_meter_roles()
@@ -837,7 +838,15 @@ class EquipmentHandler():
         self._assign_dc_roles_heuristic()
         if self.dc_source is None:
             self.dc_source = self.dc_sources[0]
-            
+        self.prefer_hmp_as_aux()
+
+    def prefer_hmp_as_aux(self):
+        """Assign the first HMP on the bus as aux whenever it is not the primary DC."""
+        hmp = next((d for d in self.dc_sources if self._is_hmp_dc(d)), None)
+        if hmp is None or hmp is self.dc_source:
+            return
+        self.dc_source_aux = hmp
+
     def input_supply_eload_discharge_sequence(self,iout_A,coupling=AC_SOURCE_COUPLING.AC):
         self.electronic_load_1.set_cc_high(iout_A)
         self.electronic_load_1.turn_on()
