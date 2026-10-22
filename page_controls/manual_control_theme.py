@@ -95,12 +95,16 @@ def hmp_aux_apply_button_style() -> str:
     )
 
 
-def hmp_aux_apply_ok_style() -> str:
+def apply_ok_button_style() -> str:
     return (
         f"QPushButton{{background-color:#14532d; color:{GO}; border:1px solid {GO};"
         f" border-radius:2px; padding:2px 8px; font-family:{FONT_UI}; font-size:11px;"
         f" font-weight:700; min-height:24px; max-height:28px;}}"
     )
+
+
+def hmp_aux_apply_ok_style() -> str:
+    return apply_ok_button_style()
 
 
 def aux_output_button_style(*, on: bool) -> str:

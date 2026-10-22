@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import os
 import re
+import subprocess
 import sys
 from typing import TYPE_CHECKING
 
@@ -25,6 +26,7 @@ from PySide2.QtWidgets import (
 from equipment.oscilloscope_specs import LeCroyOscilloscope, RohdeSchwarzOscilloscope, TriggerMode
 from equipment.scope_auto_trigger import AutoFindTriggerSettings, find_trigger_level
 from page_controls import manual_control_theme as mc_theme
+from page_controls.apply_feedback import flash_apply_button
 from page_controls.mc_value_box import make_value_box
 from page_controls.scope_auto_find_dialog import ScopeAutoFindSettingsDialog
 from psu_tests.definitions import MessageType
@@ -88,6 +90,7 @@ class ManualScopePanel:
             os.path.expanduser("~"), "Documents", "PI_ATE", "manual_waveforms")
         self.auto_find_settings = AutoFindTriggerSettings()
         self._auto_find_running = False
+        self._last_capture_path: str | None = None
         self._build()
         self._bind()
 
@@ -215,10 +218,13 @@ class ManualScopePanel:
         body_l.addLayout(cap_row)
 
         self.label_capture_path = QLabel("", self.body)
+        self.label_capture_path.setObjectName("label_manual_control_scope_capture_path")
         self.label_capture_path.setWordWrap(True)
-        self.label_capture_path.setStyleSheet("color: rgb(130,140,160); font-size: 9px; border: none;")
+        self._apply_capture_path_label_style()
         body_l.addWidget(self.label_capture_path)
         for lbl in self.body.findChildren(QLabel):
+            if lbl.objectName() == "label_manual_control_scope_capture_path":
+                continue
             lbl.setStyleSheet(lbl_style)
 
         outer.addWidget(self.body)
@@ -260,6 +266,7 @@ class ManualScopePanel:
         self.btn_auto_find_settings.clicked.connect(self._open_auto_find_settings)
         self.btn_capture.clicked.connect(self.capture_waveform)
         self.btn_open_folder.clicked.connect(self.open_capture_folder)
+        self.label_capture_path.linkActivated.connect(self._on_capture_path_link)
         self.btn_collapse.toggled.connect(self._set_body_visible)
         self._set_body_visible(True)
 
@@ -289,8 +296,9 @@ class ManualScopePanel:
 
     def _apply_trigger_mode_and_level(self):
         # edge_trigger() drivers force NORM briefly; re-apply mode after edge setup.
-        self.apply_edge_trigger()
-        self.apply_trigger_mode()
+        ok = self.apply_edge_trigger() and self.apply_trigger_mode()
+        if ok:
+            flash_apply_button(self.btn_apply_trigger)
 
     def _apply_trigger_from_wheel(self):
         """Live edge update while scrolling level (skip full mode re-apply)."""
@@ -372,10 +380,10 @@ class ManualScopePanel:
         label = self.cbx_trigger_edge.currentText().strip()
         return TRIGGER_EDGE_SCPI.get(label, "POS")
 
-    def apply_trigger_mode(self):
+    def apply_trigger_mode(self) -> bool:
         scope = self.get_scope()
         if scope is None:
-            return
+            return False
         ui_mode = self.cbx_trigger_mode.currentText()
         try:
             if isinstance(scope, LeCroyOscilloscope):
@@ -393,15 +401,17 @@ class ManualScopePanel:
                 scope.trigger_mode(rs_map.get(ui_mode, "AUTO"))
             else:
                 print("[SCOPE] Trigger mode not supported for this scope class")
-                return
+                return False
             self._set_status(f"MODE {ui_mode.upper()}", "rgb(200,200,255)")
+            return True
         except Exception as exc:
             self._mark_scope_failed(exc, "Apply trigger mode")
+            return False
 
-    def apply_edge_trigger(self):
+    def apply_edge_trigger(self) -> bool:
         scope = self.get_scope()
         if scope is None:
-            return
+            return False
         try:
             ch = self._trigger_channel_index()
             level = float(self.lineedit_trigger_level.text().strip())
@@ -411,7 +421,7 @@ class ManualScopePanel:
                 message="Enter a numeric trigger level (volts).",
                 message_type=MessageType.INFO,
             )
-            return
+            return False
         edge = self._trigger_edge_scpi()
         edge_label = self.cbx_trigger_edge.currentText()
         try:
@@ -433,13 +443,15 @@ class ManualScopePanel:
                 scope.set_trigger_level(level)
             else:
                 print("[SCOPE] Edge trigger not supported for this scope class")
-                return
+                return False
             self._set_status(
                 f"EDGE CH{ch} {edge_label} {level:g} V",
                 "rgb(200,200,255)",
             )
+            return True
         except Exception as exc:
             self._mark_scope_failed(exc, "Apply edge trigger")
+            return False
 
     def apply_trigger_level(self):
         """Backward-compatible alias for edge trigger + mode."""
@@ -516,19 +528,68 @@ class ManualScopePanel:
             os.makedirs(out_dir, exist_ok=True)
         return out_dir
 
-    def open_capture_folder(self):
-        folder = self._capture_output_dir()
+    def _apply_capture_path_label_style(self) -> None:
+        self.label_capture_path.setStyleSheet(
+            f"color:{mc_theme.TEXT_MUTED}; font-size:10px; border:none;"
+        )
+
+    def _set_capture_path_label(self, full_path: str | None) -> None:
+        """Show saved path as a clickable link (opens folder / selects file)."""
+        self._last_capture_path = full_path
+        if not full_path:
+            self.label_capture_path.setText("")
+            self.label_capture_path.setTextFormat(Qt.PlainText)
+            self.label_capture_path.setTextInteractionFlags(Qt.NoTextInteraction)
+            self.label_capture_path.setCursor(Qt.ArrowCursor)
+            return
+        safe = (
+            full_path.replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+        )
+        self.label_capture_path.setTextFormat(Qt.RichText)
+        self.label_capture_path.setTextInteractionFlags(Qt.TextBrowserInteraction)
+        self.label_capture_path.setOpenExternalLinks(False)
+        self.label_capture_path.setCursor(Qt.PointingHandCursor)
+        self.label_capture_path.setToolTip("Click to open folder and select file")
+        self.label_capture_path.setText(
+            f'Saved: <a href="open" style="color:{mc_theme.SIM}; text-decoration:underline;">'
+            f"{safe}</a>"
+        )
+
+    def _on_capture_path_link(self, _href: str) -> None:
+        self.open_last_capture()
+
+    def _open_in_shell(self, path: str, *, select_file: bool = False) -> None:
+        path = os.path.normpath(path)
         try:
             if sys.platform == "win32":
-                os.startfile(folder)
+                if select_file and os.path.isfile(path):
+                    subprocess.Popen(["explorer", "/select,", path])
+                else:
+                    folder = path if os.path.isdir(path) else os.path.dirname(path)
+                    os.startfile(folder or path)
             else:
-                from PySide2.QtGui import QDesktopServices
                 from PySide2.QtCore import QUrl
+                from PySide2.QtGui import QDesktopServices
 
-                QDesktopServices.openUrl(QUrl.fromLocalFile(folder))
+                target = path if os.path.isdir(path) else os.path.dirname(path)
+                QDesktopServices.openUrl(QUrl.fromLocalFile(target or path))
         except OSError as exc:
-            print(f"[SCOPE] Cannot open folder {folder}: {exc}")
+            print(f"[SCOPE] Cannot open path {path}: {exc}")
+            self.label_capture_path.setTextFormat(Qt.PlainText)
             self.label_capture_path.setText(f"Cannot open folder: {exc}")
+
+    def open_last_capture(self) -> None:
+        path = self._last_capture_path
+        if path and os.path.exists(path):
+            self._open_in_shell(path, select_file=True)
+        else:
+            self.open_capture_folder()
+
+    def open_capture_folder(self):
+        folder = self._capture_output_dir()
+        self._open_in_shell(folder, select_file=False)
 
     def _unique_filename(self, directory: str, filename: str) -> str:
         """If path exists, append _1, _2, ... before the extension."""
@@ -552,9 +613,10 @@ class ManualScopePanel:
         try:
             scope.get_screenshot(filename, path)
             full = os.path.join(path, filename)
-            self.label_capture_path.setText(f"Saved: {full}")
+            self._set_capture_path_label(full)
             self._set_status("CAPTURED", "rgb(85,255,127)")
             print(f"[SCOPE] Capture saved: {full}")
+            flash_apply_button(self.btn_capture, ok_text="Saved")
         except Exception as exc:
             self.label_capture_path.setText(f"Capture failed: {exc}")
             self._mark_scope_failed(exc, "Capture")

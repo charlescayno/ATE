@@ -12,6 +12,7 @@ from PySide2.QtWidgets import (QDialog, QFrame, QGridLayout, QHBoxLayout, QLabel
 
 from equipment.eload_specs import ELoadTypes, EloadStatus
 from page_controls import manual_control_theme as mc_theme
+from page_controls.apply_feedback import flash_apply_button
 from psu_tests.definitions import MessageType
 from ui.ui_styles import Style
 
@@ -99,11 +100,12 @@ class EloadChannel:
     def mode(self):
         return self.w['mode'].currentText()
 
-    def _run(self, fn):
+    def _run(self, fn, feedback_btn=None):
         if not self.accessible():
             return
         try:
             fn()
+            flash_apply_button(feedback_btn)
         except ValueError as e:
             self.handler.parent.msg_box_info(title=f"E-Load CH{self.n}", message=str(e),
                                              message_type=MessageType.INFO)
@@ -144,7 +146,8 @@ class EloadChannel:
                     return
             self.load.set_active_level(level_no)
             self.load.set_load(vout_V=vout_V, iout_A=iout_A, mode=mode)
-        self._run(do)
+        btn = self.w['set_a'] if level_no == 1 else self.w['set_b']
+        self._run(do, feedback_btn=btn)
 
     def set_slew(self):
         def do():
@@ -154,7 +157,7 @@ class EloadChannel:
                 self.load.set_cc_static_slew(rise, fall)
             elif mode == ELoadTypes.CR:
                 self.load.set_cr_slew(rise, fall)
-        self._run(do)
+        self._run(do, feedback_btn=self.w['set_slew'])
 
     def swap(self):
         if not self.accessible():

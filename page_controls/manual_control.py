@@ -11,8 +11,9 @@ from numpy import source
 from misc_functions.misc_functions import RepeatedTimer
 
 from PySide2 import QtGui
-from PySide2.QtGui import QValidator, QIntValidator, QDoubleValidator
-from PySide2.QtCore import QTimer
+from PySide2.QtGui import QKeySequence, QValidator, QIntValidator, QDoubleValidator
+from PySide2.QtCore import Qt, QTimer
+from PySide2.QtWidgets import QShortcut
 
 from pyvisa.errors import VisaIOError
 
@@ -25,6 +26,8 @@ from equipment.power_meter import *
 from equipment.electronic_load import *
 import inject_ui
 from page_controls import manual_control_theme, pml_grid, eload_grid, manual_scope_panel, pms_panel
+from page_controls.apply_feedback import flash_apply_button
+from page_controls import manual_control_presets as mc_presets
 from equipment.eload_specs import ELoadTypes
 
 from user_settings.save_load import (write_to_default_config, read_from_default_config) 
@@ -464,6 +467,49 @@ class ManualControlPageHandler():
         h.addWidget(title, 0, Qt.AlignLeft)
         h.addStretch(1)
 
+        preset_style = manual_control_theme.compact_button_style()
+        preset_lbl = QLabel("Preset", row)
+        preset_lbl.setStyleSheet("border:none; color: rgb(154,154,168); font-size:10px;")
+        h.addWidget(preset_lbl, 0, Qt.AlignVCenter)
+        from PySide2.QtWidgets import QComboBox
+
+        self.cbx_manual_preset = QComboBox(row)
+        self.cbx_manual_preset.setObjectName("cbx_manual_control_session_preset")
+        self.cbx_manual_preset.setMinimumWidth(100)
+        self.cbx_manual_preset.setMaximumWidth(140)
+        self.cbx_manual_preset.setToolTip("Saved Manual Control setpoints (UI fields)")
+        h.addWidget(self.cbx_manual_preset, 0, Qt.AlignVCenter)
+
+        self.btn_preset_load = QPushButton("Load", row)
+        self.btn_preset_load.setObjectName("btn_manual_control_preset_load")
+        self.btn_preset_load.setStyleSheet(preset_style)
+        self.btn_preset_load.setToolTip("Apply selected preset to all saved fields")
+        h.addWidget(self.btn_preset_load)
+
+        self.btn_preset_save = QPushButton("Save", row)
+        self.btn_preset_save.setObjectName("btn_manual_control_preset_save")
+        self.btn_preset_save.setStyleSheet(preset_style)
+        self.btn_preset_save.setToolTip("Store current fields under preset name")
+        h.addWidget(self.btn_preset_save)
+
+        self.btn_preset_import = QPushButton("Import", row)
+        self.btn_preset_import.setObjectName("btn_manual_control_preset_import")
+        self.btn_preset_import.setStyleSheet(preset_style)
+        self.btn_preset_import.setToolTip("Merge presets from a JSON file")
+        h.addWidget(self.btn_preset_import)
+
+        self.btn_preset_export = QPushButton("Export", row)
+        self.btn_preset_export.setObjectName("btn_manual_control_preset_export")
+        self.btn_preset_export.setStyleSheet(preset_style)
+        self.btn_preset_export.setToolTip("Write all presets to a JSON file")
+        h.addWidget(self.btn_preset_export)
+
+        ui.cbx_manual_control_session_preset = self.cbx_manual_preset
+        ui.btn_manual_control_preset_load = self.btn_preset_load
+        ui.btn_manual_control_preset_save = self.btn_preset_save
+        ui.btn_manual_control_preset_import = self.btn_preset_import
+        ui.btn_manual_control_preset_export = self.btn_preset_export
+
         self.btn_estop = QPushButton("E-STOP", row)
         self.btn_estop.setObjectName("btn_manual_control_estop")
         self.btn_estop.setMinimumWidth(96)
@@ -473,7 +519,20 @@ class ManualControlPageHandler():
         ui.frame_manual_control_header_row = row
         ui.frame_manual_control_estop = row
         self.btn_estop.clicked.connect(self.emergency_stop_all)
+        self.btn_estop.setToolTip("Emergency stop — all outputs off (Ctrl+Shift+E)")
         ui.btn_manual_control_estop = self.btn_estop
+        self._setup_estop_shortcut()
+
+    def _setup_estop_shortcut(self) -> None:
+        page = self.ui.page_manual_control
+        self._estop_shortcut = QShortcut(QKeySequence("Ctrl+Shift+E"), page)
+        self._estop_shortcut.setContext(Qt.WidgetWithChildrenShortcut)
+        self._estop_shortcut.activated.connect(self._estop_from_keyboard)
+
+    def _estop_from_keyboard(self) -> None:
+        if self.ui.stackedWidget.currentWidget() is not self.ui.page_manual_control:
+            return
+        self.emergency_stop_all()
 
     def _apply_compact_manual_layout(self):
         from PySide2.QtWidgets import QFrame, QSizePolicy
@@ -1130,34 +1189,17 @@ class ManualControlPageHandler():
         else:
             aux.turn_off()
 
-    def _aux_dc_apply_feedback(self, channel: int):
-        w = self.hmp_aux_channel_widgets.get(channel)
-        if not w:
-            return
-        btn = w.get("btn_apply")
-        if btn is None:
-            return
-        base_style = w.get("apply_style") or manual_control_theme.hmp_aux_apply_button_style()
-        btn.setText("Applied")
-        btn.setStyleSheet(manual_control_theme.hmp_aux_apply_ok_style())
-        btn.setEnabled(False)
-
-        def restore():
-            if btn is None:
-                return
-            btn.setText("Apply")
-            btn.setStyleSheet(base_style)
-            btn.setEnabled(True)
-
-        QTimer.singleShot(750, restore)
-
     def aux_dc_apply_settings(self, channel: int = 1):
         if not self.dc_source_aux_accessible or self.dc_source_aux is None:
             return
         try:
             v, i = self._aux_dc_setpoints(channel)
             self._aux_dc_apply_channel(channel, v, i)
-            self._aux_dc_apply_feedback(channel)
+            w = self.hmp_aux_channel_widgets.get(channel, {})
+            flash_apply_button(
+                w.get("btn_apply"),
+                base_style=w.get("apply_style") or manual_control_theme.hmp_aux_apply_button_style(),
+            )
         except Exception as e:
             print(f"[DC_SOURCE] Aux CH{channel} apply failed: {e}")
             self.dc_source_aux_accessible = False
@@ -1715,10 +1757,11 @@ class ManualControlPageHandler():
                     widget.toggled.connect(self.save_manual_settings)
                 
         self.load_manual_settings()
+        self._setup_session_presets()
 
-    def save_manual_settings(self, *args):
-        import json
+    def collect_manual_state(self) -> dict:
         from PySide2.QtWidgets import QLineEdit, QComboBox, QCheckBox
+
         state = {}
         for widget in self.state_widgets:
             obj_name = self.state_keys.get(id(widget), widget.objectName())
@@ -1728,9 +1771,37 @@ class ManualControlPageHandler():
                 state[obj_name] = widget.currentIndex()
             elif isinstance(widget, QCheckBox):
                 state[obj_name] = widget.isChecked()
-                
+        return state
+
+    def apply_manual_state(self, state: dict) -> None:
+        from PySide2.QtWidgets import QLineEdit, QComboBox, QCheckBox
+
+        if not isinstance(state, dict):
+            return
+        for widget in self.state_widgets:
+            obj_name = self.state_keys.get(id(widget), widget.objectName())
+            if obj_name not in state:
+                continue
+            val = state[obj_name]
+            widget.blockSignals(True)
+            try:
+                if isinstance(widget, QLineEdit):
+                    widget.setText(str(val))
+                elif isinstance(widget, QComboBox):
+                    idx = int(val)
+                    if 0 <= idx < widget.count():
+                        widget.setCurrentIndex(idx)
+                elif isinstance(widget, QCheckBox):
+                    widget.setChecked(bool(val))
+            finally:
+                widget.blockSignals(False)
+
+    def save_manual_settings(self, *args):
+        import json
+
+        state = self.collect_manual_state()
         try:
-            with open(self.settings_file, "w", encoding='utf-8') as f:
+            with open(self.settings_file, "w", encoding="utf-8") as f:
                 json.dump(state, f, indent=4)
         except Exception as e:
             print(f"Failed to save manual settings: {e}")
@@ -1738,25 +1809,136 @@ class ManualControlPageHandler():
     def load_manual_settings(self):
         import json
         import os
-        from PySide2.QtWidgets import QLineEdit, QComboBox, QCheckBox
+
         if not os.path.exists(self.settings_file):
             return
-            
         try:
-            with open(self.settings_file, "r", encoding='utf-8') as f:
+            with open(self.settings_file, "r", encoding="utf-8") as f:
                 state = json.load(f)
-                
-            for widget in self.state_widgets:
-                obj_name = self.state_keys.get(id(widget), widget.objectName())
-                if obj_name in state:
-                    val = state[obj_name]
-                    widget.blockSignals(True)
-                    if isinstance(widget, QLineEdit):
-                        widget.setText(str(val))
-                    elif isinstance(widget, QComboBox):
-                        widget.setCurrentIndex(int(val))
-                    elif isinstance(widget, QCheckBox):
-                        widget.setChecked(bool(val))
-                    widget.blockSignals(False)
+            self.apply_manual_state(state)
         except Exception as e:
             print(f"Failed to load manual settings: {e}")
+
+    def _setup_session_presets(self) -> None:
+        self.btn_preset_load.clicked.connect(self.load_session_preset)
+        self.btn_preset_save.clicked.connect(self.save_session_preset)
+        self.btn_preset_import.clicked.connect(self.import_session_presets)
+        self.btn_preset_export.clicked.connect(self.export_session_presets)
+        self._refresh_session_preset_combo()
+
+    def _refresh_session_preset_combo(self, select: str | None = None) -> None:
+        store = mc_presets.load_store()
+        names = sorted(store.get("presets", {}).keys())
+        self.cbx_manual_preset.blockSignals(True)
+        self.cbx_manual_preset.clear()
+        self.cbx_manual_preset.addItems(names if names else ["(none saved)"])
+        if select and select in names:
+            self.cbx_manual_preset.setCurrentText(select)
+        self.cbx_manual_preset.blockSignals(False)
+
+    def _session_preset_name(self) -> str | None:
+        text = self.cbx_manual_preset.currentText().strip()
+        if not text or text in ("(none saved)",):
+            return None
+        return text
+
+    def save_session_preset(self) -> None:
+        from PySide2.QtWidgets import QInputDialog
+
+        name = self._session_preset_name()
+        if not name:
+            name, ok = QInputDialog.getText(
+                self.parent,
+                "Save preset",
+                "Preset name:",
+            )
+            if not ok or not (name or "").strip():
+                return
+            name = name.strip()
+        store = mc_presets.load_store()
+        store.setdefault("presets", {})[name] = self.collect_manual_state()
+        mc_presets.save_store(store)
+        self._refresh_session_preset_combo(select=name)
+        flash_apply_button(self.btn_preset_save)
+
+    def load_session_preset(self) -> None:
+        name = self._session_preset_name()
+        if not name:
+            self.parent.msg_box_info(
+                title="Session preset",
+                message="Choose a preset or save one first.",
+                message_type=MessageType.INFO,
+            )
+            return
+        store = mc_presets.load_store()
+        state = store.get("presets", {}).get(name)
+        if not state:
+            self.parent.msg_box_info(
+                title="Session preset",
+                message=f"Preset “{name}” was not found.",
+                message_type=MessageType.INFO,
+            )
+            return
+        self.apply_manual_state(state)
+        self.save_manual_settings()
+        flash_apply_button(self.btn_preset_load)
+
+    def import_session_presets(self) -> None:
+        import json
+        from PySide2.QtWidgets import QFileDialog
+
+        path, _ = QFileDialog.getOpenFileName(
+            self.parent,
+            "Import Manual Control presets",
+            "",
+            "JSON (*.json);;All files (*.*)",
+        )
+        if not path:
+            return
+        try:
+            with open(path, encoding="utf-8") as f:
+                imported = json.load(f)
+        except (OSError, json.JSONDecodeError) as exc:
+            self.parent.msg_box_info(
+                title="Import preset",
+                message=f"Could not read file:\n{exc}",
+                message_type=MessageType.INFO,
+            )
+            return
+        store = mc_presets.merge_imported_store(mc_presets.load_store(), imported)
+        mc_presets.save_store(store)
+        self._refresh_session_preset_combo()
+        flash_apply_button(self.btn_preset_import)
+
+    def export_session_presets(self) -> None:
+        from PySide2.QtWidgets import QFileDialog
+
+        store = mc_presets.load_store()
+        if not store.get("presets"):
+            self.parent.msg_box_info(
+                title="Export preset",
+                message="No presets saved yet.",
+                message_type=MessageType.INFO,
+            )
+            return
+        path, _ = QFileDialog.getSaveFileName(
+            self.parent,
+            "Export Manual Control presets",
+            "manual_control_presets.json",
+            "JSON (*.json);;All files (*.*)",
+        )
+        if not path:
+            return
+        import json
+
+        try:
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(store, f, indent=2)
+        except OSError as exc:
+            self.parent.msg_box_info(
+                title="Export preset",
+                message=f"Could not write file:\n{exc}",
+                message_type=MessageType.INFO,
+            )
+            return
+        flash_apply_button(self.btn_preset_export)
