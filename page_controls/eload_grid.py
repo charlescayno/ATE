@@ -11,23 +11,21 @@ from PySide2.QtWidgets import (QDialog, QFrame, QGridLayout, QHBoxLayout, QLabel
                                QPushButton, QSizePolicy, QToolButton, QVBoxLayout, QWidget)
 
 from equipment.eload_specs import ELoadTypes, EloadStatus
+from page_controls import manual_control_theme as mc_theme
 from psu_tests.definitions import MessageType
 from ui.ui_styles import Style
 
 CHANNELS = (1, 2, 3, 4)
 
-TILE_STYLE = "QFrame#{name}{{border: 2px solid black; border-radius: 10px; background-color: rgb(29,34,44);}}"
-TILE_ON_STYLE = "QFrame#{name}{{border: 2px solid rgb(85,170,85); border-radius: 10px; background-color: rgb(29,34,44);}}"
-UNASSIGNED_STYLE = "QFrame#{name}{{border: 2px dashed rgb(70,70,70); border-radius: 10px; background-color: rgb(36,38,44);}}"
-HEADER_STYLE = ("QFrame#frame_eload_grid_header{border: 2px solid black; border-radius: 10px; background-color: rgb(29,34,44);}"
-                "QLabel{border:none; color: rgb(220,220,220);} QCheckBox{color: white;}")
-GEAR_STYLE = ("QToolButton{border:none; color: rgb(180,180,180); font-size: 16px;}"
-              "QToolButton:hover{color: white;} QToolButton:disabled{color: rgb(71,71,71);}")
-DIALOG_STYLE = ("QDialog{background-color: rgb(40,44,52);} QLabel{color: rgb(210,210,210);}"
-                "QPushButton#btn_eload_dialog_close{color: white; background-color: rgb(52,59,72); border: 1px solid rgb(80,90,110);"
-                " border-radius: 5px; padding: 4px 14px;}")
-TOGGLE_STYLE = ("QToolButton{color: rgb(200,200,200); background-color: rgb(39,44,54); border: 1px solid rgb(63,70,87);"
-                " border-radius: 6px; font-weight: bold;} QToolButton:hover{background-color: rgb(52,59,72);}")
+GEAR_STYLE = mc_theme.gear_style()
+DIALOG_STYLE = mc_theme.dialog_style()
+HEADER_STYLE = mc_theme.header_strip_style("frame_eload_grid_header")
+TOGGLE_STYLE = (
+    f"QToolButton{{color:{mc_theme.TEXT}; background-color:{mc_theme.BG_PANEL};"
+    f" border:1px solid {mc_theme.LINE}; border-radius:2px; font-weight:600;"
+    f" font-family:{mc_theme.FONT_UI};}}"
+    f" QToolButton:hover{{background-color:{mc_theme.BG_TILE};}}"
+)
 
 
 def _sfx(n):
@@ -227,9 +225,11 @@ class EloadChannel:
         on = str(getattr(load, 'active_channel_status', '0')) == EloadStatus.ON
         level = getattr(load, '_active_level', '1')
         mode = getattr(load, 'active_channel_mode', '') or ''
-        self.status.setText(f"● ON  {mode} L{level}" if on else f"○ OFF  {mode}")
-        self.status.setStyleSheet("color: rgb(85,255,127);" if on else "color: rgb(140,140,140);")
-        style = (TILE_ON_STYLE if on else TILE_STYLE).format(name=tile.objectName())
+        self.status.setText(f"● ON  {mode} L{level}" if on else f"● OFF  {mode}")
+        self.status.setStyleSheet(
+            f"color:{mc_theme.GO}; font-family:{mc_theme.FONT_TELEMETRY};"
+            if on else f"color:{mc_theme.TEXT_MUTED}; font-family:{mc_theme.FONT_TELEMETRY};")
+        style = mc_theme.tile_style(tile.objectName(), assigned=True, active=on)
         if tile.styleSheet() != style:
             tile.setStyleSheet(style)
 
@@ -275,17 +275,23 @@ class EloadGrid:
         container.setObjectName("widget_eload_grid")
         v = QVBoxLayout(container)
         v.setContentsMargins(0, 0, 0, 0)
-        v.setSpacing(6)
+        v.setSpacing(2)
         v.addWidget(self._build_header(container))
         grid = QGridLayout()
-        grid.setSpacing(6)
+        grid.setSpacing(4)
+        grid.setContentsMargins(0, 0, 0, 0)
         for n in CHANNELS:
             self._compact_tile(n)
             tile = self.channels[n].w['tile']
             grid.addWidget(tile, (n - 1) // 2, (n - 1) % 2)
             tile.show()
-        v.addLayout(grid, 1)
-        lower.insertWidget(idx, container, 3)
+        for col in range(2):
+            grid.setColumnStretch(col, 0)
+        for row in range(2):
+            grid.setRowStretch(row, 0)
+        v.addLayout(grid, 0)
+        container.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)
+        lower.insertWidget(idx, container, 0)
         ui.widget_eload_grid = container
         self._make_usb_pd_collapsible()
 
@@ -294,11 +300,12 @@ class EloadGrid:
         header = QFrame(parent)
         header.setObjectName("frame_eload_grid_header")
         header.setStyleSheet(HEADER_STYLE)
-        header.setMaximumHeight(46)
+        header.setMaximumHeight(36)
         h = QHBoxLayout(header)
-        h.setContentsMargins(10, 2, 10, 2)
+        h.setContentsMargins(4, 0, 4, 2)
         title = QLabel("ELECTRONIC LOAD", header)
-        title.setStyleSheet("font-weight: bold;")
+        title.setStyleSheet(mc_theme.section_title_style())
+        title.setFont(mc_theme.label_font(10))
         h.addWidget(title)
         h.addStretch(1)
         # Discharge controls move here from the source panel: they act on the e-loads
@@ -319,7 +326,9 @@ class EloadGrid:
         w = ch.w
         tile = w['tile']
         tile.setMinimumSize(0, 0)
-        tile.setStyleSheet(TILE_STYLE.format(name=tile.objectName()))
+        tile.setMaximumWidth(520)
+        tile.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)
+        tile.setStyleSheet(mc_theme.tile_style(tile.objectName(), assigned=True))
 
         # Header: title, status, gear
         layout = tile.layout()
@@ -329,9 +338,11 @@ class EloadGrid:
         hl.setContentsMargins(4, 0, 4, 0)
         w['title'].setParent(header)
         w['title'].setText(f"E-LOAD CH{n}")
+        w['title'].setStyleSheet(mc_theme.section_title_style())
+        w['title'].setFont(mc_theme.label_font(10))
         hl.addWidget(w['title'])
-        ch.status = QLabel("○ OFF", header)
-        ch.status.setStyleSheet("color: rgb(140,140,140);")
+        ch.status = QLabel("● OFF", header)
+        ch.status.setStyleSheet(f"color:{mc_theme.TEXT_MUTED}; font-family:{mc_theme.FONT_TELEMETRY};")
         hl.addWidget(ch.status, 1, Qt.AlignRight)
         gear = QToolButton(header)
         gear.setObjectName(f"btn_eload_settings{_sfx(n)}")
@@ -342,8 +353,8 @@ class EloadGrid:
         gear.clicked.connect(lambda _=False, c=n: self.open_settings(c))
         hl.addWidget(gear)
         layout.insertWidget(0, header)
-        layout.setContentsMargins(6, 4, 6, 6)
-        layout.setSpacing(2)
+        layout.setContentsMargins(4, 2, 4, 4)
+        layout.setSpacing(1)
         self.gears[n] = gear
         setattr(self.ui, f"btn_eload_settings{_sfx(n)}", gear)
 
@@ -375,8 +386,6 @@ class EloadGrid:
         ch.dynamic_row = row
         row.setVisible(False)
 
-        # Compact the nested frames so all rows fit in a quarter of the lower row
-        tile.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         nested = [w['contents'], w['top'], w['level'].parentWidget(), w['level'],
                   w['a_edit'].parentWidget(), w['b_frame'], w['bottom']]
         for frame in nested:
@@ -457,12 +466,12 @@ class EloadGrid:
         tile = ch.w['tile']
         if assigned:
             tile.setEnabled(True)
-            tile.setStyleSheet(TILE_STYLE.format(name=tile.objectName()))
+            tile.setStyleSheet(mc_theme.tile_style(tile.objectName(), assigned=True))
             ch.w['title'].setText(f"E-LOAD CH{n}")
             ch.populate_modes()
         else:
             tile.setEnabled(False)
-            tile.setStyleSheet(UNASSIGNED_STYLE.format(name=tile.objectName()))
+            tile.setStyleSheet(mc_theme.tile_style(tile.objectName(), assigned=False))
             ch.w['title'].setText(f"E-LOAD CH{n} - Not assigned")
             ch.status.setText("")
             tile.hide()

@@ -1,8 +1,5 @@
 @Echo off
+REM Default launcher: virtual simulation (same as run_simulation.bat). Bench: run_hardware.bat
 cd /d "%~dp0"
-set PATH=%PATH%;%USERPROFILE%\Anaconda3
-set PATH=%PATH%;%USERPROFILE%\Anaconda3\Scripts
-set PATH=%PATH%;%USERPROFILE%\Anaconda3\Library\bin
-@Echo on
-call setup/activate_env.bat
-python main.py %*
+call "%~dp0run_simulation.bat" %*
+exit /b %ERRORLEVEL%

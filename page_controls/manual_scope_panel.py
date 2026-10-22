@@ -20,18 +20,13 @@ from PySide2.QtWidgets import (
 )
 
 from equipment.oscilloscope_specs import LeCroyOscilloscope, RohdeSchwarzOscilloscope, TriggerMode
+from page_controls import manual_control_theme as mc_theme
 from psu_tests.definitions import MessageType
 
 if TYPE_CHECKING:
     from page_controls.manual_control import ManualControlPageHandler
 
-PANEL_STYLE = (
-    "QFrame#frame_manual_control_oscilloscope {"
-    " border: 2px solid black; border-radius: 10px; background-color: rgb(29,34,44); }"
-    " QLabel { color: rgb(210,210,210); border: none; }"
-    " QLineEdit, QComboBox { background-color: rgb(27,29,35); color: white;"
-    " border: 1px solid rgb(63,70,87); border-radius: 3px; padding: 2px 6px; min-height: 22px; }"
-)
+PANEL_STYLE = mc_theme.scope_panel_style()
 
 TRIGGER_MODES = ("Auto", "Normal", "Freerun")
 TRIGGER_CHANNELS = ("CH1", "CH2", "CH3", "CH4")
@@ -70,14 +65,16 @@ class ManualScopePanel:
         self.btn_collapse.setChecked(True)
         self.btn_collapse.setText("▼")
         self.btn_collapse.setToolTip("Collapse / expand oscilloscope panel")
-        self.btn_collapse.setStyleSheet(
-            "QToolButton { color: rgb(200,200,200); border: none; font-size: 11px; padding: 2px 6px; }")
+        self.btn_collapse.setStyleSheet(mc_theme.gear_style())
         header.addWidget(self.btn_collapse)
         title = QLabel("OSCILLOSCOPE", frame)
-        title.setStyleSheet("font-weight: bold; font-size: 11px; color: rgb(220,220,220); border: none;")
+        title.setStyleSheet(mc_theme.section_title_style())
+        title.setFont(mc_theme.label_font(11))
         header.addWidget(title)
         self.label_status = QLabel("—", frame)
-        self.label_status.setStyleSheet("font-weight: bold; color: rgb(180,180,180); font-size: 10px;")
+        self.label_status.setStyleSheet(
+            f"color:{mc_theme.TEXT_MUTED}; border:none; font-family:{mc_theme.FONT_TELEMETRY};"
+            f" font-size:10px; font-weight:600;")
         header.addWidget(self.label_status)
         header.addStretch(1)
 

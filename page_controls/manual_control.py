@@ -23,7 +23,7 @@ from equipment.ac_source import *
 from equipment.power_meter import *
 from equipment.electronic_load import *
 import inject_ui
-from page_controls import pml_grid, eload_grid, manual_scope_panel
+from page_controls import manual_control_theme, pml_grid, eload_grid, manual_scope_panel
 from equipment.eload_specs import ELoadTypes
 
 from user_settings.save_load import (write_to_default_config, read_from_default_config) 
@@ -241,9 +241,11 @@ class ManualControlPageHandler():
         self.bind_ui_elements()
         self.eload_grid = eload_grid.EloadGrid(self)
         self._build_aux_dc_source_panel()
-        self._build_estop_toolbar()
+        self._build_page_header()
         self.scope_panel = manual_scope_panel.ManualScopePanel(self)
         self._wrap_equipment_in_scroll_area()
+        self._apply_compact_manual_layout()
+        manual_control_theme.apply_page_theme(self)
         self.dc_source_aux_accessible = False
         self.oscilloscope_accessible = True
 
@@ -514,6 +516,8 @@ class ManualControlPageHandler():
         upper = ui.frame_manual_control_upper
         lower = ui.frame_manual_control_lower
 
+        from PySide2.QtWidgets import QSizePolicy
+
         scroll = QScrollArea(ui.page_manual_control)
         scroll.setObjectName("scroll_manual_control_equipment")
         scroll.setWidgetResizable(True)
@@ -532,36 +536,81 @@ class ManualControlPageHandler():
         inner_layout.addWidget(lower)
 
         scroll.setWidget(inner)
+        inner.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)
+        scroll.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         layout.insertWidget(1, scroll, 1)
         ui.scroll_manual_control_equipment = scroll
 
-    def _build_estop_toolbar(self):
-        from PySide2.QtWidgets import QFrame, QHBoxLayout, QPushButton
+    def _build_page_header(self):
+        from PySide2.QtCore import Qt
+        from PySide2.QtWidgets import QHBoxLayout, QLabel, QPushButton, QSizePolicy, QWidget
 
         ui = self.ui
-        ui.label_manual_control.setMaximumHeight(56)
+        header = ui.label_manual_control
+        header.setMaximumHeight(16777215)
+        header.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
+        header.setStyleSheet(manual_control_theme.header_bar_style(header.objectName()))
 
-        bar = QFrame(ui.label_manual_control)
-        bar.setObjectName("frame_manual_control_estop")
-        h = QHBoxLayout(bar)
-        h.setContentsMargins(12, 0, 12, 4)
+        lay = ui.verticalLayout_14
+        lay.setContentsMargins(8, 4, 8, 4)
+        lay.setSpacing(2)
+        title = ui.label_2
+        lay.removeWidget(title)
+
+        if getattr(self.parent, 'is_simulation_mode', False):
+            sim = QLabel("SIM · virtual bench · run_simulation.bat", header)
+            sim.setObjectName("label_manual_control_simulation_banner")
+            sim.setStyleSheet(manual_control_theme.sim_banner_style())
+            lay.addWidget(sim)
+            ui.label_manual_control_simulation_banner = sim
+
+        row = QWidget(header)
+        row.setObjectName("frame_manual_control_header_row")
+        h = QHBoxLayout(row)
+        h.setContentsMargins(0, 0, 0, 0)
+        h.setSpacing(8)
+        title.setParent(row)
+        title.setStyleSheet(manual_control_theme.page_title_style())
+        h.addWidget(title, 0, Qt.AlignLeft)
         h.addStretch(1)
 
-        self.btn_estop = QPushButton("E-STOP", bar)
+        self.btn_estop = QPushButton("E-STOP", row)
         self.btn_estop.setObjectName("btn_manual_control_estop")
         self.btn_estop.setMinimumWidth(96)
-        self.btn_estop.setStyleSheet(
-            "QPushButton { min-height: 28px; max-height: 32px; padding: 4px 14px; font-size: 12px;"
-            " font-weight: bold; color: white; background-color: rgb(180, 40, 40);"
-            " border: 2px solid rgb(220, 80, 80); border-radius: 6px; }"
-            " QPushButton:hover { background-color: rgb(210, 55, 55); }"
-            " QPushButton:pressed { background-color: rgb(120, 25, 25); }")
+        self.btn_estop.setStyleSheet(manual_control_theme.estop_style())
         h.addWidget(self.btn_estop)
-
-        ui.verticalLayout_14.addWidget(bar)
-        ui.frame_manual_control_estop = bar
+        lay.addWidget(row)
+        ui.frame_manual_control_header_row = row
+        ui.frame_manual_control_estop = row
         self.btn_estop.clicked.connect(self.emergency_stop_all)
         ui.btn_manual_control_estop = self.btn_estop
+
+    def _apply_compact_manual_layout(self):
+        from PySide2.QtWidgets import QFrame, QSizePolicy
+
+        ui = self.ui
+        flat = manual_control_theme.flat_panel_style()
+        for name in (
+            "frame_manual_control_upper",
+            "frame_manual_control_lower",
+            "frame_manual_control_pms",
+            "frame_manual_control_ac_source",
+            "frame_manual_control_dc_source_column",
+        ):
+            w = getattr(ui, name, None)
+            if w is not None:
+                w.setStyleSheet(flat)
+                w.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)
+        aux = getattr(ui, "frame_manual_control_dc_source_aux", None)
+        if aux is not None:
+            aux.setStyleSheet(flat)
+        ui.horizontalLayout_9.setContentsMargins(2, 0, 2, 0)
+        ui.horizontalLayout_9.setSpacing(4)
+        ui.horizontalLayout_13.setContentsMargins(2, 0, 2, 0)
+        ui.horizontalLayout_13.setSpacing(4)
+        for layout in (ui.horizontalLayout_9, ui.horizontalLayout_13):
+            for i in range(layout.count()):
+                layout.setStretch(i, 0)
 
     def get_oscilloscope(self):
         return getattr(self.equipment, 'oscilloscope', None) if self.equipment else None
@@ -1300,12 +1349,13 @@ class ManualControlPageHandler():
         pms_frame.setEnabled(True)
         if hasattr(ui, 'frame_manual_control_dc_source_aux'):
             ui.frame_manual_control_dc_source_aux.setEnabled(True)
-            ui.frame_manual_control_dc_source_aux.setStyleSheet(Style.normal_frame)
+            ui.frame_manual_control_dc_source_aux.setStyleSheet(flat)
 
-        ac_source_frame.setStyleSheet(Style.normal_frame)
-        eload_frame.setStyleSheet(Style.normal_frame)
-        pml_frame.setStyleSheet(Style.normal_frame)
-        pms_frame.setStyleSheet(Style.normal_frame)
+        flat = manual_control_theme.flat_panel_style()
+        ac_source_frame.setStyleSheet(flat)
+        eload_frame.setStyleSheet(flat)
+        pml_frame.setStyleSheet(flat)
+        pms_frame.setStyleSheet(flat)
 
 
     ########################################################################

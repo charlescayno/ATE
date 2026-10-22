@@ -6,10 +6,20 @@ Your PI ATE clone is **`C:\Users\Charles\ATE`**. Open that folder in Cursor (**F
 
 | What | Path |
 |------|------|
+| **Repo root (PI ATE)** | `C:\Users\Charles\ATE` |
+| Default launcher (simulation) | `C:\Users\Charles\ATE\run.bat` → calls `run_simulation.bat` |
+| Simulation launcher | `C:\Users\Charles\ATE\run_simulation.bat` |
+| Physical bench launcher | `C:\Users\Charles\ATE\run_hardware.bat` |
 | Oscilloscope panel (code) | `C:\Users\Charles\ATE\page_controls\manual_scope_panel.py` |
-| Manual page handler | `C:\Users\Charles\ATE\page_controls\manual_control.py` |
+| Manual page handler (+ E-STOP, sim banner) | `C:\Users\Charles\ATE\page_controls\manual_control.py` |
+| PML / discharge sequencer | `C:\Users\Charles\ATE\page_controls\pml_grid.py` |
+| E-load grid | `C:\Users\Charles\ATE\page_controls\eload_grid.py` |
 | Doc (scope + E-STOP) | `C:\Users\Charles\ATE\docs\Manual_Control_Scope_ESTOP.md` |
+| Doc (less crowded layout) | `C:\Users\Charles\ATE\docs\Manual_Control_Less_Crowded.md` |
+| Doc (this index) | `C:\Users\Charles\ATE\docs\Manual_Control_File_Locations.md` |
 | UI mockup PNG | `C:\Users\Charles\ATE\docs\manual_control_ui_mockup.png` |
+| Scope verify script | `C:\Users\Charles\ATE\scripts\verify_manual_control_scope_estop.py` |
+| GitHub remote | `https://github.com/charlescayno/ATE` |
 
 **In Cursor:** `Ctrl+P` → paste a path above, or use **File → Open File**.
 
@@ -17,9 +27,11 @@ Your PI ATE clone is **`C:\Users\Charles\ATE`**. Open that folder in Cursor (**F
 
 ```bat
 C:\Users\Charles\ATE\run.bat
+REM or explicitly:
+C:\Users\Charles\ATE\run_simulation.bat
 ```
 
-Home → **Manual Equipment Control**. Oscilloscope block is at the **bottom**; **E-STOP** is top-right of the header.
+Home → **Manual Equipment Control**. **Simulation banner** (when virtual bench) at top; **E-STOP** top-right; **oscilloscope** at bottom (Run / Run Single / Stop on the right).
 
 ## Captured PNGs from “Capture waveform”
 

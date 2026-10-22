@@ -8,20 +8,16 @@ Also hosts the non-blocking output discharge sequencer used by Manual Control.
 from PySide2.QtCore import Qt, QTimer
 from PySide2.QtGui import QFont
 from PySide2.QtWidgets import (QDialog, QFrame, QGridLayout, QHBoxLayout, QLabel,
-                               QPushButton, QToolButton, QVBoxLayout, QWidget)
+                               QPushButton, QSizePolicy, QToolButton, QVBoxLayout, QWidget)
+
+from page_controls import manual_control_theme as mc_theme
 
 CHANNELS = (1, 2, 3, 4)
 PIN_LIMIT_W = 10e3
 
-TILE_STYLE = "QFrame#{name}{{border: 2px solid black; border-radius: 10px; background-color: rgb(29,34,44);}}"
-UNASSIGNED_STYLE = "QFrame#{name}{{border: 2px dashed rgb(70,70,70); border-radius: 10px; background-color: rgb(36,38,44);}}"
-STRIP_STYLE = ("QFrame{border: 2px solid black; border-radius: 10px; background-color: rgb(29,34,44);}"
-               "QLabel{border:none; color: rgb(220,220,220);}")
-GEAR_STYLE = ("QToolButton{border:none; color: rgb(180,180,180); font-size: 16px;}"
-              "QToolButton:hover{color: white;} QToolButton:disabled{color: rgb(71,71,71);}")
-DIALOG_STYLE = ("QDialog{background-color: rgb(40,44,52);} QLabel{color: rgb(210,210,210);}"
-                "QPushButton{color: white; background-color: rgb(52,59,72); border: 1px solid rgb(80,90,110);"
-                " border-radius: 5px; padding: 4px 14px;} QPushButton:hover{background-color: rgb(61,70,86);}")
+GEAR_STYLE = mc_theme.gear_style()
+DIALOG_STYLE = mc_theme.dialog_style()
+STRIP_STYLE = mc_theme.strip_style()
 
 
 def _sfx(n: int) -> str:
@@ -90,28 +86,34 @@ class PmlGrid:
         container.setObjectName("widget_pml_grid")
         v = QVBoxLayout(container)
         v.setContentsMargins(0, 0, 0, 0)
-        v.setSpacing(6)
+        v.setSpacing(2)
         v.addWidget(self._build_strip(container))
 
         grid = QGridLayout()
-        grid.setSpacing(6)
+        grid.setSpacing(4)
+        grid.setContentsMargins(0, 0, 0, 0)
         for n in CHANNELS:
             self._compact_tile(n)
             grid.addWidget(self.widgets[n]['tile'], (n - 1) // 2, (n - 1) % 2)
             self.widgets[n]['tile'].show()
-        v.addLayout(grid, 1)
+        for col in range(2):
+            grid.setColumnStretch(col, 0)
+        for row in range(2):
+            grid.setRowStretch(row, 0)
+        v.addLayout(grid, 0)
 
-        upper.insertWidget(idx, container)
-        upper.setStretch(idx, 2)
+        container.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)
+        upper.insertWidget(idx, container, 0)
+        upper.setStretch(idx, 0)
         ui.widget_pml_grid = container
 
     def _build_strip(self, parent):
         strip = QFrame(parent)
         strip.setObjectName("frame_pml_total")
         strip.setStyleSheet(STRIP_STYLE)
-        strip.setMaximumHeight(44)
+        strip.setMaximumHeight(36)
         h = QHBoxLayout(strip)
-        h.setContentsMargins(10, 2, 10, 2)
+        h.setContentsMargins(4, 0, 4, 2)
         font = QFont()
         font.setPointSize(12)
         font.setBold(True)
@@ -132,7 +134,9 @@ class PmlGrid:
         w = self.widgets[n]
         tile = w['tile']
         tile.setMinimumSize(0, 0)
-        tile.setStyleSheet(TILE_STYLE.format(name=tile.objectName()))
+        tile.setMaximumWidth(520)
+        tile.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)
+        tile.setStyleSheet(mc_theme.tile_style(tile.objectName(), assigned=True))
 
         # Header: title + gear
         w['layout'].removeWidget(w['title'])
@@ -141,6 +145,8 @@ class PmlGrid:
         hl.setContentsMargins(4, 0, 4, 0)
         w['title'].setParent(header)
         w['title'].setText(f"LOAD PM CH{n}")
+        w['title'].setStyleSheet(mc_theme.section_title_style())
+        w['title'].setFont(mc_theme.label_font(10))
         hl.addWidget(w['title'], 1)
         gear = QToolButton(header)
         gear.setObjectName(f"btn_pml_settings{_sfx(n)}")
@@ -151,8 +157,8 @@ class PmlGrid:
         gear.clicked.connect(lambda _=False, ch=n: self.open_settings(ch))
         hl.addWidget(gear)
         w['layout'].insertWidget(0, header)
-        w['layout'].setContentsMargins(6, 4, 6, 6)
-        w['layout'].setSpacing(2)
+        w['layout'].setContentsMargins(4, 2, 4, 4)
+        w['layout'].setSpacing(1)
         self.gears[n] = gear
         setattr(self.ui, f"btn_pml_settings{_sfx(n)}", gear)
 
@@ -160,15 +166,14 @@ class PmlGrid:
         w['display'].setMinimumSize(0, 0)
         w['display'].setMaximumWidth(16777215)
         for lbl in w['labels']:
-            f = QFont(lbl.font())
-            f.setPointSize(14)
-            lbl.setFont(f)
-            lbl.setMinimumHeight(30)
-            lbl.setMaximumHeight(36)
+            lbl.setFont(mc_theme.telemetry_font(15))
+            lbl.setStyleSheet(mc_theme.telemetry_label_style())
+            lbl.setMinimumHeight(24)
+            lbl.setMaximumHeight(30)
         w['select'].setMaximumWidth(78)
         for cbx in w['cbx']:
-            cbx.setMinimumHeight(30)
-            cbx.setMaximumHeight(36)
+            cbx.setMinimumHeight(24)
+            cbx.setMaximumHeight(30)
 
         # Settings move into the gear dialog
         self.dialogs[n] = PmlSettingsDialog(self.handler.parent, n, w['control'])
@@ -193,11 +198,11 @@ class PmlGrid:
         w = self.widgets[n]
         tile = w['tile']
         if assigned:
-            tile.setStyleSheet(TILE_STYLE.format(name=tile.objectName()))
+            tile.setStyleSheet(mc_theme.tile_style(tile.objectName(), assigned=True))
             w['title'].setText(f"LOAD PM CH{n}")
             tile.setEnabled(True)
         else:
-            tile.setStyleSheet(UNASSIGNED_STYLE.format(name=tile.objectName()))
+            tile.setStyleSheet(mc_theme.tile_style(tile.objectName(), assigned=False))
             w['title'].setText(f"LOAD PM CH{n} - Not assigned")
             for lbl in w['labels']:
                 lbl.setText('—')

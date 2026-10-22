@@ -61,10 +61,12 @@ A Python-based automated testing and validation suite designed for Power Integra
 ## Quick Start
 
 ### 1. Launching the Application
-If your environment is already set up, simply double-click:
+If your environment is already set up, double-click (both start **virtual simulation**):
 ```bat
 run.bat
+run_simulation.bat
 ```
+For the physical bench (GPIB / Anaconda env), use `run_hardware.bat`.
 
 From a terminal (without activating conda manually):
 ```bat
@@ -154,7 +156,9 @@ To enable smooth debugging without stepping into external libraries, add the fol
 
 ```
 ├── main.py                       # Application entry point and main window event loop
-├── run.bat                       # Shortcut to launch application in conda environment
+├── run.bat                       # Default launcher → simulation (calls run_simulation.bat)
+├── run_simulation.bat            # Virtual bench (conda_env + PI_ATE_SIMULATION=1)
+├── run_hardware.bat              # Physical bench (setup/activate_env.bat + main.py)
 ├── setup.bat                     # Automated fresh install script
 ├── install_dependencies.bat      # Updates packages in existing environment
 ├── requirements.txt              # Python package dependencies
