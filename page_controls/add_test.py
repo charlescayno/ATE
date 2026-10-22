@@ -393,11 +393,14 @@ class AddTestPageHandler(QObject):
 
     def initialize_ui_states(self):
         self.item_selected = True
+        # Widget lists for I2C UI must exist before test-type combobox is filled
+        # (addItems emits currentIndexChanged -> test_type_index_changed).
+        self.initialize_ui_element_settings()
+
         # Initialize Test Type List
         self.intitialize_test_types_list()
 
         # Initialize Line Settings List
-        self.initialize_ui_element_settings()
         self.item_selected = False
         
         # Run the routine to hide the usbpd ui elements
@@ -1721,6 +1724,8 @@ class AddTestPageHandler(QObject):
     
     def update_i2c_page_ui_settings(self,tc_ui):
         ui = self.ui
+        if not hasattr(self, 'i2c_ui_lineedit_frames'):
+            self.define_i2c_ui_elements()
         # Line edits
         le_ui_frames = self.i2c_ui_lineedit_frames
         le_ui_labels = self.i2c_ui_lineedit_labels
