@@ -39,10 +39,20 @@ class Eff2PWaveformAdvancedDialog(QDialog):
         'trigger_channel': 9,
     }
 
-    def __init__(self, parent, lineedits, scope_channels=None, ambient_lineedit=None):
+    def __init__(
+        self,
+        parent,
+        lineedits,
+        scope_channels=None,
+        ambient_lineedit=None,
+        for_startup=False,
+        startup_capture_timeout_le=None,
+    ):
         super().__init__(parent)
         self.lineedits = lineedits
         self.ambient_lineedit = ambient_lineedit
+        self.for_startup = for_startup
+        self.startup_capture_timeout_le = startup_capture_timeout_le
         self.setWindowTitle("Scope & timing (advanced)")
         self.setStyleSheet(DIALOG_STYLE)
         self.setMinimumWidth(360)
@@ -70,6 +80,12 @@ class Eff2PWaveformAdvancedDialog(QDialog):
         form.addRow("Ambient Temp (°C):", self.le_ambient)
         form.addRow("Post-Capture Delay (s):", self.le_post_delay)
         form.addRow("Trigger Channel:", self.cbx_trigger)
+
+        self.le_capture_timeout = None
+        if for_startup:
+            self.le_capture_timeout = QLineEdit(self)
+            self.le_capture_timeout.setValidator(validator)
+            form.addRow("Capture Timeout (s):", self.le_capture_timeout)
 
         hint = QLabel(
             "Stop Test always runs a safety discharge at 1.0 A CCH "
@@ -114,6 +130,13 @@ class Eff2PWaveformAdvancedDialog(QDialog):
         idx = self.cbx_trigger.findText(want)
         self.cbx_trigger.setCurrentIndex(idx if idx >= 0 else 0)
 
+        if self.le_capture_timeout is not None:
+            default = "10"
+            if self.startup_capture_timeout_le is not None:
+                t = self.startup_capture_timeout_le.text().strip()
+                default = t if t else default
+            self.le_capture_timeout.setText(default)
+
     def apply_to_lineedits(self):
         def set_txt(idx, value):
             if idx < len(self.lineedits):
@@ -129,3 +152,6 @@ class Eff2PWaveformAdvancedDialog(QDialog):
         set_txt(self.PARAM_INDICES['post_capture_delay'], self.le_post_delay.text().strip() or "1.0")
         ch = self.cbx_trigger.currentText().replace("CH", "")
         set_txt(self.PARAM_INDICES['trigger_channel'], ch or "1")
+        if self.le_capture_timeout is not None and self.startup_capture_timeout_le is not None:
+            self.startup_capture_timeout_le.setText(
+                self.le_capture_timeout.text().strip() or "10")

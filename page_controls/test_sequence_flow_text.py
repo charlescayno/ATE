@@ -1,0 +1,151 @@
+"""High-level test sequence copy for Add Test flow (➜) dialog."""
+
+STEADY_STATE_WAVEFORM_2PORT_TITLE = "Steady-State Waveform 2 Port"
+STARTUP_WAVEFORM_2PORT_TITLE = "Startup Waveform 2 Port"
+EFFICIENCY_2PORT_WAVEFORM_LEGACY_TITLE = "Efficiency 2 Port (Waveform)"
+
+FLOW_TITLES = (
+    STEADY_STATE_WAVEFORM_2PORT_TITLE,
+    EFFICIENCY_2PORT_WAVEFORM_LEGACY_TITLE,
+    STARTUP_WAVEFORM_2PORT_TITLE,
+)
+
+
+def _step(active: bool, label: str) -> str:
+    if active:
+        return label
+    return f"(skipped — not in User Prompts) {label}"
+
+
+def _user_prompts_flags(user_prompts: str) -> tuple[bool, bool]:
+    text = (user_prompts or "").strip()
+    pre = "Pre-Test" in text
+    per = "Per-Capture" in text
+    return pre, per
+
+
+def build_startup_flow_text(
+    *,
+    user_prompts: str = "Per-Capture Only",
+    capture_timeout_s: float = 10.0,
+    dual_load_mode: str = "",
+    discharge_pulses: int = 0,
+) -> str:
+    pre_test, per_capture = _user_prompts_flags(user_prompts)
+    mode_note = dual_load_mode.strip() or "Dual Load Mode"
+    lines = [
+        "STARTUP WAVEFORM 2 PORT — SEQUENCE",
+        f"Dual Load Mode: {mode_note}",
+        f"User Prompts: {user_prompts.strip() or '(default)'}",
+        f"Capture Timeout: {capture_timeout_s:g} s (gear → advanced)",
+        "",
+        "=== ONCE AT TEST START ===",
+        _step(discharge_pulses > 0, f"[AUTO] Output discharge pulses (×{discharge_pulses})"),
+        "  →",
+        "[USER] OK — Discharge DUT outputs to input bulk cap",
+        "  →",
+        _step(pre_test, "[USER] OK — Oscilloscope setup reminder"),
+        "  →",
+        "[AUTO] Apply scope setup",
+        "",
+        "=== EACH (Vin × load) POINT — REPEAT ===",
+        "[USER] First point only: OK — Disconnect bulk cap from DUT",
+        "  → [AUTO] HMP aux DC OFF",
+        "  →",
+        "[AUTO] Discharge unit",
+        "  →",
+        "[AUTO] Scope RUN SINGLE (arm before Vin ramp)",
+        "  →",
+        "[AUTO] Set / ramp input Vin (100 V/s bulk-cap ramp when Magna HVDC)",
+        "  →",
+        "[AUTO] Set e-loads (Ch1 / Ch2)",
+        "  →",
+        "[USER] OK — Connect pre-charged bulk cap to DUT",
+        "  → [AUTO] HMP aux DC ON",
+        "  →",
+        f"[AUTO] Wait for scope acquisition (≤ {capture_timeout_s:g} s)",
+        "  →",
+        _step(per_capture, "[USER] Review capture (Proceed / Recapture / Skip / Stop)"),
+        "  →",
+        "[AUTO] Screenshot + Excel + efficiency + post-capture delay",
+        "",
+        "=== RECAPTURE ===",
+        "Re-arm scope → loads → connect prompt (HMP ON) → wait → review",
+        "",
+        "=== END OF TEST ===",
+        _step(discharge_pulses > 0, "[AUTO] Final discharge pulses"),
+        "  →",
+        "[AUTO] Save workbook + SUW waveforms sheet",
+        "",
+        "Notes: Bulk-cap and HV connect prompts always run on hardware.",
+        "HMP requires Aux DC = HMP in Equipment Setup.",
+    ]
+    return "\n".join(lines)
+
+
+def build_steady_state_flow_text(
+    *,
+    user_prompts: str = "Pre-Test & Per-Capture",
+    dual_load_mode: str = "",
+) -> str:
+    pre_test, per_capture = _user_prompts_flags(user_prompts)
+    mode_note = dual_load_mode.strip() or "Dual Load Mode"
+    lines = [
+        "STEADY-STATE WAVEFORM 2 PORT — SEQUENCE",
+        f"Dual Load Mode: {mode_note}",
+        f"User Prompts: {user_prompts.strip() or '(default)'}",
+        "",
+        "=== ONCE AT TEST START ===",
+        _step(pre_test, "[USER] OK — Oscilloscope setup reminder"),
+        "  →",
+        "[AUTO] Apply scope setup",
+        "  →",
+        "[AUTO] Discharge / confirm discharge resistor (as configured)",
+        "",
+        "=== EACH Vin STEP ===",
+        "[AUTO] Set / ramp input Vin",
+        "  →",
+        "[AUTO] Initial or line soak",
+        "  →",
+        "=== EACH LOAD POINT AT THIS Vin ===",
+        "[AUTO] Set loads",
+        "  →",
+        "[AUTO] Load soak",
+        "  →",
+        "[AUTO] Measure efficiency",
+        "  →",
+        "[AUTO] Scope RUN SINGLE + capture",
+        "  →",
+        _step(per_capture, "[USER] Optional per-capture review"),
+        "  →",
+        "[AUTO] Save Excel row + waveform PNG",
+        "",
+        "=== END OF TEST ===",
+        "[AUTO] Discharge output",
+        "  →",
+        "[AUTO] Save workbook + SSW waveforms sheet",
+    ]
+    return "\n".join(lines)
+
+
+def build_flow_text_for_title(
+    title: str,
+    *,
+    user_prompts: str = "",
+    capture_timeout_s: float = 10.0,
+    dual_load_mode: str = "",
+    discharge_pulses: int = 0,
+) -> str | None:
+    if title == STARTUP_WAVEFORM_2PORT_TITLE:
+        return build_startup_flow_text(
+            user_prompts=user_prompts,
+            capture_timeout_s=capture_timeout_s,
+            dual_load_mode=dual_load_mode,
+            discharge_pulses=discharge_pulses,
+        )
+    if title in (STEADY_STATE_WAVEFORM_2PORT_TITLE, EFFICIENCY_2PORT_WAVEFORM_LEGACY_TITLE):
+        return build_steady_state_flow_text(
+            user_prompts=user_prompts,
+            dual_load_mode=dual_load_mode,
+        )
+    return None

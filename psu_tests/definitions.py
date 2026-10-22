@@ -1210,9 +1210,12 @@ class I2CTestParameters():
     """Generic UI parameters from the UI.
     The assignment of these parameters vary per test."""
 
-    def __init__(self, params=[0]*10, cbx_params=[0]*4):
-        self.param = [0]*10
-        self.cbx_param = [0]*4
+    def __init__(self, params=None, cbx_params=None):
+        params = list(params) if params is not None else [0] * 10
+        cbx_params = list(cbx_params) if cbx_params is not None else [0] * 4
+        n_param = max(10, len(params))
+        self.param = [0] * n_param
+        self.cbx_param = [0] * 4
         for index, parameter in enumerate(params):
             self.param[index] = parameter
 

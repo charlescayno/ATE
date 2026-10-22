@@ -43,6 +43,10 @@ def main() -> int:
     su = StartupWaveformTest_2Port.tc_default
     if su.nominal_load_current_A != 4.5 or su.max_load_current_A != 4.5:
         errors.append("StartupWaveformTest_2Port tc_default nominal I not 4.5 A")
+    su_params = su.i2c_test_parameters.param
+    idx = StartupWaveformTest_2Port.STARTUP_CAPTURE_TIMEOUT_PARAM_INDEX
+    if len(su_params) <= idx or float(su_params[idx]) != 10.0:
+        errors.append("Startup tc_default capture timeout not 10 s")
 
     idx = TestTypes.index(EfficiencyWaveformTest_2Port)
     wf = TestConditionSettings().test_condition_list[idx]

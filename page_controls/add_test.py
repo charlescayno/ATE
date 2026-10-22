@@ -7,6 +7,7 @@ from app.app_modules import *
 
 from page_controls.manual_control import ManualControlPageHandler
 from page_controls.eff2p_waveform_advanced import Eff2PWaveformAdvancedDialog
+from page_controls.test_sequence_flow_text import build_flow_text_for_title
 from page_controls.pml_grid import GEAR_STYLE
 from sink_controllers.epr_sink_control import *
 from sink_controllers.definitions import * 
@@ -1849,6 +1850,58 @@ class AddTestPageHandler(QObject):
         msg.setIcon(QMessageBox.Information)
         msg.exec_()
 
+    def show_test_sequence_flow(self):
+        test_class = getattr(self, 'selected_test_class', None)
+        if test_class is None or test_class.title not in WAVEFORM_2PORT_TITLES:
+            return
+
+        user_prompts = ""
+        dual_load_mode = ""
+        if len(getattr(self, 'i2c_ui_combo_boxes', [])) > 2:
+            user_prompts = self.i2c_ui_combo_boxes[2].currentText()
+        if len(getattr(self, 'i2c_ui_combo_boxes', [])) > 0:
+            dual_load_mode = self.i2c_ui_combo_boxes[0].currentText()
+
+        discharge_pulses = 0
+        if len(getattr(self, 'i2c_ui_lineedits', [])) > 6:
+            dp_txt = self.i2c_ui_lineedits[6].text().strip()
+            if is_numeric(dp_txt):
+                discharge_pulses = int(float(dp_txt))
+
+        capture_timeout_s = StartupWaveformTest_2Port.STARTUP_CAPTURE_TIMEOUT_DEFAULT_S
+        if test_class.title == STARTUP_WAVEFORM_2PORT_TITLE:
+            le = self._startup_capture_timeout_storage()
+            if is_numeric(le.text()):
+                capture_timeout_s = float(le.text())
+
+        body = build_flow_text_for_title(
+            test_class.title,
+            user_prompts=user_prompts,
+            capture_timeout_s=capture_timeout_s,
+            dual_load_mode=dual_load_mode,
+            discharge_pulses=discharge_pulses,
+        )
+        if not body:
+            return
+
+        dlg = QDialog(self.parent)
+        dlg.setWindowTitle(f"{test_class.title} — sequence")
+        dlg.setMinimumSize(520, 480)
+        dlg.setStyleSheet(
+            "QDialog { background-color: rgb(40, 44, 52); }"
+            "QTextEdit { color: rgb(220, 220, 220); background-color: rgb(30, 33, 40); "
+            "font-family: Consolas, monospace; font-size: 11px; border: 1px solid rgb(60, 66, 78); }"
+            "QPushButton { color: white; background-color: rgb(52, 59, 72); padding: 6px 16px; }")
+        layout = QVBoxLayout(dlg)
+        editor = QTextEdit(dlg)
+        editor.setReadOnly(True)
+        editor.setPlainText(body)
+        layout.addWidget(editor)
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok)
+        buttons.accepted.connect(dlg.accept)
+        layout.addWidget(buttons)
+        dlg.exec_()
+
     def _ensure_eff2p_waveform_gear_row(self):
         ui = self.ui
         if not hasattr(self, 'frame_eff2p_advanced_gear'):
@@ -1867,6 +1920,14 @@ class AddTestPageHandler(QObject):
             self.btn_eff2p_advanced_gear.clicked.connect(self._open_eff2p_waveform_advanced_dialog)
             hl.addWidget(lbl)
             hl.addWidget(self.btn_eff2p_advanced_gear)
+            if not hasattr(self, 'btn_eff2p_test_flow'):
+                self.btn_eff2p_test_flow = QToolButton(self.frame_eff2p_advanced_gear)
+                self.btn_eff2p_test_flow.setText("\u27a1")
+                self.btn_eff2p_test_flow.setToolTip("Show step-by-step test sequence")
+                self.btn_eff2p_test_flow.setStyleSheet(GEAR_STYLE)
+                self.btn_eff2p_test_flow.setCursor(Qt.PointingHandCursor)
+                self.btn_eff2p_test_flow.clicked.connect(self.show_test_sequence_flow)
+            hl.addWidget(self.btn_eff2p_test_flow)
             hl.addStretch()
             if not hasattr(self, 'btn_eff2p_scope_faq'):
                 self.btn_eff2p_scope_faq = QPushButton("i", self.frame_eff2p_advanced_gear)
@@ -1878,9 +1939,43 @@ class AddTestPageHandler(QObject):
                 self.btn_eff2p_scope_faq.clicked.connect(self.show_scope_faq)
                 hl.addWidget(self.btn_eff2p_scope_faq)
 
+    def _startup_capture_timeout_storage(self):
+        if not hasattr(self, '_startup_capture_timeout_lineedit'):
+            from PySide2.QtWidgets import QLineEdit
+            self._startup_capture_timeout_lineedit = QLineEdit(self.parent)
+            self._startup_capture_timeout_lineedit.hide()
+            self._startup_capture_timeout_lineedit.setText(
+                f"{StartupWaveformTest_2Port.STARTUP_CAPTURE_TIMEOUT_DEFAULT_S:g}")
+        return self._startup_capture_timeout_lineedit
+
+    def _sync_startup_capture_timeout_from_i2c(self, i2c_params):
+        if not i2c_params:
+            return
+        params = getattr(i2c_params, 'param', None) or []
+        idx = StartupWaveformTest_2Port.STARTUP_CAPTURE_TIMEOUT_PARAM_INDEX
+        le = self._startup_capture_timeout_storage()
+        if len(params) > idx and params[idx] not in ('', None, 0):
+            try:
+                le.setText(f"{float(params[idx]):g}")
+                return
+            except (TypeError, ValueError):
+                pass
+        le.setText(f"{StartupWaveformTest_2Port.STARTUP_CAPTURE_TIMEOUT_DEFAULT_S:g}")
+
     def _open_eff2p_waveform_advanced_dialog(self):
         scope = self.get_scope_channels_from_ui() if hasattr(self, 'get_scope_channels_from_ui') else {}
-        dlg = Eff2PWaveformAdvancedDialog(self.parent, self.i2c_ui_lineedits, scope_channels=scope)
+        is_startup = (
+            getattr(self, 'selected_test_class', None) is not None
+            and self.selected_test_class.title == STARTUP_WAVEFORM_2PORT_TITLE
+        )
+        dlg = Eff2PWaveformAdvancedDialog(
+            self.parent,
+            self.i2c_ui_lineedits,
+            scope_channels=scope,
+            for_startup=is_startup,
+            startup_capture_timeout_le=(
+                self._startup_capture_timeout_storage() if is_startup else None),
+        )
         if dlg.exec_() == QDialog.Accepted:
             dlg.apply_to_lineedits()
 
@@ -2814,8 +2909,10 @@ class AddTestPageHandler(QObject):
                                     break
                             if not matched and val in cbx_names:
                                 cbx.setCurrentIndex(cbx_names.index(val))
-                    
-                    
+                    if test_type.title == STARTUP_WAVEFORM_2PORT_TITLE:
+                        self._sync_startup_capture_timeout_from_i2c(
+                            selected_test_conditions.i2c_test_parameters)
+
             if nominal_output_settings_update:
                 # Nominal output settings
                 nominal_output_voltage = selected_test_conditions.nominal_output_voltage_V
@@ -3058,6 +3155,8 @@ class AddTestPageHandler(QObject):
                                     break
                             if not matched and cbx_item in cbx_names:
                                 cbx.setCurrentIndex(cbx_names.index(cbx_item))
+                    if self.selected_test_class.title == STARTUP_WAVEFORM_2PORT_TITLE:
+                        self._sync_startup_capture_timeout_from_i2c(default_i2c)
                 else:
                     for line in self.i2c_ui_lineedits:
                         line.setText('')
@@ -3472,6 +3571,16 @@ class AddTestPageHandler(QObject):
             val = cbx.currentText()
 
             cbx_params.append(val)
+
+        if (
+            getattr(self, 'selected_test_class', None) is not None
+            and self.selected_test_class.title == STARTUP_WAVEFORM_2PORT_TITLE
+        ):
+            le = self._startup_capture_timeout_storage()
+            if is_numeric(le.text()):
+                params.append(float(le.text()))
+            else:
+                params.append(StartupWaveformTest_2Port.STARTUP_CAPTURE_TIMEOUT_DEFAULT_S)
 
         i2c_test_parameters = I2CTestParameters(params, cbx_params)
         return i2c_test_parameters

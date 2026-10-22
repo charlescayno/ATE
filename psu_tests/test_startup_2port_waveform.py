@@ -12,7 +12,8 @@ class StartupWaveformTest_2Port(EfficiencyWaveformTest_2Port):
 
     title = "Startup Waveform 2 Port"
     short_title = "SU_WF_2P"
-    STARTUP_CAPTURE_TIMEOUT_S = 7.0
+    STARTUP_CAPTURE_TIMEOUT_DEFAULT_S = 10.0
+    STARTUP_CAPTURE_TIMEOUT_PARAM_INDEX = 10  # 11th i2c param (GUI advanced / saved plan)
     PNG_SUFFIX = "_SUW"
 
     tc_default = None  # set after class body
@@ -31,6 +32,9 @@ class StartupWaveformTest_2Port(EfficiencyWaveformTest_2Port):
         params = list(getattr(i2c, 'param', []) or [])
         if len(params) > 4:
             params[4] = 1.0
+        if len(params) <= cls.STARTUP_CAPTURE_TIMEOUT_PARAM_INDEX:
+            params = params + [0.0] * (cls.STARTUP_CAPTURE_TIMEOUT_PARAM_INDEX + 1 - len(params))
+        params[cls.STARTUP_CAPTURE_TIMEOUT_PARAM_INDEX] = cls.STARTUP_CAPTURE_TIMEOUT_DEFAULT_S
         return TestConditions(
             name=cls.title,
             nominal_output_voltage_V=tc.nominal_output_voltage_V,
@@ -54,6 +58,24 @@ class StartupWaveformTest_2Port(EfficiencyWaveformTest_2Port):
     def unpack_test_item(self):
         super().unpack_test_item()
         self.auto_find_trigger = False
+        self.startup_capture_timeout_s = self._read_startup_capture_timeout_s()
+
+    @classmethod
+    def _read_capture_timeout_from_params(cls, params) -> float:
+        default = cls.STARTUP_CAPTURE_TIMEOUT_DEFAULT_S
+        try:
+            idx = cls.STARTUP_CAPTURE_TIMEOUT_PARAM_INDEX
+            if params and len(params) > idx and str(params[idx]).strip() != '':
+                val = float(params[idx])
+                return val if val > 0 else default
+        except (TypeError, ValueError):
+            pass
+        return default
+
+    def _read_startup_capture_timeout_s(self) -> float:
+        i2c = getattr(self.test_conditions, 'i2c_test_parameters', None)
+        params = list(getattr(i2c, 'param', []) or [])
+        return self._read_capture_timeout_from_params(params)
 
     def build_detailed_output_basename(self) -> str:
         return (
@@ -89,6 +111,7 @@ class StartupWaveformTest_2Port(EfficiencyWaveformTest_2Port):
             "Click OK when done."
         )
         self.create_message_popup("Bulk Capacitor — Disconnect", msg, MessageType.WARNING)
+        self._turn_off_hmp_for_bulk_cap_disconnect()
 
     def _hmp_aux_dc(self):
         aux = getattr(self.equipment, 'dc_source_aux', None)
@@ -103,6 +126,14 @@ class StartupWaveformTest_2Port(EfficiencyWaveformTest_2Port):
             return
         self.update_status_log("HMP output ON (bulk cap → DUT)", upcoming="Acquisition")
         hmp.turn_on()
+
+    def _turn_off_hmp_for_bulk_cap_disconnect(self):
+        hmp = self._hmp_aux_dc()
+        if hmp is None:
+            print("[Warning] Startup bulk-cap disconnect: no HMP aux DC assigned in Equipment Setup")
+            return
+        self.update_status_log("HMP output OFF (bulk cap disconnected)", upcoming="Arm scope")
+        hmp.turn_off()
 
     def _prompt_input_switch(self, vin_set: float):
         coupling_label = "DC" if str(self.coupling).upper() == "DC" else "AC"
@@ -124,7 +155,8 @@ class StartupWaveformTest_2Port(EfficiencyWaveformTest_2Port):
                 pass
             return True
 
-        deadline = time.monotonic() + self.STARTUP_CAPTURE_TIMEOUT_S
+        timeout_s = getattr(self, 'startup_capture_timeout_s', self.STARTUP_CAPTURE_TIMEOUT_DEFAULT_S)
+        deadline = time.monotonic() + timeout_s
         while time.monotonic() < deadline:
             if test_control_flags.get('StopTest', False):
                 raise TestStopped
@@ -153,7 +185,7 @@ class StartupWaveformTest_2Port(EfficiencyWaveformTest_2Port):
         except Exception:
             pass
         print(
-            f"[TIMEOUT] No scope capture within {self.STARTUP_CAPTURE_TIMEOUT_S:g} s at "
+            f"[TIMEOUT] No scope capture within {timeout_s:g} s at "
             f"{vin_set:g} V, Ch1 {i1_A:g} A, Ch2 {i2_A:g} A")
         return False
 
@@ -374,7 +406,7 @@ class StartupWaveformTest_2Port(EfficiencyWaveformTest_2Port):
                     add_time(2)
                 add_time(1, True)
                 add_time(2)
-                add_time(self.STARTUP_CAPTURE_TIMEOUT_S)
+                add_time(getattr(self, 'startup_capture_timeout_s', self.STARTUP_CAPTURE_TIMEOUT_DEFAULT_S))
                 add_time(2)
                 add_time(self.settle_time)
                 add_time(1.5)
