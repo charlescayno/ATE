@@ -1,5 +1,4 @@
 
-from numpy import source
 import usb.core
 import usb.util
 import libusb_package

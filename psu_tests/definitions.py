@@ -399,10 +399,6 @@ class SoakTime:
             print(f"[SOAK] Initial Soak: Waiting {soak} seconds...")
 
         for i in range(soak*2):
-            if i > 0 and i % 10 == 0:
-                remaining = (soak*2 - i) // 2
-                if remaining % 5 == 0:
-                    print(f"[SOAK] Initial Soak: {remaining} seconds remaining...")
             sleep(0.5)
             if test_control_flags.get('StopTest', False):
                 raise TestStopped
@@ -418,10 +414,6 @@ class SoakTime:
             print(f"[SOAK] Line Soak: Waiting {soak} seconds...")
 
         for i in range(soak*2):
-            if i > 0 and i % 10 == 0:
-                remaining = (soak*2 - i) // 2
-                if remaining % 5 == 0:
-                    print(f"[SOAK] Line Soak: {remaining} seconds remaining...")
             sleep(0.5)
             if test_control_flags.get('StopTest', False):
                 raise TestStopped
@@ -437,10 +429,6 @@ class SoakTime:
             print(f"[SOAK] Load Soak: Waiting {soak} seconds...")
 
         for i in range(soak*2):
-            if i > 0 and i % 10 == 0:
-                remaining = (soak*2 - i) // 2
-                if remaining % 5 == 0:
-                    print(f"[SOAK] Load Soak: {remaining} seconds remaining...")
             sleep(0.5)
             if test_control_flags.get('StopTest', False):
                 raise TestStopped
@@ -455,10 +443,6 @@ class SoakTime:
             print(f"[SOAK] Integration Soak: Waiting {soak} seconds...")
 
         for i in range(soak*2):
-            if i > 0 and i % 10 == 0:
-                remaining = (soak*2 - i) // 2
-                if remaining % 5 == 0:
-                    print(f"[SOAK] Integration Soak: {remaining} seconds remaining...")
             sleep(0.5)
             if test_control_flags.get('StopTest', False):
                 raise TestStopped

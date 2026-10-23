@@ -6,8 +6,6 @@ import time
 from enum import Enum
 from PyQt5.QtCore import QCoreApplication
 
-from numpy import source
-
 from misc_functions.misc_functions import RepeatedTimer
 
 from PySide2 import QtGui

@@ -206,12 +206,8 @@ class EfficiencyTest_2Port(BaseTestObject):
 
             self.input_supply.turn_on()
 
-            if self.power_meter_load:
-                self.power_meter_load.auto_range_enable()
-            if self.power_meter_load_2:
-                self.power_meter_load_2.auto_range_enable()
-            if self.power_meter_source:
-                self.power_meter_source.current_auto_range_enable()
+            self.ensure_load_power_meters_auto_range()
+            self.ensure_source_power_meter_auto_range(settle_s=0)
 
             sleep(2)
 
@@ -282,17 +278,7 @@ class EfficiencyTest_2Port(BaseTestObject):
                     else:
                         self.electronic_load_2.turn_off()
 
-                if self.power_meter_load is not None:
-                    if i1_A < 0.05:
-                        self.power_meter_load.set_current_range(0.05)
-                    else:
-                        self.power_meter_load.current_auto_range_enable()
-                
-                if self.power_meter_load_2 is not None:
-                    if i2_A < 0.05:
-                        self.power_meter_load_2.set_current_range(0.05)
-                    else:
-                        self.power_meter_load_2.current_auto_range_enable()
+                self.ensure_load_power_meters_auto_range()
 
                 sleep(2)
                 self.correct_source_output()
@@ -315,16 +301,9 @@ class EfficiencyTest_2Port(BaseTestObject):
                     except Exception as exc:
                         print(f"[Warning] Efficiency 2 Port scope capture: {exc}")
                 
-                if self.power_meter_load and getattr(self.power_meter_load, '_current_auto_range_status', False):
-                    self.power_meter_load.auto_range_enable(False)
-                    sleep(0.5)
-                if self.power_meter_load_2 and getattr(self.power_meter_load_2, '_current_auto_range_status', False):
-                    self.power_meter_load_2.auto_range_enable(False)
-                    sleep(0.5)
-                if self.power_meter_source and getattr(self.power_meter_source, '_current_auto_range_status', False):
-                    self.power_meter_source.current_auto_range_enable(False)
-                    sleep(0.5)
-                
+                self.ensure_load_power_meters_auto_range()
+                self.prepare_source_power_meter_for_measurement()
+
                 self.test_data.gather_data(coupling=self.coupling, usb_pd=self.usbpd_test)
                 if self.power_meter_load_2 or self.electronic_load_2:
                     self.test_data_2.gather_data_load(integrate=False, force_use_eload_data=self.use_eload_data)
@@ -344,12 +323,8 @@ class EfficiencyTest_2Port(BaseTestObject):
                 if self.measure_ripple and scope_measurements:
                     self.record_scope_measurement_row(scope_measurements)
 
-                if self.power_meter_load:
-                    self.power_meter_load.auto_range_enable()
-                if self.power_meter_load_2:
-                    self.power_meter_load_2.auto_range_enable()
-                if self.power_meter_source:
-                    self.power_meter_source.current_auto_range_enable()
+                self.ensure_load_power_meters_auto_range()
+                self.ensure_source_power_meter_auto_range(settle_s=0)
             
             self.test_data_table.add_blank_row()
 
@@ -635,6 +610,35 @@ class EfficiencyTest_2Port(BaseTestObject):
 
         if self.electronic_load_2 is not None:
             self.electronic_load_2.reset_values()
+
+        self.ensure_load_power_meters_auto_range()
+        self.ensure_source_power_meter_auto_range(settle_s=0)
+
+    def ensure_load_power_meters_auto_range(self):
+        """Load PMs stay on V/I auto-range so readings are not clipped on a fixed range."""
+        if self.power_meter_load is not None:
+            self.power_meter_load.auto_range_enable(True)
+        if self.power_meter_load_2 is not None:
+            self.power_meter_load_2.auto_range_enable(True)
+
+    def ensure_source_power_meter_auto_range(self, settle_s: float = 0.5):
+        """WT500 source often stays on manual I range (e.g. 500 mA) -> --OL-- at HV Pin; force V+I AUTO."""
+        pm = self.power_meter_source
+        if pm is None:
+            return
+        state = pm.read_range_state() if hasattr(pm, 'read_range_state') else None
+        if state is not None:
+            v_auto, _v, i_auto, _i = state
+            if v_auto and i_auto:
+                if settle_s:
+                    sleep(settle_s)
+                return
+        pm.auto_range_enable(True)
+        if settle_s:
+            sleep(settle_s)
+
+    def prepare_source_power_meter_for_measurement(self, settle_s: float = 0.5):
+        self.ensure_source_power_meter_auto_range(settle_s=settle_s)
 
     def setup_data_file(self):
         """Set up the data frame to be used for output 

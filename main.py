@@ -14,6 +14,13 @@ import traceback
 import html
 import datetime
 
+def _minimal_log_line(message: str) -> bool:
+    """Keep test flow lines in app_log / View Logs; set PI_ATE_FULL_LOG=1 for everything."""
+    if os.environ.get("PI_ATE_FULL_LOG", "").strip().lower() in ("1", "yes", "true"):
+        return True
+    return "[TEST_STEP]" in message or "[SOAK]" in message
+
+
 class DualLogger(object):
     def __init__(self, filepath="app_log.txt"):
         self.terminal = sys.stdout
@@ -25,6 +32,8 @@ class DualLogger(object):
                 self.terminal.write(message)
             except Exception:
                 pass
+        if not _minimal_log_line(message):
+            return
         try:
             self.logfile.write(message)
             self.logfile.flush()
@@ -177,6 +186,8 @@ class MainWindow(QMainWindow):
         clean_text = text.strip()
         if not clean_text:
             return # Skip empty lines
+        if not _minimal_log_line(clean_text):
+            return
 
         escaped_text = html.escape(clean_text).replace('\n', '<br>')
         

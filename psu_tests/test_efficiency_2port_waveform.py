@@ -750,12 +750,8 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
 
             self.create_new_plot_series()
 
-            if self.power_meter_load:
-                self.power_meter_load.auto_range_enable()
-            if self.power_meter_load_2:
-                self.power_meter_load_2.auto_range_enable()
-            if self.power_meter_source:
-                self.power_meter_source.current_auto_range_enable()
+            self.ensure_load_power_meters_auto_range()
+            self.ensure_source_power_meter_auto_range(settle_s=0)
             sleep(2)
 
             if self.usbpd_test:
@@ -804,16 +800,7 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
                 self.update_status_log(f"Setting Loads Ch1 {i1_A:g} A / Ch2 {i2_A:g} A", upcoming="Load Soak")
                 self._set_loads(i1_A, i2_A)
 
-                if self.power_meter_load is not None:
-                    if i1_A < 0.05:
-                        self.power_meter_load.set_current_range(0.05)
-                    else:
-                        self.power_meter_load.current_auto_range_enable()
-                if self.power_meter_load_2 is not None:
-                    if i2_A < 0.05:
-                        self.power_meter_load_2.set_current_range(0.05)
-                    else:
-                        self.power_meter_load_2.current_auto_range_enable()
+                self.ensure_load_power_meters_auto_range()
 
                 sleep(2)
                 self.correct_source_output()
@@ -831,12 +818,8 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
                 self.current_scope_row = scope_row
                 self.update_output_data()
 
-                if self.power_meter_load:
-                    self.power_meter_load.auto_range_enable()
-                if self.power_meter_load_2:
-                    self.power_meter_load_2.auto_range_enable()
-                if self.power_meter_source:
-                    self.power_meter_source.current_auto_range_enable()
+                self.ensure_load_power_meters_auto_range()
+                self.ensure_source_power_meter_auto_range(settle_s=0)
 
                 sleep(self.post_capture_delay)
 
@@ -868,15 +851,8 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
                 self.electronic_load_2.turn_off()
 
     def _measure_efficiency(self, i2_A):
-        if self.power_meter_load and getattr(self.power_meter_load, '_current_auto_range_status', False):
-            self.power_meter_load.auto_range_enable(False)
-            sleep(0.5)
-        if self.power_meter_load_2 and getattr(self.power_meter_load_2, '_current_auto_range_status', False):
-            self.power_meter_load_2.auto_range_enable(False)
-            sleep(0.5)
-        if self.power_meter_source and getattr(self.power_meter_source, '_current_auto_range_status', False):
-            self.power_meter_source.current_auto_range_enable(False)
-            sleep(0.5)
+        self.ensure_load_power_meters_auto_range()
+        self.prepare_source_power_meter_for_measurement()
 
         self.test_data.gather_data(coupling=self.coupling, usb_pd=self.usbpd_test)
         if self.power_meter_load_2 or self.electronic_load_2:

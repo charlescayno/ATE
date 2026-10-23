@@ -916,8 +916,8 @@ class EquipmentHandler():
         self.electronic_load_1.turn_off()
         sleep(0.5)
         self.electronic_load_1.idle_after_discharge()
-        self.power_meter_load_1.set_current_range_max()
-        self.power_meter_load_1.current_auto_range_enable()
+        if self.power_meter_load_1 is not None:
+            self.power_meter_load_1.auto_range_enable(True)
             
         
 if __name__ == '__main__':
