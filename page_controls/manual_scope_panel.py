@@ -5,6 +5,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 from typing import TYPE_CHECKING
 
 from PySide2.QtCore import Qt
@@ -611,6 +612,11 @@ class ManualScopePanel:
         path = self._capture_output_dir()
         filename = self._unique_filename(path, filename)
         try:
+            # R&S / LeCroy PNG export is reliable with acquisition stopped (HCOP on a frozen trace).
+            if hasattr(scope, "stop"):
+                scope.stop()
+                self._set_status("STOP", "rgb(255,120,120)")
+                time.sleep(0.35)
             scope.get_screenshot(filename, path)
             full = os.path.join(path, filename)
             self._set_capture_path_label(full)

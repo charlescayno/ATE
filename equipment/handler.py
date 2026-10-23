@@ -29,6 +29,8 @@ from equipment.definitions import EquipmentType
 
 
 from user_settings.save_load import (read_from_default_config, SaveFileKeys, load_equipment_setup)
+from equipment.gpib_idn_assumptions import assumed_idn_for, assumed_model_for, idn_looks_valid
+from equipment.lazy_gpib import LazyGPIBDevice
 
 class EquipmentHandler():
     """
@@ -122,13 +124,63 @@ class EquipmentHandler():
     def clear_accessible_visa_equipment(self):
         """ Clear all the entries on the lists of GPIB Equipment
         """
+        for dev in list(getattr(self, "gpib_resource", []) or []):
+            try:
+                dev.close()
+            except Exception:
+                pass
+        self.gpib_resource.clear()
         self.ac_sources.clear()
         self.dc_sources.clear()
         self.e_loads.clear()
         self.e_load_mainframes.clear()
         self.power_meters.clear()
-        self.gpib_resource.clear()
 
+    def _resolve_gpib_device_id(self, resource_txt: str, raw_idn: str) -> str:
+        text = (raw_idn or "").strip()
+        if idn_looks_valid(text):
+            return text
+        assumed = assumed_idn_for(resource_txt)
+        if assumed:
+            print(
+                f"[INFO] Replacing invalid IDN for {resource_txt} with assumed: {assumed}"
+            )
+            return assumed
+        return text
+
+    def _power_meter_for_address(self, resource_txt: str) -> bool:
+        for pm in self.power_meters:
+            desc = getattr(pm, "description", "") or ""
+            if resource_txt.replace("::INSTR", "") in desc or resource_txt in desc:
+                return True
+        return False
+
+    def _register_assumed_power_meter(self, resource_txt: str, device_id: str) -> None:
+        model = assumed_model_for(resource_txt) or device_id.split(",")[1].strip()
+        if model not in POWER_METER_LIST:
+            print(f"[Warning] No driver for assumed model {model!r} at {resource_txt}")
+            return
+        if self._power_meter_for_address(resource_txt):
+            return
+        lazy = LazyGPIBDevice(self.rm, resource_txt)
+        self.power_meters.append(
+            PowerMeter(lazy, device_id, defer_hardware_init=True)
+        )
+        print(f"[INFO] Assumed power meter at {resource_txt} ({device_id})")
+
+    def _register_gpib_device(self, device: Resource, device_id: str, addr: str, resource_txt: str):
+        device_id = self._resolve_gpib_device_id(resource_txt, device_id)
+        if not idn_looks_valid(device_id):
+            print(f"[Warning] Skipping {resource_txt}: IDN not valid ({device_id!r})")
+            try:
+                device.close()
+            except Exception:
+                pass
+            return
+        print(resource_txt)
+        print(f"Accessible Resource: {device_id}")
+        self.gpib_resource.append(device)
+        self.new_gpib_equipment(device, device_id, addr)
 
     def update_accessible_visa_equipment(self):
         """ Update the list of available GPIB resources that VISA can access
@@ -170,23 +222,21 @@ class EquipmentHandler():
                     # Ignore the exception if the equipment cannot be accessed
                     except pyvisa.VisaIOError as e:
                         print(f'Cannot open resource: {resource_txt}')
+                        assumed = assumed_idn_for(resource_txt)
+                        if assumed and assumed_model_for(resource_txt) in POWER_METER_LIST:
+                            self._register_assumed_power_meter(resource_txt, assumed)
+                        elif assumed:
+                            print(
+                                f"[INFO] Assumed IDN for {resource_txt}: {assumed} "
+                                "(non-PM; unlock GPIB to use)"
+                            )
                     else:
-                        print(resource_txt)
-                        print(f'Accessible Resource: {device_id}')
-                
-                        # Use that information along with the visa resource to create a new Equipment object
-                        self.gpib_resource.append(device)
-                        self.new_gpib_equipment(device, device_id, addr)
+                        self._register_gpib_device(device, device_id, addr, resource_txt)
             
                 # If equipment is accessible 
                 else:
-                    print(resource_txt)
-                    print(f'Accessible Resource: {device_id}')
-                
-                    # Use that information along with the visa resource to create a new Equipment object
-                    self.gpib_resource.append(device)
-                    self.new_gpib_equipment(device, device_id, addr)
-            
+                    self._register_gpib_device(device, device_id, addr, resource_txt)
+
             # elif "TCPIP" in resource_txt:
             #     last = addr.rfind("::")
             #     addr = resource_txt[:last]

@@ -11,12 +11,14 @@ class IntegType:
     CONTINUOUS = 1
 
 class PowerMeter(Equipment):
-    def __init__(self, device, device_id):
+    def __init__(self, device, device_id, *, defer_hardware_init: bool = False):
         super().__init__(device, device_id)
-        
+
         self.device_id = device_id
         self.device = device
-        
+        self.assumed_lazy_gpib = defer_hardware_init
+        self.power_meter_object = None
+
         self.unpack_power_meter_specs()
 
         self._voltage = 0
@@ -24,7 +26,6 @@ class PowerMeter(Equipment):
         self._power = 0
         self._pf = 0
         self._thd = 0
-        
 
         self._integration_mode = "NORMAL"
         self._integration_time = 0
@@ -35,13 +36,30 @@ class PowerMeter(Equipment):
         self._current_auto_range_status = False
         self._voltage_auto_range_status = False
         self._averaging_status = False
-        
+
         last = self.device.resource_name.rfind("::")
         addr = self.device.resource_name[:last]
         self.description = f'{self.manufacturer} {self.model} {addr}'
         self.voltage_range_max = 0
         self.current_range_max = 0
 
+        if not defer_hardware_init:
+            self._initialize_hardware()
+        else:
+            print(
+                f"[INFO] Power meter {self.description} registered (lazy GPIB — "
+                "lock ignored at Detect; opens on first use)"
+            )
+
+    def _ensure_power_meter_object(self):
+        if self.power_meter_object is not None:
+            return
+        model = self.model
+        power_meter_model = POWER_METER_LIST[model]
+        self.power_meter_object = power_meter_model(self.device, self.device_id)
+
+    def _initialize_hardware(self):
+        self._ensure_power_meter_object()
         self.set_preset()
         self.query_averaging_state()
         self.stop_integration()
@@ -51,7 +69,8 @@ class PowerMeter(Equipment):
 
 
     def set_preset(self):
-        self.power_meter_object.set_preset()# TODO: Fix for WT3XX 
+        self._ensure_power_meter_object()
+        self.power_meter_object.set_preset()  # TODO: Fix for WT3XX
 
     def update_basic_params(self):
         # Update later with better code
@@ -302,11 +321,10 @@ class PowerMeter(Equipment):
     
     def unpack_power_meter_specs(self):
         model = self.model
-
-        power_meter_model = POWER_METER_LIST[model]
-
-        # create an instance of the specified ac source model to use its specs
-        self.power_meter_object: PowerMeterBaseClass = power_meter_model(self.device, self.device_id)
+        if model not in POWER_METER_LIST:
+            raise KeyError(f"Unknown power meter model {model!r}")
+        if not self.assumed_lazy_gpib:
+            self._ensure_power_meter_object()
 
     def cleanup(self):
         self.close()

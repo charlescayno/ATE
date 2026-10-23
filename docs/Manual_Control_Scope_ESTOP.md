@@ -15,7 +15,7 @@
 | **Trigger mode** + **Apply mode** | Auto / Normal / Freerun (R&S SCPI or LeCroy VBS) |
 | **Trigger source** + **Trigger level (V)** + **Apply level** | Edge trigger on CH1–CH4 |
 | **PNG filename** | Name for capture (`.png` added if missing) |
-| **Capture waveform** | `get_screenshot()` → `Documents\PI_ATE\manual_waveforms\` (if the name exists, saves as `name_1.png`, `name_2.png`, …) |
+| **Capture waveform** | **Stop** acquisition, then `get_screenshot()` → `Documents\PI_ATE\manual_waveforms\` (if the name exists, saves as `name_1.png`, `name_2.png`, …) |
 
 Filename and trigger settings are saved in `manual_control_settings.json` with other manual page fields.
 
