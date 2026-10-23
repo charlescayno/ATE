@@ -10,6 +10,12 @@ class IntegType:
     NORMAL = 0
     CONTINUOUS = 1
 
+MAX_FAILED_POLLS = 2
+
+
+class PowerMeterUnresponsive(Exception):
+    """Raised by poll_basic_params when a meter should no longer be polled."""
+
 class PowerMeter(Equipment):
     def __init__(self, device, device_id, *, defer_hardware_init: bool = False):
         super().__init__(device, device_id)
@@ -18,6 +24,7 @@ class PowerMeter(Equipment):
         self.device = device
         self.assumed_lazy_gpib = defer_hardware_init
         self.power_meter_object = None
+        self.failed_polls = 0
 
         self.unpack_power_meter_specs()
 
@@ -64,7 +71,12 @@ class PowerMeter(Equipment):
         self.query_averaging_state()
         self.stop_integration()
         self.reset_integration()
-        self.auto_range_enable()
+        if not self.supports_fixed_range():
+            self.auto_range_enable()
+
+    def supports_fixed_range(self) -> bool:
+        """Meters (WT500) whose range is left alone at connect and set only by the user."""
+        return hasattr(POWER_METER_LIST.get(self.model), 'set_fixed_voltage_range')
         
 
 
@@ -83,6 +95,30 @@ class PowerMeter(Equipment):
         except Exception as e:
             pass
         # _ = self.thd
+
+    def is_poll_skipped(self) -> bool:
+        """Lazy GPIB meters (locked at Detect) were never opened, so every read fails."""
+        return self.assumed_lazy_gpib and self.power_meter_object is None
+
+    def poll_basic_params(self):
+        """Manual Control polling: bail out after the first failed read, and raise
+        PowerMeterUnresponsive once the meter has failed MAX_FAILED_POLLS cycles in a row."""
+        if self.is_poll_skipped():
+            msg = f"{self.description}: lazy/locked GPIB meter, not polled"
+            print(f"[POWER_METER] {msg}")
+            raise PowerMeterUnresponsive(msg)
+        # A dead meter costs ~1 s per read (timeout + retry), so stop at the first failure.
+        if self.voltage is None:
+            self.failed_polls += 1
+            if self.failed_polls >= MAX_FAILED_POLLS:
+                msg = f"{self.description}: no response for {self.failed_polls} polls, polling stopped"
+                print(f"[POWER_METER] {msg}")
+                raise PowerMeterUnresponsive(msg)
+            return
+        self.failed_polls = 0
+        _ = self.current
+        _ = self.power
+        _ = self.pf
     
     @visa_io
     def integrate(self, integration_time=60):
@@ -231,6 +267,38 @@ class PowerMeter(Equipment):
         self.get_voltage_range()
 
     @visa_io
+    def set_fixed_voltage_range(self, volts):
+        self.power_meter_object.set_fixed_voltage_range(volts)
+        self._voltage_auto_range_status = False
+        return self.power_meter_object.get_voltage_range()
+
+    @visa_io
+    def set_fixed_current_range(self, amps):
+        self.power_meter_object.set_fixed_current_range(amps)
+        self._current_auto_range_status = False
+        return self.power_meter_object.get_current_range()
+
+    def read_range_state(self):
+        """Query only: (voltage_auto, voltage_range, current_auto, current_range), or None on failure."""
+        obj = self.power_meter_object
+        if obj is None:
+            return None
+        try:
+            self._voltage_auto_range_status = obj.voltage_auto_range_query()
+            self._voltage_range = obj.get_voltage_range()
+            self._current_auto_range_status = obj.current_auto_range_query()
+            self._current_range = obj.get_current_range()
+        except Exception as e:
+            print(f"[POWER_METER] {self.description}: range readback failed: {e}")
+            return None
+        return (
+            self._voltage_auto_range_status,
+            self._voltage_range,
+            self._current_auto_range_status,
+            self._current_range,
+        )
+
+    @visa_io
     def auto_range_enable(self, en:bool=True):
         self.get_current_range()
         self.get_voltage_range()
@@ -239,10 +307,11 @@ class PowerMeter(Equipment):
             self.set_voltage_range_max()
         else:
             self.set_current_range(self._current_range)
-            self.set_current_range(self._current_range)
+            self.set_voltage_range(self._voltage_range)
         self.power_meter_object.auto_range_enable(en)
-        self.current_auto_range_query()
-        self.voltage_auto_range_query()
+        i_auto = bool(self.current_auto_range_query())
+        v_auto = bool(self.voltage_auto_range_query())
+        return i_auto and v_auto
 
     @visa_io
     def current_auto_range_enable(self, en:bool=True):
@@ -250,7 +319,8 @@ class PowerMeter(Equipment):
         if not en:
             self.set_current_range(self._current_range)
         self.power_meter_object.current_auto_range_enable(en)
-        self.current_auto_range_query()
+        # Non-None return stops visa_io from re-sending (each AUTO write sleeps 2 s).
+        return bool(self.current_auto_range_query())
     
     @visa_io
     def current_auto_range_query(self):
@@ -268,7 +338,7 @@ class PowerMeter(Equipment):
         if not en:
             self.set_voltage_range(self._voltage_range)
         self.power_meter_object.voltage_auto_range_enable(en)
-        self.voltage_auto_range_query()
+        return bool(self.voltage_auto_range_query())
 
     @visa_io
     def voltage_auto_range_query(self):

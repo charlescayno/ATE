@@ -1,4 +1,4 @@
-"""Verify scope panel + E-STOP on Manual Equipment Control."""
+"""Verify Manual Equipment Control has no scope panel and retains E-STOP."""
 import os
 import runpy
 import sys
@@ -32,47 +32,22 @@ def main() -> int:
 
         for name in (
             "btn_manual_control_estop",
-            "frame_manual_control_oscilloscope",
-            "btn_manual_control_scope_run",
-            "btn_manual_control_scope_run_single",
-            "btn_manual_control_scope_stop",
-            "btn_manual_control_scope_capture",
-            "btn_manual_control_scope_open_folder",
-            "cbx_manual_control_scope_trigger_mode",
-            "cbx_manual_control_scope_trigger_edge",
-            "lineedit_manual_control_scope_trigger_level",
-            "lineedit_manual_control_scope_filename",
-            "btn_manual_control_scope_auto_find_trigger",
-            "btn_manual_control_scope_auto_find_settings",
+            "btn_manual_control_pm_auto_range",
+            "btn_manual_control_reset_all_gpib",
         ):
             if not hasattr(ui, name):
                 errors.append(f"missing ui.{name}")
 
-        layout = ui.verticalLayout_12
+        if getattr(mc, "scope_panel", None) is not None:
+            errors.append("scope_panel should not be created on Manual Equipment Control")
+        if hasattr(ui, "frame_manual_control_oscilloscope"):
+            errors.append("manual oscilloscope frame should not exist")
+
         scroll = getattr(ui, "scroll_manual_control_equipment", None)
-        osc_idx = layout.indexOf(ui.frame_manual_control_oscilloscope)
-        scroll_idx = layout.indexOf(scroll) if scroll is not None else -1
-        if osc_idx < 0 or scroll_idx < 0 or osc_idx <= scroll_idx:
-            errors.append("oscilloscope panel should be below equipment scroll area")
         if scroll is None or scroll.widget() is None:
             errors.append("equipment scroll area missing")
-        elif layout.indexOf(ui.frame_manual_control_lower) >= 0:
+        elif ui.verticalLayout_12.indexOf(ui.frame_manual_control_lower) >= 0:
             errors.append("lower equipment frame should live inside scroll area, not main layout")
-
-        sp = mc.scope_panel
-        sp.run_single()
-        if ui.label_manual_control_scope_status.text() != "SINGLE":
-            errors.append("run_single status")
-        sp.run_continuous()
-        sp.stop()
-        if ui.cbx_manual_control_scope_trigger_edge.currentText() != "Rising":
-            errors.append("default trigger edge should be Rising")
-        ui.cbx_manual_control_scope_trigger_edge.setCurrentText("Falling")
-        sp.apply_edge_trigger()
-        sp.apply_trigger_mode()
-        sp.capture_waveform()
-        if "Saved:" not in sp.label_capture_path.text() and "Capture failed" not in sp.label_capture_path.text():
-            errors.append("capture path label")
 
         mc.emergency_stop_all()
 
@@ -89,7 +64,7 @@ def main() -> int:
         for e in errors:
             print(" ", e)
         return 1
-    print("OK manual control scope panel + E-STOP")
+    print("OK Manual Control scope section removed + E-STOP retained")
     return 0
 
 

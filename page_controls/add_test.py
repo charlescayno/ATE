@@ -5,7 +5,7 @@ from time import sleep
 
 from app.app_modules import *
 
-from page_controls.manual_control import ManualControlPageHandler
+from page_controls.manual_control import AC_SOURCE_REQUEST, ManualControlPageHandler
 from page_controls.eff2p_waveform_advanced import Eff2PWaveformAdvancedDialog
 from page_controls.test_sequence_flow_text import build_flow_text_for_title
 from page_controls.pml_grid import GEAR_STYLE
@@ -30,6 +30,7 @@ from pyvisa import VisaIOError
 from equipment.ac_source import ACSource
 from equipment.electronic_load import ElectronicLoadModule
 from equipment.handler import EquipmentHandler
+from equipment.safety_shutdown import turn_all_outputs_off
 
 from psu_tests.tests import (TestItem, TestPlan,)
 
@@ -4972,15 +4973,37 @@ class AddTestPageHandler(QObject):
     # TODO: Separate test object loop into smaller functions
     # So that threads can be stopped
     def stop_tests(self):
+        global test_control_flags
+        test_control_flags['StopTest'] = True
+
+        # Stop every output even if no test timer is active. The delayed
+        # repeats cover a worker that was already inside a blocking sleep or
+        # VISA call when STOP TESTS was pressed.
+        manual = getattr(self.parent, 'manual_control_handler', None)
+        if manual is not None:
+            manual.is_ramping = False
+            manual.ac_source_request = AC_SOURCE_REQUEST.NO_REQUEST
+            discharge = getattr(manual, 'discharge', None)
+            if discharge is not None:
+                discharge.cancel()
+        turn_all_outputs_off(self.equipment)
+        for delay_ms in (1000, 5000, 10000):
+            QTimer.singleShot(
+                delay_ms,
+                lambda equipment=self.equipment: turn_all_outputs_off(equipment),
+            )
+
         if not self.test_plan_update_timer.isActive():
+            self.parent.msg_box_info(
+                'Test Info',
+                'All equipment outputs are OFF.',
+                MessageType.INFO,
+            )
             return
         # Stop the current thread to prevent status change
 
         # Stop the test plan update timer to prevent unexpected update
         self.test_plan_update_timer.stop()
-        
-        global test_control_flags
-        test_control_flags['StopTest'] = True
 
         # Update the test list details after 5s
         QTimer.singleShot(5000, self.update_test_list_details)

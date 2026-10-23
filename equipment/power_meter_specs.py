@@ -720,7 +720,7 @@ class PowerMeterWT500(PowerMeterBaseClass):
         self.query_averaging_state()
         self.stop_integration()
         self.reset_integration()
-        self.auto_range_enable()
+        # Keep the meter's current V/I range; AUTO is only sent when the user asks for it.
         
     def set_preset(self):
         """
@@ -960,6 +960,14 @@ class PowerMeterWT500(PowerMeterBaseClass):
     
     def set_voltage_range_max(self):
         self.write(f'INPUT:VOLTAGE:RANGE MAX')
+
+    def set_fixed_voltage_range(self, volts):
+        self.write('INPUT:VOLTAGE:AUTO OFF')
+        self.write(f'INPUT:VOLTAGE:RANGE {volts:g}V')
+
+    def set_fixed_current_range(self, amps):
+        self.write('INPUT:CURRENT:AUTO OFF')
+        self.write(f'INPUT:CURRENT:RANGE {amps:g}A')
 
     def auto_range_enable(self, en:bool=True):
         if en:

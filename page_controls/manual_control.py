@@ -23,9 +23,10 @@ from equipment.handler import EquipmentHandler
 from equipment.dc_source import is_magna_hvdc
 from equipment.ac_source import *
 from equipment.power_meter import *
+from equipment.gpib_reset import reset_all_gpib
 from equipment.electronic_load import *
 import inject_ui
-from page_controls import manual_control_theme, pml_grid, eload_grid, manual_scope_panel, pms_panel
+from page_controls import manual_control_theme, pml_grid, eload_grid, pms_panel, manual_pm_range
 from page_controls.apply_feedback import flash_apply_button
 from page_controls import manual_control_presets as mc_presets
 from equipment.eload_specs import ELoadTypes
@@ -82,6 +83,22 @@ class UI_REQUEST():
     UPDATE_PDO_LIST = 0
     PARAM_TEXT_UPDATE = 1
     
+def _poll_power_meter(pm):
+    """Simulated / fake meters only implement update_basic_params."""
+    poll = getattr(pm, 'poll_basic_params', None)
+    if poll is not None:
+        poll()
+    else:
+        pm.update_basic_params()
+
+
+def _raise_if_poll_skipped(pm):
+    if pm is not None and getattr(pm, 'is_poll_skipped', lambda: False)():
+        msg = f"{pm.description}: lazy/locked GPIB meter, not polled"
+        print(f"[POWER_METER] {msg}")
+        raise PowerMeterUnresponsive(msg)
+
+
     ########################################################################
     #                Equipment Error Handling Wrappers                     #
     ########################################################################
@@ -93,7 +110,7 @@ def power_meter_load_access(f):
         if self.power_meter_load_accessible:
             try:
                 return f(*args)
-            except (AttributeError, VisaIOError, TypeError):
+            except (AttributeError, VisaIOError, TypeError, PowerMeterUnresponsive):
                 # If there is an encountered exception,
                 # Set the equipment as not accessible
                 self.ui_power_meter_load_update_fail()
@@ -111,7 +128,7 @@ def power_meter_source_access(f):
         if self.power_meter_source_accessible:
             try:
                 return f(*args)
-            except (AttributeError, VisaIOError, TypeError):
+            except (AttributeError, VisaIOError, TypeError, PowerMeterUnresponsive):
                 # If there is an encountered exception,
                 # Set the equipment as not accessible
                 self.ui_power_meter_source_update_fail()
@@ -247,7 +264,9 @@ class ManualControlPageHandler():
         self.eload_grid = eload_grid.EloadGrid(self)
         self._build_aux_dc_source_panel()
         self._build_page_header()
-        self.scope_panel = manual_scope_panel.ManualScopePanel(self)
+        # Oscilloscope controls belong to automated waveform tests and the
+        # dedicated Oscilloscope page, not Manual Equipment Control.
+        self.scope_panel = None
         self._wrap_equipment_in_scroll_area()
         self._apply_compact_manual_layout()
         manual_control_theme.apply_page_theme(self)
@@ -326,8 +345,23 @@ class ManualControlPageHandler():
         self.ui.label_manual_control_dc_source_estimated_time.setVisible(False)
         self.ui.gridLayout_3.addWidget(self.ui.lineedit_manual_control_dc_source_slew_rate, 4, 1, 1, 1)
         self.ui.gridLayout_3.addWidget(self.ui.label_manual_control_dc_source_estimated_time, 5, 0, 1, 2)
+        self.ui.label_manual_control_dc_source_current_limit = QLabel(self.ui.frame_manual_control_ac_source_params)
+        self.ui.label_manual_control_dc_source_current_limit.setText("Current Limit (A)")
+        self.ui.label_manual_control_dc_source_current_limit.setVisible(False)
+        self.ui.gridLayout_3.addWidget(self.ui.label_manual_control_dc_source_current_limit, 6, 0, 1, 1)
+        self.ui.lineedit_manual_control_dc_source_current_limit = QLineEdit(self.ui.frame_manual_control_ac_source_params)
+        self.ui.lineedit_manual_control_dc_source_current_limit.setObjectName(u"lineedit_manual_control_dc_source_current_limit")
+        self.ui.lineedit_manual_control_dc_source_current_limit.setValidator(self.validator)
+        self.ui.lineedit_manual_control_dc_source_current_limit.setPlaceholderText("model max")
+        self.ui.lineedit_manual_control_dc_source_current_limit.setToolTip(
+            "Sent to the DC source before Output ON (and when edited). Too low a limit puts the "
+            "supply in constant current and the input voltage sags under load.")
+        self.ui.lineedit_manual_control_dc_source_current_limit.setStyleSheet(self.ui.lineedit_manual_control_ac_source_voltage.styleSheet())
+        self.ui.lineedit_manual_control_dc_source_current_limit.setVisible(False)
+        self.ui.lineedit_manual_control_dc_source_current_limit.editingFinished.connect(self.apply_dc_source_current_limit)
+        self.ui.gridLayout_3.addWidget(self.ui.lineedit_manual_control_dc_source_current_limit, 6, 1, 1, 1)
         spacer = QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding)
-        self.ui.gridLayout_3.addItem(spacer, 6, 0, 1, 2)
+        self.ui.gridLayout_3.addItem(spacer, 10, 0, 1, 2)
 
         # Output discharge controls (CCH pulse on every assigned e-load)
         params = self.ui.frame_manual_control_ac_source_params
@@ -510,6 +544,26 @@ class ManualControlPageHandler():
         ui.btn_manual_control_preset_import = self.btn_preset_import
         ui.btn_manual_control_preset_export = self.btn_preset_export
 
+        self.btn_pm_auto_range = QPushButton("PM Auto Range", row)
+        self.btn_pm_auto_range.setObjectName("btn_manual_control_pm_auto_range")
+        self.btn_pm_auto_range.setStyleSheet(preset_style)
+        self.btn_pm_auto_range.setToolTip(
+            "Reset all assigned power meters (source + loads) to AUTO voltage/current range"
+        )
+        self.btn_pm_auto_range.clicked.connect(self.reset_all_power_meters_auto_range)
+        h.addWidget(self.btn_pm_auto_range)
+        ui.btn_manual_control_pm_auto_range = self.btn_pm_auto_range
+
+        self.btn_reset_all_gpib = QPushButton("Reset All GPIB", row)
+        self.btn_reset_all_gpib.setObjectName("btn_manual_control_reset_all_gpib")
+        self.btn_reset_all_gpib.setStyleSheet(preset_style)
+        self.btn_reset_all_gpib.setToolTip(
+            "Reset every detected GPIB instrument, then force all outputs OFF"
+        )
+        self.btn_reset_all_gpib.clicked.connect(self.reset_all_gpib_equipment)
+        h.addWidget(self.btn_reset_all_gpib)
+        ui.btn_manual_control_reset_all_gpib = self.btn_reset_all_gpib
+
         self.btn_estop = QPushButton("E-STOP", row)
         self.btn_estop.setObjectName("btn_manual_control_estop")
         self.btn_estop.setMinimumWidth(96)
@@ -685,6 +739,23 @@ class ManualControlPageHandler():
         self.update_timer.start(MANUAL_CONTROL_SETTINGS.UPDATE_INTERVAL_MS)
 
     
+    def reset_all_power_meters_auto_range(self) -> None:
+        manual_pm_range.reset_all_to_auto_range(self)
+
+    def reset_all_gpib_equipment(self) -> None:
+        self.is_ramping = False
+        self.ac_source_request = AC_SOURCE_REQUEST.NO_REQUEST
+        if getattr(self, 'discharge', None) is not None:
+            self.discharge.cancel()
+        self.btn_reset_all_gpib.setEnabled(False)
+        try:
+            reset_all_gpib(self.equipment)
+        finally:
+            self.btn_reset_all_gpib.setEnabled(True)
+            self.refresh_pml_assignment()
+            self.refresh_eload_assignment()
+            self.eload_grid.refresh_status()
+
     def stop(self):
         self.update_timer.stop()
         if self.power_meter_source is not None:
@@ -1091,6 +1162,9 @@ class ManualControlPageHandler():
         self.electronic_load_2_accessible = True
         self.electronic_load_3_accessible = True
         self.electronic_load_4_accessible = True
+        for pm in getattr(self.equipment, 'power_meters', None) or []:
+            if hasattr(pm, 'failed_polls'):
+                pm.failed_polls = 0
 
         self.ac_source = None
         self.power_meter_load = None
@@ -1109,6 +1183,7 @@ class ManualControlPageHandler():
         self.initialize_eload()
         self.initialize_power_meter_source()
         self.initialize_power_meter_load()
+        manual_pm_range.sync_from_meters(self)
         self._refresh_scope_control_buttons()
         if getattr(self.parent, 'is_simulation_mode', False) and hasattr(self.equipment, 'seed_manual_control_demo'):
             if os.environ.get('PI_ATE_SIM_DEMO', '1') != '0':
@@ -1343,15 +1418,15 @@ class ManualControlPageHandler():
 
     @power_meter_load_2_access
     def power_meter_load_2_update(self):
-        self.equipment.power_meter_load_2.update_basic_params()
+        _poll_power_meter(self.equipment.power_meter_load_2)
 
     @power_meter_load_3_access
     def power_meter_load_3_update(self):
-        self.equipment.power_meter_load_3.update_basic_params()
+        _poll_power_meter(self.equipment.power_meter_load_3)
 
     @power_meter_load_4_access
     def power_meter_load_4_update(self):
-        self.equipment.power_meter_load_4.update_basic_params()
+        _poll_power_meter(self.equipment.power_meter_load_4)
 
     def get_discharge_loads(self):
         loads = []
@@ -1427,6 +1502,8 @@ class ManualControlPageHandler():
         ui.label_manual_control_dc_source_slew_rate.setVisible(True)
         ui.lineedit_manual_control_dc_source_slew_rate.setVisible(True)
         ui.label_manual_control_dc_source_estimated_time.setVisible(True)
+        ui.label_manual_control_dc_source_current_limit.setVisible(True)
+        ui.lineedit_manual_control_dc_source_current_limit.setVisible(True)
 
     def _apply_manual_line_input_ac_ui(self):
         ui = self.ui
@@ -1440,6 +1517,43 @@ class ManualControlPageHandler():
         ui.label_manual_control_dc_source_slew_rate.setVisible(False)
         ui.lineedit_manual_control_dc_source_slew_rate.setVisible(False)
         ui.label_manual_control_dc_source_estimated_time.setVisible(False)
+        ui.label_manual_control_dc_source_current_limit.setVisible(False)
+        ui.lineedit_manual_control_dc_source_current_limit.setVisible(False)
+
+    def _dc_source_max_current_a(self):
+        """Magna model names end in the rated current, e.g. TSD2000-2.5 -> 2.5 A."""
+        model = getattr(self.ac_source, 'model', '') or ''
+        try:
+            return float(model.rsplit('-', 1)[1])
+        except (IndexError, ValueError):
+            return None
+
+    def apply_dc_source_current_limit(self) -> bool:
+        """Send the Current Limit field to the Magna. Blank uses the model max. False = invalid, don't turn on."""
+        src = self.ac_source
+        if src is None or not is_magna_hvdc(src):
+            return True
+        field = self.ui.lineedit_manual_control_dc_source_current_limit
+        max_a = self._dc_source_max_current_a()
+        text = field.text().strip()
+        if text == '':
+            if max_a is None:
+                return True
+            limit_a = max_a
+        else:
+            limit_a = rounded_float(text)
+        if limit_a <= 0 or (max_a is not None and limit_a > max_a):
+            self.parent.msg_box_info(
+                title="DC Source Current Limit",
+                message=f"Current limit must be > 0 A" + (f" and ≤ {max_a:g} A for {src.model}." if max_a else "."),
+                message_type=MessageType.INFO,
+            )
+            return False
+        try:
+            src.set_current_limit(limit_a)
+        except Exception as e:
+            print(f"[DC_SOURCE] current limit {limit_a:g} A failed: {e}")
+        return True
 
     @ac_source_access
     def initialize_ac_source(self):
@@ -1469,14 +1583,18 @@ class ManualControlPageHandler():
     
     @power_meter_source_access
     def initialize_power_meter_source(self):
-        self.power_meter_source = self.equipment.power_meter_source
+        pm = self.equipment.power_meter_source
+        _raise_if_poll_skipped(pm)
+        self.power_meter_source = pm
         self.power_meter_source_integ_timer = self.power_meter_source.get_integration_timer()
         self.power_meter_source.set_integration_timer(timer_s=0)
 
 
     @power_meter_load_access
     def initialize_power_meter_load(self):
-        self.power_meter_load = self.equipment.power_meter_load_1
+        pm = self.equipment.power_meter_load_1
+        _raise_if_poll_skipped(pm)
+        self.power_meter_load = pm
         self.power_meter_load_integ_timer = self.power_meter_load.get_integration_timer()
         self.power_meter_load.set_integration_timer(timer_s=0)
 
@@ -1490,7 +1608,7 @@ class ManualControlPageHandler():
         
         Wrapped with error handling
         """
-        self.power_meter_load.update_basic_params()
+        _poll_power_meter(self.power_meter_load)
 
     @power_meter_source_access
     def power_meter_source_update(self):
@@ -1498,7 +1616,7 @@ class ManualControlPageHandler():
         
         Wrapped with error handling
         """
-        self.power_meter_source.update_basic_params()
+        _poll_power_meter(self.power_meter_source)
 
     @ac_source_access
     def ac_source_update(self):
@@ -1591,6 +1709,8 @@ class ManualControlPageHandler():
         elif is_magna_hvdc(self.ac_source):
             from page_controls.safety_dialog import confirm_discharge_resistor_disengaged
             if not confirm_discharge_resistor_disengaged(self.parent):
+                return
+            if not self.apply_dc_source_current_limit():
                 return
             
             # Apply Slew rate if enabled
@@ -1790,6 +1910,7 @@ class ManualControlPageHandler():
                     widget.toggled.connect(self.save_manual_settings)
                 
         self.load_manual_settings()
+        manual_pm_range.wire(self)
         self._setup_session_presets()
 
     def collect_manual_state(self) -> dict:
