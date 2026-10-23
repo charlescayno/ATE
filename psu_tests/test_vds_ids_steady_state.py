@@ -382,69 +382,24 @@ class VdsIdsSteadyStateTest(BaseTestObject):
         self.message_closed = False
 
     def find_trigger(self, channel: int = 1, trigger_delta: float = 0.5) -> float:
-        """
-        Sweep trigger level to lock onto the highest steady-state peak waveform.
-        Matches FIND_TRIGGER algorithm in equipment_settings.py.
-        """
-        sc = self.oscilloscope
-        sc.run_single()
-        if hasattr(sc, 'trigger_mode'):
-            sc.trigger_mode('AUTO')
-        elif hasattr(sc, 'set_trigger_mode'):
-            sc.set_trigger_mode('AUTO')
-        sleep(1)
-        if hasattr(sc, 'trigger_mode'):
-            sc.trigger_mode('NORM')
-        elif hasattr(sc, 'set_trigger_mode'):
-            sc.set_trigger_mode('NORM')
+        """Auto-find trigger via equipment.scope_auto_trigger (0 V prime, AUTO shot, Max, NORM, sweep)."""
+        from equipment.scope_auto_trigger import find_trigger_for_waveform_test
+
+        def _check_abort():
+            if test_control_flags.get('StopTest', False):
+                raise TestStopped
+            if test_control_flags.get('SkipTest', False):
+                raise TestSkipped
 
         try:
-            # Get initial peak-to-peak measurement value
-            labels, values = sc.get_measure(channel)
-            if values and len(values) > 0 and values[0] is not None:
-                try:
-                    max_value = float(values[0])
-                    if math.isnan(max_value):
-                        max_value = 10.0
-                except (ValueError, TypeError):
-                    max_value = 10.0
-            else:
-                max_value = 10.0
-            max_value = float(f"{max_value:.4f}")
-
-            trigger_level = max_value
-            sc.edge_trigger(channel, trigger_level, 'POS')
-
-            # check if it triggered within 3 seconds
-            sc.run_single()
-            sleep(1)
-            trigger_status = sc.trigger_status()
-
-            # Step up trigger level until it stops triggering (guarded max 30 iterations)
-            steps = 0
-            max_steps = 30
-            while trigger_status == 1 and steps < max_steps:
-                steps += 1
-                if test_control_flags.get('StopTest', False):
-                    raise TestStopped
-                if test_control_flags.get('SkipTest', False):
-                    raise TestSkipped
-                trigger_level += trigger_delta
-                sc.edge_trigger(channel, trigger_level, 'POS')
-                sc.run_single()
-                sleep(0.5)
-                trigger_status = sc.trigger_status()
-
-            # Decrease trigger level below to get the maximum trigger possible
-            trigger_level -= 1 * trigger_delta
-            sc.edge_trigger(channel, trigger_level, 'POS')
-            sleep(6)
-            return trigger_level
+            return find_trigger_for_waveform_test(
+                self.oscilloscope,
+                channel,
+                trigger_delta,
+                check_abort=_check_abort,
+            )
         except (TestStopped, TestSkipped):
             raise
-        except Exception as e:
-            print(f"[Warning] find_trigger error on CH{channel}: {e}")
-            return 10.0
 
     def discharge_output(self, times: int = 2):
         """Safely discharge converter output using electronic load"""

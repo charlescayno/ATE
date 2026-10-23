@@ -1,6 +1,12 @@
 """Auto-find trigger level (sweep until edge trigger stops arming).
 
-Algorithm matches psu_tests find_trigger (Efficiency 2P waveform / Vds steady state).
+Sequence:
+  1. edge_trigger(ch, 0 V, POS)
+  2. AUTO
+  3. run_single()
+  4. get_measure(ch) -> Max seed
+  5. NORM
+  6. sweep: edge @ Max, run_single, raise level until not triggering, back off one delta
 """
 from __future__ import annotations
 
@@ -51,6 +57,38 @@ def _read_channel_max(scope, channel: int) -> float:
     return float(f"{max_value:.4f}")
 
 
+def waveform_test_auto_find_settings(trigger_delta: float = 0.5) -> AutoFindTriggerSettings:
+    """Default settle times for PSU waveform tests (Eff 2P, Steady-State Capture, etc.)."""
+    return AutoFindTriggerSettings(
+        trigger_delta=trigger_delta,
+        auto_settle_s=1.0,
+        step_settle_s=0.5,
+        final_settle_s=6.0,
+    )
+
+
+def find_trigger_for_waveform_test(
+    scope,
+    channel: int,
+    trigger_delta: float = 0.5,
+    edge: str = "POS",
+    *,
+    pump_events: Optional[Callable[[], None]] = None,
+    on_progress: Optional[Callable[[str], None]] = None,
+    check_abort: Optional[Callable[[], None]] = None,
+) -> float:
+    """Auto-find for Add Test waveform runs and any test that mirrors FIND_TRIGGER."""
+    return find_trigger_level(
+        scope,
+        channel,
+        edge,
+        waveform_test_auto_find_settings(trigger_delta),
+        pump_events=pump_events,
+        on_progress=on_progress,
+        check_abort=check_abort,
+    )
+
+
 def find_trigger_level(
     scope,
     channel: int,
@@ -59,6 +97,7 @@ def find_trigger_level(
     *,
     pump_events: Optional[Callable[[], None]] = None,
     on_progress: Optional[Callable[[str], None]] = None,
+    check_abort: Optional[Callable[[], None]] = None,
 ) -> float:
     """Raise trigger level until acquisition stops triggering; back off one delta step."""
     cfg = settings or AutoFindTriggerSettings()
@@ -67,16 +106,21 @@ def find_trigger_level(
         if on_progress:
             on_progress(msg)
 
-    scope.run_single()
-    _set_trigger_mode(scope, "AUTO")
-    _sleep(cfg.auto_settle_s, pump_events)
-    _set_trigger_mode(scope, "NORM")
-
     try:
+        scope.edge_trigger(channel, 0.0, edge)
+        progress(f"Priming CH{channel} edge @ 0 V")
+        _set_trigger_mode(scope, "AUTO")
+        scope.run_single()
+        _sleep(cfg.auto_settle_s, pump_events)
+
         max_value = _read_channel_max(scope, channel)
+        progress(f"Baseline Max CH{channel}: {max_value:g} V")
+
+        _set_trigger_mode(scope, "NORM")
+
         trigger_level = max_value
         scope.edge_trigger(channel, trigger_level, edge)
-        progress(f"Start CH{channel} @ {trigger_level:g} V")
+        progress(f"Sweep start CH{channel} @ {trigger_level:g} V")
 
         scope.run_single()
         _sleep(cfg.auto_settle_s, pump_events)
@@ -84,6 +128,8 @@ def find_trigger_level(
 
         steps = 0
         while trigger_status == 1 and steps < cfg.max_steps:
+            if check_abort:
+                check_abort()
             steps += 1
             trigger_level += cfg.trigger_delta
             scope.edge_trigger(channel, trigger_level, edge)

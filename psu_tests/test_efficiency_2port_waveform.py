@@ -1026,51 +1026,24 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
         return "CAPTURE"
 
     def find_trigger(self, channel: int = 1, trigger_delta: float = 0.5) -> float:
-        """Raise the trigger level until it stops triggering, then back off one step."""
-        sc = self.oscilloscope
-        sc.run_single()
-        if hasattr(sc, 'trigger_mode'):
-            sc.trigger_mode('AUTO')
-        sleep(1)
-        if hasattr(sc, 'trigger_mode'):
-            sc.trigger_mode('NORM')
+        """Auto-find trigger via equipment.scope_auto_trigger (0 V prime, AUTO shot, Max, NORM, sweep)."""
+        from equipment.scope_auto_trigger import find_trigger_for_waveform_test
+
+        def _check_abort():
+            if test_control_flags.get('StopTest', False):
+                raise TestStopped
+            if test_control_flags.get('SkipTest', False):
+                raise TestSkipped
+
         try:
-            labels, values = sc.get_measure(channel)
-            try:
-                max_value = float(values[0]) if values and values[0] is not None else 10.0
-                if math.isnan(max_value):
-                    max_value = 10.0
-            except (ValueError, TypeError):
-                max_value = 10.0
-
-            trigger_level = float(f"{max_value:.4f}")
-            sc.edge_trigger(channel, trigger_level, 'POS')
-            sc.run_single()
-            sleep(1)
-            trigger_status = sc.trigger_status()
-
-            steps = 0
-            while trigger_status == 1 and steps < 30:
-                steps += 1
-                if test_control_flags.get('StopTest', False):
-                    raise TestStopped
-                if test_control_flags.get('SkipTest', False):
-                    raise TestSkipped
-                trigger_level += trigger_delta
-                sc.edge_trigger(channel, trigger_level, 'POS')
-                sc.run_single()
-                sleep(0.5)
-                trigger_status = sc.trigger_status()
-
-            trigger_level -= trigger_delta
-            sc.edge_trigger(channel, trigger_level, 'POS')
-            sleep(6)
-            return trigger_level
+            return find_trigger_for_waveform_test(
+                self.oscilloscope,
+                channel,
+                trigger_delta,
+                check_abort=_check_abort,
+            )
         except (TestStopped, TestSkipped):
             raise
-        except Exception as e:
-            print(f"[Warning] find_trigger error on CH{channel}: {e}")
-            return 10.0
 
     @staticmethod
     def _normalize_meas_label(raw: str) -> str:
