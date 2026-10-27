@@ -808,15 +808,7 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
                 soak.do_soak_per_load()
                 sleep(self.settle_time)
 
-                self.update_status_log("Measuring efficiency...", upcoming="Capture Waveform")
-                self._measure_efficiency(i2_A)
-
-                scope_row = self.capture_waveform_at_point(vin_set, i1_A, i2_A)
-
-                self.output_dataframe.loc[len(self.output_dataframe)] = self.process_data_row()
-                self.scope_dataframe.loc[len(self.scope_dataframe)] = scope_row
-                self.current_scope_row = scope_row
-                self.update_output_data()
+                self._acquire_operating_point(vin_set, i1_A, i2_A)
 
                 self.ensure_load_power_meters_auto_range()
                 self.ensure_source_power_meter_auto_range(settle_s=0)
@@ -836,6 +828,23 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
         if self.embed_images:
             self._link_capture_main_sheet_rows()
             self.embed_waveforms_in_excel()
+
+    def _extra_acquire_time_s(self) -> float:
+        """Extra seconds per load point beyond the single capture. Override for polling."""
+        return 0.0
+
+    def _acquire_operating_point(self, vin_set, i1_A, i2_A):
+        """One efficiency reading and one scope capture at the current load point."""
+        self.update_status_log("Measuring efficiency...", upcoming="Capture Waveform")
+        self._measure_efficiency(i2_A)
+        scope_row = self.capture_waveform_at_point(vin_set, i1_A, i2_A)
+        self._append_measurement_row(scope_row)
+
+    def _append_measurement_row(self, scope_row):
+        self.output_dataframe.loc[len(self.output_dataframe)] = self.process_data_row()
+        self.scope_dataframe.loc[len(self.scope_dataframe)] = scope_row
+        self.current_scope_row = scope_row
+        self.update_output_data()
 
     def _set_loads(self, i1_A, i2_A):
         self.electronic_load.set_load(self.vout_V, i1_A, self.eload_type)
@@ -957,8 +966,9 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
 
             prefix = f"{self.unit_id}_" if self.unit_id else ""
             pwr = self._dual_port_power_filename_part(i1_A=i1_A, i2_A=i2_A, png_suffix=True)
+            png_suffix = getattr(self, 'PNG_SUFFIX', '') or ''
             img_filename = (
-                f"{prefix}{vin_set:g}V{self.coupling}_Ch1_{i1_A:g}A_Ch2_{i2_A:g}A{pwr}.png")
+                f"{prefix}{vin_set:g}V{self.coupling}_Ch1_{i1_A:g}A_Ch2_{i2_A:g}A{pwr}{png_suffix}.png")
             img_path = os.path.join(self.waveform_filepath, img_filename)
             try:
                 self.oscilloscope.get_screenshot(img_filename, self.waveform_filepath)
@@ -1356,6 +1366,7 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
                 add_time(soak.integration_time)
                 add_time(1.7)
                 add_time(12 if self.auto_find_trigger else 2)
+                add_time(self._extra_acquire_time_s())
                 add_time(self.post_capture_delay)
             add_time(3)
         add_time(self.discharge_pulses * 1.5)

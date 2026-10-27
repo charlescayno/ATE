@@ -21,6 +21,7 @@ from psu_tests.test_light_load import LightLoad
 from psu_tests.test_vds_ids_steady_state import VdsIdsSteadyStateTest, SteadyStateWaveformCaptureTest
 from psu_tests.test_efficiency_modern import ModernEfficiencyTest
 from psu_tests.test_efficiency_2port_waveform import EfficiencyWaveformTest_2Port
+from psu_tests.test_steady_state_poll_2port_waveform import SteadyStatePollWaveformTest_2Port
 from psu_tests.test_startup_2port_waveform import StartupWaveformTest_2Port
 from psu_tests.test_startup_ac_turnon_waveform import StartupWaveformTest_ACTurnOn
 
@@ -63,6 +64,7 @@ TestTypes = [
     InputHarmonicsTest,
     InputLineRampTest,
     VdsIdsSteadyStateTest,
+    SteadyStatePollWaveformTest_2Port,
     # ModernEfficiencyTest,
     # LoadRegulationTest_2Port,
     # LightLoad,

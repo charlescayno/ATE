@@ -47,12 +47,18 @@ class Eff2PWaveformAdvancedDialog(QDialog):
         ambient_lineedit=None,
         for_startup=False,
         startup_capture_timeout_le=None,
+        for_poll=False,
+        poll_interval_le=None,
+        poll_duration_le=None,
     ):
         super().__init__(parent)
         self.lineedits = lineedits
         self.ambient_lineedit = ambient_lineedit
         self.for_startup = for_startup
         self.startup_capture_timeout_le = startup_capture_timeout_le
+        self.for_poll = for_poll
+        self.poll_interval_le = poll_interval_le
+        self.poll_duration_le = poll_duration_le
         self.setWindowTitle("Scope & timing (advanced)")
         self.setStyleSheet(DIALOG_STYLE)
         self.setMinimumWidth(360)
@@ -86,6 +92,16 @@ class Eff2PWaveformAdvancedDialog(QDialog):
             self.le_capture_timeout = QLineEdit(self)
             self.le_capture_timeout.setValidator(validator)
             form.addRow("Capture Timeout (s):", self.le_capture_timeout)
+
+        self.le_poll_interval = None
+        self.le_poll_duration = None
+        if for_poll:
+            self.le_poll_interval = QLineEdit(self)
+            self.le_poll_duration = QLineEdit(self)
+            self.le_poll_interval.setValidator(validator)
+            self.le_poll_duration.setValidator(validator)
+            form.addRow("Poll Interval (s):", self.le_poll_interval)
+            form.addRow("Poll Duration (s):", self.le_poll_duration)
 
         hint = QLabel(
             "Stop Test always runs a safety discharge at 1.0 A CCH "
@@ -137,6 +153,16 @@ class Eff2PWaveformAdvancedDialog(QDialog):
                 default = t if t else default
             self.le_capture_timeout.setText(default)
 
+        if self.le_poll_interval is not None:
+            interval = "1"
+            duration = "10"
+            if self.poll_interval_le is not None and self.poll_interval_le.text().strip():
+                interval = self.poll_interval_le.text().strip()
+            if self.poll_duration_le is not None and self.poll_duration_le.text().strip():
+                duration = self.poll_duration_le.text().strip()
+            self.le_poll_interval.setText(interval)
+            self.le_poll_duration.setText(duration)
+
     def apply_to_lineedits(self):
         def set_txt(idx, value):
             if idx < len(self.lineedits):
@@ -155,3 +181,7 @@ class Eff2PWaveformAdvancedDialog(QDialog):
         if self.le_capture_timeout is not None and self.startup_capture_timeout_le is not None:
             self.startup_capture_timeout_le.setText(
                 self.le_capture_timeout.text().strip() or "10")
+        if self.le_poll_interval is not None and self.poll_interval_le is not None:
+            self.poll_interval_le.setText(self.le_poll_interval.text().strip() or "1")
+        if self.le_poll_duration is not None and self.poll_duration_le is not None:
+            self.poll_duration_le.setText(self.le_poll_duration.text().strip() or "10")

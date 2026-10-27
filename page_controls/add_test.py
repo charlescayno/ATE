@@ -43,6 +43,7 @@ from psu_tests.test_type import *
 from misc_functions.misc_functions import *
 
 STEADY_STATE_WAVEFORM_2PORT_TITLE = "Steady-State Waveform 2 Port"
+STEADY_STATE_POLL_WAVEFORM_2PORT_TITLE = "Steady-State Poll Waveform 2 Port"
 STARTUP_WAVEFORM_2PORT_TITLE = "Startup Waveform 2 Port"
 STARTUP_WAVEFORM_AC_TURNON_TITLE = "Startup Waveform AC Turn-On (DER-1113)"
 STARTUP_WAVEFORM_TITLES = (
@@ -53,6 +54,7 @@ EFFICIENCY_2PORT_WAVEFORM_TITLE = STEADY_STATE_WAVEFORM_2PORT_TITLE
 EFFICIENCY_2PORT_WAVEFORM_LEGACY_TITLE = "Efficiency 2 Port (Waveform)"
 WAVEFORM_2PORT_TITLES = (
     EFFICIENCY_2PORT_WAVEFORM_TITLE,
+    STEADY_STATE_POLL_WAVEFORM_2PORT_TITLE,
     EFFICIENCY_2PORT_WAVEFORM_LEGACY_TITLE,
     STARTUP_WAVEFORM_2PORT_TITLE,
     STARTUP_WAVEFORM_AC_TURNON_TITLE,
@@ -60,6 +62,7 @@ WAVEFORM_2PORT_TITLES = (
 EFFICIENCY_2PORT_TITLES = (
     "Efficiency 2 Port",
     STEADY_STATE_WAVEFORM_2PORT_TITLE,
+    STEADY_STATE_POLL_WAVEFORM_2PORT_TITLE,
     EFFICIENCY_2PORT_WAVEFORM_LEGACY_TITLE,
     STARTUP_WAVEFORM_2PORT_TITLE,
     STARTUP_WAVEFORM_AC_TURNON_TITLE,
@@ -1882,12 +1885,25 @@ class AddTestPageHandler(QObject):
             if is_numeric(le.text()):
                 capture_timeout_s = float(le.text())
 
+        poll_interval_s = SteadyStatePollWaveformTest_2Port.POLL_INTERVAL_DEFAULT_S
+        poll_duration_s = SteadyStatePollWaveformTest_2Port.POLL_DURATION_DEFAULT_S
+        if test_class.title == STEADY_STATE_POLL_WAVEFORM_2PORT_TITLE:
+            interval_le, duration_le = self._poll_timing_storage()
+            if is_numeric(interval_le.text()):
+                poll_interval_s = float(interval_le.text())
+            if is_numeric(duration_le.text()):
+                poll_duration_s = float(duration_le.text())
+
         body = build_flow_text_for_title(
             test_class.title,
             user_prompts=user_prompts,
             capture_timeout_s=capture_timeout_s,
             dual_load_mode=dual_load_mode,
             discharge_pulses=discharge_pulses,
+            poll_interval_s=poll_interval_s,
+            poll_duration_s=poll_duration_s,
+            sample_count=SteadyStatePollWaveformTest_2Port.sample_count_for(
+                poll_interval_s, poll_duration_s),
         )
         if not body:
             return
@@ -1922,7 +1938,8 @@ class AddTestPageHandler(QObject):
             self.btn_eff2p_advanced_gear = QToolButton(self.frame_eff2p_advanced_gear)
             self.btn_eff2p_advanced_gear.setText("\u2699")
             self.btn_eff2p_advanced_gear.setToolTip(
-                "Trigger delta, settle time, discharge pulses, ambient temp, post-capture delay, trigger channel")
+                "Trigger delta, settle time, discharge pulses, ambient temp, "
+                "post-capture delay, trigger channel, and poll timing when that test is selected")
             self.btn_eff2p_advanced_gear.setStyleSheet(GEAR_STYLE)
             self.btn_eff2p_advanced_gear.setCursor(Qt.PointingHandCursor)
             self.btn_eff2p_advanced_gear.clicked.connect(self._open_eff2p_waveform_advanced_dialog)
@@ -1956,6 +1973,35 @@ class AddTestPageHandler(QObject):
                 f"{StartupWaveformTest_2Port.STARTUP_CAPTURE_TIMEOUT_DEFAULT_S:g}")
         return self._startup_capture_timeout_lineedit
 
+    def _poll_timing_storage(self):
+        if not hasattr(self, '_poll_interval_lineedit'):
+            self._poll_interval_lineedit = QLineEdit(self.parent)
+            self._poll_interval_lineedit.hide()
+            self._poll_duration_lineedit = QLineEdit(self.parent)
+            self._poll_duration_lineedit.hide()
+            self._poll_interval_lineedit.setText(
+                f"{SteadyStatePollWaveformTest_2Port.POLL_INTERVAL_DEFAULT_S:g}")
+            self._poll_duration_lineedit.setText(
+                f"{SteadyStatePollWaveformTest_2Port.POLL_DURATION_DEFAULT_S:g}")
+        return self._poll_interval_lineedit, self._poll_duration_lineedit
+
+    def _sync_poll_timing_from_i2c(self, i2c_params):
+        interval_le, duration_le = self._poll_timing_storage()
+        params = list(getattr(i2c_params, 'param', None) or [])
+        cls = SteadyStatePollWaveformTest_2Port
+
+        def _set(le, index, default):
+            if len(params) > index and params[index] not in ('', None):
+                try:
+                    le.setText(f"{float(params[index]):g}")
+                    return
+                except (TypeError, ValueError):
+                    pass
+            le.setText(f"{default:g}")
+
+        _set(interval_le, cls.POLL_INTERVAL_PARAM_INDEX, cls.POLL_INTERVAL_DEFAULT_S)
+        _set(duration_le, cls.POLL_DURATION_PARAM_INDEX, cls.POLL_DURATION_DEFAULT_S)
+
     def _sync_startup_capture_timeout_from_i2c(self, i2c_params):
         if not i2c_params:
             return
@@ -1972,10 +2018,13 @@ class AddTestPageHandler(QObject):
 
     def _open_eff2p_waveform_advanced_dialog(self):
         scope = self.get_scope_channels_from_ui() if hasattr(self, 'get_scope_channels_from_ui') else {}
-        is_startup = (
-            getattr(self, 'selected_test_class', None) is not None
-            and self.selected_test_class.title == STARTUP_WAVEFORM_2PORT_TITLE
-        )
+        selected = getattr(self, 'selected_test_class', None)
+        title = selected.title if selected is not None else ""
+        is_startup = title == STARTUP_WAVEFORM_2PORT_TITLE
+        is_poll = title == STEADY_STATE_POLL_WAVEFORM_2PORT_TITLE
+        poll_interval_le = poll_duration_le = None
+        if is_poll:
+            poll_interval_le, poll_duration_le = self._poll_timing_storage()
         dlg = Eff2PWaveformAdvancedDialog(
             self.parent,
             self.i2c_ui_lineedits,
@@ -1983,6 +2032,9 @@ class AddTestPageHandler(QObject):
             for_startup=is_startup,
             startup_capture_timeout_le=(
                 self._startup_capture_timeout_storage() if is_startup else None),
+            for_poll=is_poll,
+            poll_interval_le=poll_interval_le,
+            poll_duration_le=poll_duration_le,
         )
         if dlg.exec_() == QDialog.Accepted:
             dlg.apply_to_lineedits()
@@ -2924,6 +2976,9 @@ class AddTestPageHandler(QObject):
                     if test_type.title == STARTUP_WAVEFORM_2PORT_TITLE:
                         self._sync_startup_capture_timeout_from_i2c(
                             selected_test_conditions.i2c_test_parameters)
+                    if test_type.title == STEADY_STATE_POLL_WAVEFORM_2PORT_TITLE:
+                        self._sync_poll_timing_from_i2c(
+                            selected_test_conditions.i2c_test_parameters)
 
             if nominal_output_settings_update:
                 # Nominal output settings
@@ -3169,6 +3224,8 @@ class AddTestPageHandler(QObject):
                                 cbx.setCurrentIndex(cbx_names.index(cbx_item))
                     if self.selected_test_class.title == STARTUP_WAVEFORM_2PORT_TITLE:
                         self._sync_startup_capture_timeout_from_i2c(default_i2c)
+                    if self.selected_test_class.title == STEADY_STATE_POLL_WAVEFORM_2PORT_TITLE:
+                        self._sync_poll_timing_from_i2c(default_i2c)
                 else:
                     for line in self.i2c_ui_lineedits:
                         line.setText('')
@@ -3593,6 +3650,20 @@ class AddTestPageHandler(QObject):
                 params.append(float(le.text()))
             else:
                 params.append(StartupWaveformTest_2Port.STARTUP_CAPTURE_TIMEOUT_DEFAULT_S)
+
+        if (
+            getattr(self, 'selected_test_class', None) is not None
+            and self.selected_test_class.title == STEADY_STATE_POLL_WAVEFORM_2PORT_TITLE
+        ):
+            interval_le, duration_le = self._poll_timing_storage()
+            if is_numeric(interval_le.text()):
+                params.append(float(interval_le.text()))
+            else:
+                params.append(SteadyStatePollWaveformTest_2Port.POLL_INTERVAL_DEFAULT_S)
+            if is_numeric(duration_le.text()):
+                params.append(float(duration_le.text()))
+            else:
+                params.append(SteadyStatePollWaveformTest_2Port.POLL_DURATION_DEFAULT_S)
 
         i2c_test_parameters = I2CTestParameters(params, cbx_params)
         return i2c_test_parameters
