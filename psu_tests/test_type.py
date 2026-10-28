@@ -50,21 +50,22 @@ InnoPro_TestTypes = [
 ]
 
 TestTypes = [
+    # Dual-output / 2-port tests (grouped at top of Add Tests dropdown)
     EfficiencyWaveformTest_2Port,
+    SteadyStatePollWaveformTest_2Port,
     StartupWaveformTest_2Port,
     StartupWaveformTest_ACTurnOn,
+    EfficiencyTest_2Port,
+    EfficiencyTest_3Port,
     LoadRegulationTest,
     LineRegulationTest,
     EfficiencyTest,
-    EfficiencyTest_2Port,
-    EfficiencyTest_3Port,
     NoLoadPowerTest,
     CVCCTest,
     # TransientsTest,
     InputHarmonicsTest,
     InputLineRampTest,
     VdsIdsSteadyStateTest,
-    SteadyStatePollWaveformTest_2Port,
     # ModernEfficiencyTest,
     # LoadRegulationTest_2Port,
     # LightLoad,
@@ -95,3 +96,19 @@ def get_test_title_list():
 def get_test_title(index):
     """Return the test title of the TestType that corresponds to the input index"""
     return TestTypes[index].title
+
+
+def resolve_test_type_index(stored_index: int, test_title: str | None = None) -> int:
+    """Map a saved index and/or title to the current TestTypes order."""
+    titles = get_test_title_list()
+    if test_title:
+        legacy = {
+            "Primary Vds & Ids Steady-State": "Steady-State Waveform Capture",
+            "Efficiency 2 Port (Waveform)": "Steady-State Waveform 2 Port",
+        }
+        test_title = legacy.get(test_title, test_title)
+        if test_title in titles:
+            return titles.index(test_title)
+    if 0 <= stored_index < len(TestTypes):
+        return stored_index
+    return 0

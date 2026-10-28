@@ -26,7 +26,7 @@ from psu_tests.test_input_harmonics import InputHarmonicsTest
 from psu_tests.test_input_line_ramp import InputLineRampTest
 from psu_tests.test_i2c_cv_sweep import I2C_CVSweepTest
 from psu_tests.test_file_template import TemplateTest
-from psu_tests.test_type import TestTypes, get_test_title_list, get_test_title, get_test_type
+from psu_tests.test_type import TestTypes, get_test_title_list, resolve_test_type_index, get_test_title, get_test_type
 from pd.pd_types import SUPPLY_TYPE
 
 from plotter.plotter import PlotSeries, PlottableObject, PlotType, DataTable
@@ -323,7 +323,9 @@ class TestPlan():
             new_test_conditions.soak_time.name = "Custom"
             new_test_conditions.soak_time.custom =True
             
-        # Create new test item
-        new_test_item = TestItem(self.parent,test_type_index=test_item_dict['TEST_TYPE_INDEX'],test_conditions=new_test_conditions)
+        type_index = resolve_test_type_index(
+            test_item_dict.get("TEST_TYPE_INDEX", 0), name)
+        new_test_item = TestItem(
+            self.parent, test_type_index=type_index, test_conditions=new_test_conditions)
         # Add test item to test list
         self.add_test_item(new_test_item)

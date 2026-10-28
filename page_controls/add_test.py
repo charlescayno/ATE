@@ -1975,15 +1975,55 @@ class AddTestPageHandler(QObject):
 
     def _poll_timing_storage(self):
         if not hasattr(self, '_poll_interval_lineedit'):
+            from PySide2.QtGui import QDoubleValidator
             self._poll_interval_lineedit = QLineEdit(self.parent)
-            self._poll_interval_lineedit.hide()
             self._poll_duration_lineedit = QLineEdit(self.parent)
-            self._poll_duration_lineedit.hide()
+            validator = QDoubleValidator(0.0, 1e7, 4, self.parent)
+            validator.setNotation(QDoubleValidator.StandardNotation)
+            for le in (self._poll_interval_lineedit, self._poll_duration_lineedit):
+                le.setValidator(validator)
+                le.hide()
             self._poll_interval_lineedit.setText(
                 f"{SteadyStatePollWaveformTest_2Port.POLL_INTERVAL_DEFAULT_S:g}")
             self._poll_duration_lineedit.setText(
                 f"{SteadyStatePollWaveformTest_2Port.POLL_DURATION_DEFAULT_S:g}")
         return self._poll_interval_lineedit, self._poll_duration_lineedit
+
+    def _ensure_poll_timing_frame(self):
+        if hasattr(self, 'frame_poll_timing'):
+            return
+        from PySide2.QtWidgets import QFormLayout
+        interval_le, duration_le = self._poll_timing_storage()
+        self.frame_poll_timing = QFrame(self.ui.frame_add_tests_i2c)
+        self.frame_poll_timing.setObjectName("frame_poll_timing")
+        form = QFormLayout(self.frame_poll_timing)
+        form.setContentsMargins(0, 4, 0, 4)
+        hint = QLabel(
+            "After each scope capture, PM/scope readings repeat every "
+            "Poll Interval until Poll Duration elapses (extra Excel rows per sample)."
+        )
+        hint.setWordWrap(True)
+        hint.setStyleSheet("color: rgb(150, 170, 190); font-size: 11px;")
+        form.addRow("Poll Interval (s):", interval_le)
+        form.addRow("Poll Duration (s):", duration_le)
+        form.addRow(hint)
+        interval_le.show()
+        duration_le.show()
+
+    def _apply_poll_timing_visibility(self, visible: bool):
+        self._ensure_poll_timing_frame()
+        self.frame_poll_timing.setVisible(visible)
+        if not visible:
+            return
+        ui = self.ui
+        ui.gridLayout_12.removeWidget(self.frame_poll_timing)
+        ui.gridLayout_12.addWidget(self.frame_poll_timing, 3, 0, 1, 2)
+        if hasattr(self, 'frame_scope_channels'):
+            ui.gridLayout_12.removeWidget(self.frame_scope_channels)
+            ui.gridLayout_12.addWidget(self.frame_scope_channels, 4, 0, 1, 2)
+        if hasattr(self, 'label_dual_load_mode_desc'):
+            ui.gridLayout_12.removeWidget(self.label_dual_load_mode_desc)
+            ui.gridLayout_12.addWidget(self.label_dual_load_mode_desc, 5, 0, 1, 2)
 
     def _sync_poll_timing_from_i2c(self, i2c_params):
         interval_le, duration_le = self._poll_timing_storage()
@@ -2042,6 +2082,7 @@ class AddTestPageHandler(QObject):
     def _apply_eff2p_waveform_i2c_visibility(self):
         selected = getattr(self, 'selected_test_class', None)
         is_wf = selected is not None and selected.title in WAVEFORM_2PORT_TITLES
+        is_poll = selected is not None and selected.title == STEADY_STATE_POLL_WAVEFORM_2PORT_TITLE
         if is_wf:
             for i in range(4, 10):
                 self.i2c_ui_lineedit_frames[i].setVisible(False)
@@ -2050,14 +2091,20 @@ class AddTestPageHandler(QObject):
             ui = self.ui
             ui.gridLayout_12.removeWidget(self.frame_eff2p_advanced_gear)
             ui.gridLayout_12.addWidget(self.frame_eff2p_advanced_gear, 2, 0, 1, 2)
+            self._apply_poll_timing_visibility(is_poll)
+            scope_row = 4 if is_poll else 3
+            dual_row = 5 if is_poll else 4
             if hasattr(self, 'frame_scope_channels'):
                 ui.gridLayout_12.removeWidget(self.frame_scope_channels)
-                ui.gridLayout_12.addWidget(self.frame_scope_channels, 3, 0, 1, 2)
+                ui.gridLayout_12.addWidget(self.frame_scope_channels, scope_row, 0, 1, 2)
             if hasattr(self, 'label_dual_load_mode_desc'):
                 ui.gridLayout_12.removeWidget(self.label_dual_load_mode_desc)
-                ui.gridLayout_12.addWidget(self.label_dual_load_mode_desc, 4, 0, 1, 2)
-        elif hasattr(self, 'frame_eff2p_advanced_gear'):
-            self.frame_eff2p_advanced_gear.setVisible(False)
+                ui.gridLayout_12.addWidget(self.label_dual_load_mode_desc, dual_row, 0, 1, 2)
+        else:
+            if hasattr(self, 'frame_eff2p_advanced_gear'):
+                self.frame_eff2p_advanced_gear.setVisible(False)
+            if hasattr(self, 'frame_poll_timing'):
+                self.frame_poll_timing.setVisible(False)
 
     def set_ui_states(self):
         """Change the state of the UI depending on 
