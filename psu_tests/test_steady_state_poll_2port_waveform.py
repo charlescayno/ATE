@@ -33,7 +33,7 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
     POLL_INTERVAL_DEFAULT_S = 5.0
     POLL_DURATION_DEFAULT_S = 5 * 60.0
     # One console row must fit a normal terminal. Extra columns wrap under it.
-    POLL_CONSOLE_WIDTH = 96
+    POLL_CONSOLE_WIDTH = 100
     POLL_PIPE_COLUMNS = (
         "Sample", "Elapsed (s)", "Vin (rms)", "Iin (mA)", "Pin (W)",
         "Vo1 (V)", "Io1 (A)", "Po1 (W)", "Vo2 (V)", "Io2 (A)", "Po2 (W)",
@@ -179,18 +179,25 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
     def _poll_sep_line(widths) -> str:
         return "|" + "|".join("-" * (width + 2) for width in widths) + "|"
 
-    def _poll_pipe_headers(self, by_name):
-        """Columns for the one-line grid. The rest print on following lines."""
-        must = ("Sample", "Elapsed (s)", "Vin (rms)")
-        ordered = [h for h in self.POLL_PIPE_COLUMNS if h in by_name]
-        ordered += [h for h in by_name if h not in ordered and not self._poll_console_omit(h)]
-        chosen = []
-        for header in ordered:
-            trial = chosen + [header]
-            if header not in must and self._poll_grid_width(trial, by_name) > self.POLL_CONSOLE_WIDTH:
-                continue
-            chosen.append(header)
-        return chosen
+    def _poll_console_columns(self, headers, by_name):
+        columns = [h for h in self.POLL_PIPE_COLUMNS if h in by_name]
+        columns += [h for h in headers if h not in columns and not self._poll_console_omit(h)]
+        return columns
+
+    def _poll_column_bands(self, columns, by_name):
+        """Split columns so each grid line fits the console."""
+        bands = []
+        current = []
+        for header in columns:
+            trial = current + [header]
+            if current and self._poll_grid_width(trial, by_name) > self.POLL_CONSOLE_WIDTH:
+                bands.append(current)
+                current = [header]
+            else:
+                current = trial
+        if current:
+            bands.append(current)
+        return bands
 
     def _print_wrapped(self, text, indent=""):
         width = self.POLL_CONSOLE_WIDTH
@@ -222,18 +229,6 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
             parts.append(f"{freq} Hz")
         self._print_wrapped("   ".join(parts))
 
-    def _print_poll_pairs(self, headers, by_name):
-        pending = ""
-        for header in headers:
-            piece = f"{header} {by_name.get(header, '')}"
-            if pending and len(".. ") + len(pending) + 3 + len(piece) > self.POLL_CONSOLE_WIDTH:
-                self._print_wrapped(".. " + pending)
-                pending = piece
-            else:
-                pending = piece if not pending else pending + "   " + piece
-        if pending:
-            self._print_wrapped(".. " + pending)
-
     def _print_poll_table_row(self):
         """Print the latest sample as a short table, then the remaining columns."""
         headers = [str(h) for h in (list(self.header_list) + list(self.scope_header_list))]
@@ -250,14 +245,13 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
         if int(getattr(self, "poll_sample_index", 1) or 1) == 1:
             print("[POLL TABLE]", flush=True)
         self._print_poll_banner(by_name)
-        pipe_headers = self._poll_pipe_headers(by_name)
-        widths = self._poll_col_widths(pipe_headers, by_name)
-        print(self._poll_grid_line(pipe_headers, widths), flush=True)
-        print(self._poll_sep_line(widths), flush=True)
-        print(self._poll_grid_line(
-            [by_name[h] for h in pipe_headers], widths, align_right=True), flush=True)
-        rest = [h for h in headers if h not in pipe_headers and not self._poll_console_omit(h)]
-        self._print_poll_pairs(rest, by_name)
+        columns = self._poll_console_columns(headers, by_name)
+        for band in self._poll_column_bands(columns, by_name):
+            widths = self._poll_col_widths(band, by_name)
+            print(self._poll_grid_line(band, widths), flush=True)
+            print(self._poll_sep_line(widths), flush=True)
+            print(self._poll_grid_line(
+                [by_name[h] for h in band], widths, align_right=True), flush=True)
         print(flush=True)
 
     def update_output_data(self):

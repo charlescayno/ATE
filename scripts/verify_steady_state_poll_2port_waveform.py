@@ -61,7 +61,7 @@ def _console_table_samples(log):
             continue
         if all(set(cell) <= {"-"} for cell in cells):
             continue
-        if len(cells) <= max(sample_i, vin_i):
+        if len(cells) != len(hcells) or not cells[sample_i].isdigit():
             continue
         samples.append(cells[sample_i])
         if vin is None:
@@ -77,7 +77,7 @@ def _console_table_is_readable(log, samples_expected):
     widest = max(len(ln) for ln in lines)
     if widest > SteadyStatePollWaveformTest_2Port.POLL_CONSOLE_WIDTH:
         return False, f"widest {widest}"
-    banners = [ln for ln in lines if ln.startswith("[POLL] ")]
+    banners = [ln for ln in lines if ln.startswith("[POLL] ") and "/" in ln.split()[1]]
     if len(banners) != samples_expected:
         return False, f"banners {len(banners)}"
     joined = "\n".join(lines)
