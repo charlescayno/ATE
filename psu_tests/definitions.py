@@ -735,12 +735,44 @@ class TestData():
         self.iout_A = 0 if i is None else i
         self.pout_W = 0 if p is None else p
 
+    def _source_integration_seconds(self) -> float:
+        pm = self.source_power_meter
+        if pm is None:
+            return 0.0
+        try:
+            return float(pm.get_integration_timer())
+        except (TypeError, ValueError):
+            pass
+        try:
+            return float(getattr(pm, '_integration_time', 0) or 0)
+        except (TypeError, ValueError):
+            return 0.0
+
+    def _read_stable_source_pin_w(self) -> float:
+        """Integrated Pin when timer >= 1 s, else meter averaging + instant P read."""
+        pm = self.source_power_meter
+        if pm is None:
+            return 0.0
+        timer_s = self._source_integration_seconds()
+        if timer_s >= 1.0:
+            pm.start_integration()
+            pm.poll_integration_status()
+            pin = pm.get_integrated_power()
+            return pin if pin is not None else pm.power
+        try:
+            pm.enable_averaging(True)
+        except Exception:
+            pass
+        pin = pm.power
+        return pin if pin is not None else 0.0
+
     def gather_data(self, 
                     integrate: bool = True, 
                     measure_thd: bool = True, 
                     coupling:str = 'AC',
                     force_use_eload_data = False,
-                    usb_pd: bool = False):
+                    usb_pd: bool = False,
+                    stable_source_pin: bool = False):
         
         # Source measurement
         self.vin_V = self.source_power_meter.voltage
@@ -753,10 +785,13 @@ class TestData():
         source_timer = self.source_power_meter.get_integration_timer() if self.source_power_meter else 0
         load_timer = self.load_power_meter.get_integration_timer() if has_load_pm else None
         
-        if source_timer == 0 or (has_load_pm and load_timer == 0):
+        if stable_source_pin:
+            integrate = False
+            self.pin_W = None
+        elif source_timer == 0 or (has_load_pm and load_timer == 0):
             integrate = False
 
-        if not integrate:
+        if not stable_source_pin and not integrate:
             self.pin_W = self.source_power_meter.power
 
         # Load measurement
@@ -788,6 +823,9 @@ class TestData():
             if has_load_pm:
                 if not integrate:
                     self.pout_W = self.load_power_meter.power
+
+        if stable_source_pin:
+            self.pin_W = self._read_stable_source_pin_w()
                 
         # Fallback for Pin if None
         if self.pin_W is None:

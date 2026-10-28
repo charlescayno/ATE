@@ -1,5 +1,6 @@
 import os
 import math
+import datetime
 
 import openpyxl
 from openpyxl.styles import Font as CellFont, Alignment
@@ -743,10 +744,35 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
         scope_row = self.capture_waveform_at_point(vin_set, i1_A, i2_A)
         self._append_measurement_row(scope_row)
 
+    @staticmethod
+    def _terminal_cell_text(header: str, value) -> str:
+        if isinstance(value, datetime.datetime):
+            return value.strftime('%Y-%m-%d %H:%M:%S')
+        if value is None:
+            return ''
+        if isinstance(value, (int, float)):
+            if header in ('Sample', 'Freq (Hz)'):
+                fv = float(value)
+                return str(int(fv)) if fv == int(fv) else f'{fv:g}'
+            return f'{float(value):.2f}'
+        return str(value)
+
+    def _log_excel_row_to_terminal(self, data_row) -> None:
+        """One terminal line per Excel main-sheet row (matches View Data / export)."""
+        headers = getattr(self, 'header_list', None) or self.define_data_header()
+        n = min(len(headers), len(data_row))
+        parts = [
+            f'{headers[i]}={self._terminal_cell_text(headers[i], data_row[i])}'
+            for i in range(n)
+        ]
+        print('[DATA_ROW] ' + ' | '.join(parts))
+
     def _append_measurement_row(self, scope_row):
-        self.output_dataframe.loc[len(self.output_dataframe)] = self.process_data_row()
+        data_row = self.process_data_row()
+        self.output_dataframe.loc[len(self.output_dataframe)] = data_row
         self.scope_dataframe.loc[len(self.scope_dataframe)] = scope_row
         self.current_scope_row = scope_row
+        self._log_excel_row_to_terminal(data_row)
         self.update_output_data()
 
     def _set_loads(self, i1_A, i2_A):

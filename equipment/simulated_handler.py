@@ -521,6 +521,7 @@ class SimulatedPowerMeter:
     def get_integrated_power(self, reset=True): return self.power
     def get_integrated_energy(self): return 0.0
     def query_averaging_state(self): return True
+    def enable_averaging(self, en: bool = True): pass
     def current_auto_range_query(self): return True
     def voltage_auto_range_query(self): return True
     def get_harmonics(self): return {}, {}

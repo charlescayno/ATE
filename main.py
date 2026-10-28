@@ -15,10 +15,32 @@ import html
 import datetime
 
 def _minimal_log_line(message: str) -> bool:
-    """Keep test flow lines in app_log / View Logs; set PI_ATE_FULL_LOG=1 for everything."""
+    """High-level lines only in terminal, View Logs, and app_log.txt.
+
+    Set PI_ATE_FULL_LOG=1 for per-instrument chatter ([E_LOAD], [DC_SOURCE], scope, SCPI).
+    """
     if os.environ.get("PI_ATE_FULL_LOG", "").strip().lower() in ("1", "yes", "true"):
         return True
-    return "[TEST_STEP]" in message or "[SOAK]" in message
+    if "[E_LOAD]" in message or "[DC_SOURCE]" in message or "[AC_SOURCE]" in message:
+        return False
+    if "[SCOPE]" in message or "[SCPI_QUERY]" in message or "[SCPI_WRITE]" in message:
+        return False
+    if "[TEST_STEP]" in message or "[SOAK]" in message:
+        return True
+    if "[DATA_ROW]" in message:
+        return True
+    if "[POLL]" in message or "[DISCHARGE]" in message:
+        return True
+    if message.lstrip().startswith(("[SKIP]", "[RECAPTURE]")):
+        return True
+    upper = message.upper()
+    if "[UNCAUGHT EXCEPTION]" in message or "TRACEBACK" in upper:
+        return True
+    if "[WARNING]" in upper or "[Warning]" in message:
+        return True
+    if "[ERROR]" in upper or "[POWER_METER]" in message:
+        return True
+    return False
 
 
 class DualLogger(object):
@@ -27,13 +49,13 @@ class DualLogger(object):
         self.logfile = open(filepath, "a", encoding="utf-8", buffering=1)
 
     def write(self, message):
+        if not _minimal_log_line(message):
+            return
         if self.terminal:
             try:
                 self.terminal.write(message)
             except Exception:
                 pass
-        if not _minimal_log_line(message):
-            return
         try:
             self.logfile.write(message)
             self.logfile.flush()
@@ -196,6 +218,9 @@ class MainWindow(QMainWindow):
         if '[TEST_STEP]' in clean_text:
             color = '#00ff00' # Green
             font_weight = 'bold'
+        elif '[DATA_ROW]' in clean_text:
+            color = '#98fb98' # Pale green
+            font_weight = 'normal'
         elif '[AC_SOURCE]' in clean_text:
             color = '#00bfff' # Deep Sky Blue
         elif '[DC_SOURCE]' in clean_text:

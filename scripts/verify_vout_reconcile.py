@@ -65,6 +65,57 @@ def test_eload_zero_pm_wins():
     check("PM U when e-load V=0", abs(td.vout_V - 47.95) < 0.01, td.vout_V)
 
 
+def test_stable_source_pin_uses_averaging_when_no_timer():
+    from psu_tests.definitions import TestData
+
+    class Src:
+        integration_calls = []
+        avg_on = False
+        _integration_time = 0
+
+        def get_integration_timer(self):
+            return 0
+
+        @property
+        def voltage(self):
+            return 750.0
+
+        @property
+        def current(self):
+            return 0.1
+
+        @property
+        def pf(self):
+            return 1.0
+
+        @property
+        def power(self):
+            return 73.0
+
+        def enable_averaging(self, en=True):
+            self.avg_on = bool(en)
+
+        def start_integration(self):
+            self.integration_calls.append('start')
+
+        def poll_integration_status(self):
+            pass
+
+        def get_integrated_power(self, reset=True):
+            return 99.0
+
+    td = TestData()
+    td.vout_nom_V = 48.0
+    td.source_power_meter = Src()
+    td.load_power_meter = None
+    td.use_eload_data = True
+    td.electronic_load = type('E', (), {'voltage': 48.0, 'current': 1.0})()
+    td.gather_data(coupling='DC', measure_thd=False, stable_source_pin=True)
+    check('poll Pin uses averaging path', td.source_power_meter.avg_on)
+    check('Pin from source', abs(td.pin_W - 73.0) < 0.01, td.pin_W)
+    check('no integration when timer 0', not td.source_power_meter.integration_calls)
+
+
 def test_gather_data_load_path():
     td = TestData()
     td.vout_nom_V = 20.0
@@ -81,6 +132,7 @@ if __name__ == "__main__":
     test_parse_nan()
     test_p_over_i()
     test_eload_zero_pm_wins()
+    test_stable_source_pin_uses_averaging_when_no_timer()
     test_gather_data_load_path()
     if errors:
         print(f"\n{len(errors)} failed")

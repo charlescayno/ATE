@@ -277,7 +277,11 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
 
     def _measure_poll_readings(self, i2_A):
         """PM reads for poll samples without re-sending AUTO range every tick."""
-        self.test_data.gather_data(coupling=self.coupling, usb_pd=self.usbpd_test)
+        self.test_data.gather_data(
+            coupling=self.coupling,
+            usb_pd=self.usbpd_test,
+            stable_source_pin=True,
+        )
         if self.power_meter_load_2 or self.electronic_load_2:
             self.test_data_2.gather_data_load(
                 integrate=False, force_use_eload_data=self.use_eload_data)
@@ -330,7 +334,7 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
         trig_level = None
         img_path = ""
         self.ensure_load_power_meters_auto_range()
-        self.prepare_source_power_meter_for_measurement()
+        self.prepare_source_power_meter_for_poll_input()
         try:
             for sample in range(n):
                 self._raise_if_abort(records_before, rows_at_start)
