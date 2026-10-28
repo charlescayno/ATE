@@ -86,6 +86,33 @@ def _console_table_is_readable(log, samples_expected):
     return True, widest
 
 
+def _poll_scope_cycles_ok(actions, expected):
+    """Each sample is stop, then Vds, then screenshot, then Normal, then run."""
+    cycles = []
+    current = []
+    for action in actions:
+        if action == "stop" and current:
+            cycles.append(current)
+            current = []
+        current.append(action)
+    if current:
+        cycles.append(current)
+    if len(cycles) != expected:
+        return False
+    for cycle in cycles:
+        try:
+            i_stop = cycle.index("stop")
+            i_meas = cycle.index("measure")
+            i_shot = cycle.index("screenshot")
+            i_norm = cycle.index("NORM")
+            i_run = cycle.index("run")
+        except ValueError:
+            return False
+        if not (i_stop < i_meas < i_shot < i_norm < i_run):
+            return False
+    return True
+
+
 def check(errors, name, ok, detail=""):
     if ok:
         print(f"OK  {name}")
@@ -199,9 +226,15 @@ def test_run(errors):
         check(errors, "workbook name", test.data_filename == expected_name, test.data_filename)
         check(errors, "workbook exists", os.path.isfile(test.data_file_path), test.data_file_path)
         pngs = [rec.get('path') for rec in test.captured_records if rec.get('path')]
-        check(errors, "one screenshot", len(pngs) == 1 and pngs[0].endswith('_SSP.png'), pngs)
-        check(errors, "n_samples on capture",
-              test.captured_records and test.captured_records[0].get('n_samples') == 3,
+        check(errors, "screenshot per sample",
+              len(pngs) == 3 and len(set(pngs)) == 3 and all(path.endswith('_SSP.png') for path in pngs),
+              pngs)
+        check(errors, "scope stop then capture then normal",
+              _poll_scope_cycles_ok(test._poll_scope_actions, 3),
+              test._poll_scope_actions)
+        check(errors, "n_samples per waveform",
+              len(test.captured_records) == 3
+              and all(rec.get('n_samples') == 1 for rec in test.captured_records),
               test.captured_records)
 
         wb = openpyxl.load_workbook(test.data_file_path)
@@ -234,8 +267,8 @@ def test_run(errors):
                   and isinstance(eff, (int, float)) and isinstance(vds, (int, float)),
                   (got_s, got_e, eff, vds))
         wf = f"{test.short_title}_Waveforms"
-        check(errors, "one embedded image",
-              wf in wb.sheetnames and len(wb[wf]._images) == 1,
+        check(errors, "one embedded image per sample",
+              wf in wb.sheetnames and len(wb[wf]._images) == 3,
               wf in wb.sheetnames and len(wb[wf]._images))
         check(errors, "results table rows",
               len([r for r in test.test_data_table.data if any(v != '' for v in r)]) == 3)
@@ -296,9 +329,20 @@ def test_abort_saves_excel(errors):
                   samples[:2] == [1, 2] and [float(x) for x in elapsed[:2]] == [0.0, 5.0]
                   and samples[2] in (None, ""),
                   (samples, elapsed))
+            pngs = [rec.get('path') for rec in test.captured_records if rec.get('path')]
+            check(errors, "abort screenshot per sample",
+                  len(pngs) == 2 and len(set(pngs)) == 2, pngs)
+            check(errors, "abort scope stop then capture then normal",
+                  _poll_scope_cycles_ok(test._poll_scope_actions, 2),
+                  test._poll_scope_actions)
             check(errors, "abort n_samples",
-                  test.captured_records and test.captured_records[0].get('n_samples') == 2,
+                  len(test.captured_records) == 2
+                  and all(rec.get('n_samples') == 1 for rec in test.captured_records),
                   test.captured_records)
+            wf = f"{test.short_title}_Waveforms"
+            check(errors, "abort embedded images",
+                  wf in wb.sheetnames and len(wb[wf]._images) == 2,
+                  wf in wb.sheetnames and len(getattr(wb[wf], '_images', [])))
     finally:
         test_control_flags['StopTest'] = False
         test_control_flags['SkipTest'] = False

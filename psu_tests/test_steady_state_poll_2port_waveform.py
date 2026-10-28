@@ -1,6 +1,7 @@
 """Steady-state 2-port waveform test that polls meters for a timed window."""
 import math
 import numbers
+import os
 from copy import deepcopy
 from time import sleep
 
@@ -16,9 +17,9 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
     """
     Steady-State Poll Waveform 2 Port.
 
-    Same line/load sweep and one scope screenshot per point as Steady-State
-    Waveform 2 Port. After the screenshot, power-meter and scope measurements
-    are read again every Poll Interval until Poll Duration has elapsed.
+    Same line/load sweep as Steady-State Waveform 2 Port. Every poll sample
+    reads the meters and Vds, then stops the scope, saves that waveform, and
+    returns the scope to Normal so the next interval can capture again.
     Each sample is its own Excel row (Sample, Elapsed).
     Default window is 5 s for 5 minutes. Stop at any time keeps the rows
     already taken and writes them to the Excel file.
@@ -327,11 +328,8 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
             print(f"[Warning] Could not save partial poll workbook: {exc}")
 
     def _note_partial_capture(self, records_before, rows_at_start):
-        if len(getattr(self, 'captured_records', []) or []) <= records_before:
-            return
-        taken = len(self.output_dataframe) - rows_at_start
-        if taken > 0:
-            self.captured_records[records_before]['n_samples'] = taken
+        for rec in (getattr(self, 'captured_records', []) or [])[records_before:]:
+            rec['n_samples'] = 1
 
     def _raise_if_abort(self, records_before, rows_at_start):
         stop = test_control_flags.get('StopTest', False)
@@ -437,13 +435,95 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
             row.append(img_path or "")
         return row
 
+    def _mark_scope(self, action: str):
+        actions = getattr(self, "_poll_scope_actions", None)
+        if actions is None:
+            actions = []
+            self._poll_scope_actions = actions
+        actions.append(action)
+
+    def _resume_scope_normal(self):
+        """Leave the scope acquiring in Normal so the next interval has a new waveform."""
+        scope = self.oscilloscope
+        self._mark_scope("NORM")
+        if hasattr(scope, "trigger_mode"):
+            scope.trigger_mode("NORM")
+        elif hasattr(scope, "set_trigger_mode"):
+            scope.set_trigger_mode("NORM")
+        self._mark_scope("run")
+        scope.run()
+
+    def _save_poll_screenshot(self, vin_set, i1_A, i2_A) -> str:
+        prefix = f"{self.unit_id}_" if self.unit_id else ""
+        pwr = self._dual_port_power_filename_part(i1_A=i1_A, i2_A=i2_A, png_suffix=True)
+        png_suffix = getattr(self, "PNG_SUFFIX", "") or ""
+        sample = int(getattr(self, "poll_sample_index", 1) or 1)
+        elapsed = float(getattr(self, "poll_elapsed_s", 0.0) or 0.0)
+        img_filename = (
+            f"{prefix}{vin_set:g}V{self.coupling}_Ch1_{i1_A:g}A_Ch2_{i2_A:g}A"
+            f"{pwr}_s{sample}_t{elapsed:g}s{png_suffix}.png")
+        img_path = os.path.join(self.waveform_filepath, img_filename)
+        self._mark_scope("screenshot")
+        try:
+            self.oscilloscope.get_screenshot(img_filename, self.waveform_filepath)
+        except Exception as exc:
+            print(f"[Warning] Failed to capture oscilloscope screenshot {img_filename}: {exc}")
+        return img_path
+
+    def _capture_poll_waveform(self, vin_set, i1_A, i2_A, records_before, rows_at_start) -> list:
+        """Stop, read Vds, save the waveform, then return the scope to Normal."""
+        n_meas = len(self.scope_measurement_labels)
+        while True:
+            self._raise_if_abort(records_before, rows_at_start)
+            self.update_status_log("Scope stop", upcoming="Measure Vds")
+            self._mark_scope("stop")
+            self.oscilloscope.stop()
+            self._mark_scope("measure")
+            meas = self.query_active_scope_measurements()
+            trig_level = self._read_trigger_level()
+            if self.prompt_before_capture and int(self.poll_sample_index) == 1:
+                meas_str = "".join(
+                    f"{key}: {val}<br>" for key, val in meas.items()) or "No active measurements found.<br>"
+                message = (
+                    f"<b>Operating Point:</b> {vin_set:g} V{self.coupling} | "
+                    f"Ch1 {i1_A:g} A ({self.current_ch1_lbl}) | Ch2 {i2_A:g} A ({self.current_ch2_lbl})<br>"
+                    f"<b>Sample:</b> {int(self.poll_sample_index)} &nbsp; "
+                    f"<b>Elapsed:</b> {float(self.poll_elapsed_s):g} s<br>"
+                    f"<b>Live Measurements:</b><br>{meas_str}<br>"
+                    "The scope is stopped. Capture this waveform, or choose another action:"
+                )
+                action = self.request_capture_action(
+                    f"Capture Waveform ({vin_set:g} V, sample {int(self.poll_sample_index)})",
+                    message)
+                if action == "RECAPTURE":
+                    self._resume_scope_normal()
+                    continue
+                if action == "STOP":
+                    raise TestStopped
+                if action == "SKIP":
+                    self._resume_scope_normal()
+                    row = [f"CH{self.trigger_channel}", "N/A"] + ["N/A"] * n_meas
+                    if not self.embed_images:
+                        row.append("")
+                    return row
+            img_path = self._save_poll_screenshot(vin_set, i1_A, i2_A)
+            self.captured_records.append({
+                'vin': vin_set, 'i1': i1_A, 'i2': i2_A,
+                'ch1_lbl': f"{self.current_ch1_lbl} t={float(self.poll_elapsed_s):g}s",
+                'ch2_lbl': self.current_ch2_lbl,
+                'eff': self.eff_total_pct, 'path': img_path, 'measurements': meas,
+                'n_samples': 1,
+            })
+            self._resume_scope_normal()
+            return self._scope_row_from_measurements(meas, trig_level, img_path)
+
     def _acquire_operating_point(self, vin_set, i1_A, i2_A):
         n = self._sample_count()
         interval = float(self.poll_interval_s) if n > 1 else 0.0
         records_before = len(self.captured_records)
         rows_at_start = len(self.output_dataframe)
-        trig_level = None
-        img_path = ""
+        if getattr(self, "_poll_scope_actions", None) is None:
+            self._poll_scope_actions = []
         try:
             for sample in range(n):
                 self._raise_if_abort(records_before, rows_at_start)
@@ -451,30 +531,28 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
                 self.poll_elapsed_s = sample * interval
                 if sample == 0:
                     self.update_status_log(
-                        f"Poll sample 1/{n}", upcoming="Capture Waveform")
+                        f"Poll sample 1/{n}", upcoming="Measure Vds")
                     self._measure_efficiency(i2_A)
-                    scope_row = self.capture_waveform_at_point(vin_set, i1_A, i2_A)
-                    if len(scope_row) > 1 and scope_row[1] == "N/A":
-                        self._append_measurement_row(scope_row)
-                        return
-                    trig_level = scope_row[1] if len(scope_row) > 1 else None
-                    if not self.embed_images and scope_row:
-                        img_path = scope_row[-1]
+                    if self.auto_find_trigger:
+                        self.update_status_log(
+                            "Sweeping Trigger Level...", upcoming="Scope stop")
+                        self.find_trigger(
+                            channel=self.trigger_channel, trigger_delta=self.trigger_delta)
                 else:
                     self.update_status_log(
                         f"Poll sample {sample + 1}/{n} after {interval:g} s",
-                        upcoming="Read meters")
+                        upcoming="Measure Vds")
                     self._wait_or_stop(interval, records_before, rows_at_start)
                     self._measure_efficiency(i2_A)
-                    meas = self.query_active_scope_measurements()
-                    scope_row = self._scope_row_from_measurements(meas, trig_level, img_path)
+                scope_row = self._capture_poll_waveform(
+                    vin_set, i1_A, i2_A, records_before, rows_at_start)
                 self._append_measurement_row(scope_row)
+                if len(scope_row) > 1 and scope_row[1] == "N/A":
+                    return
         except (TestStopped, TestSkipped):
             self._note_partial_capture(records_before, rows_at_start)
             raise
-        if len(self.captured_records) > records_before:
-            self.captured_records[records_before]['n_samples'] = (
-                len(self.output_dataframe) - rows_at_start)
+        self._note_partial_capture(records_before, rows_at_start)
 
     def _link_capture_main_sheet_rows(self):
         row = self.excel_first_data_row + 1
@@ -507,6 +585,7 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
         note = (
             f"Poll: every {self.poll_interval_s:g} s for {duration_txt} "
             f"({self._sample_count()} samples per point). "
+            "Each sample stops the scope, saves the waveform, then returns the scope to Normal. "
             "Stop keeps rows already saved to Excel."
         )
         self.test_list_text = "\n".join(lines)
