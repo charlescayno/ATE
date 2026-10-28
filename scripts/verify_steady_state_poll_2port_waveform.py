@@ -70,6 +70,7 @@ def check(errors, name, ok, detail=""):
 
 
 def test_sample_math(errors):
+    check(errors, "samples 5s x 5min", POLL.sample_count_for(5, 300) == 61, POLL.sample_count_for(5, 300))
     check(errors, "samples 5s x 15min", POLL.sample_count_for(5, 900) == 181, POLL.sample_count_for(5, 900))
     check(errors, "samples 1s x 2s", POLL.sample_count_for(1, 2) == 3, POLL.sample_count_for(1, 2))
     check(errors, "samples 3s x 10s", POLL.sample_count_for(3, 10) == 4, POLL.sample_count_for(3, 10))
@@ -80,7 +81,7 @@ def test_sample_math(errors):
         errors, "default interval param",
         len(params) > POLL.POLL_DURATION_PARAM_INDEX
         and float(params[POLL.POLL_INTERVAL_PARAM_INDEX]) == 5.0
-        and float(params[POLL.POLL_DURATION_PARAM_INDEX]) == 900.0,
+        and float(params[POLL.POLL_DURATION_PARAM_INDEX]) == 300.0,
         params)
     ch1 = POLL.tc_default.scope_channels[1]
     check(errors, "default scope VDS_PRI max 1700",
@@ -111,9 +112,9 @@ def test_dialog(errors):
     check(errors, "dialog writes poll storage", interval.text() == "0.5" and duration.text() == "240",
           f"{interval.text()} {duration.text()}")
     flow = build_flow_text_for_title(
-        POLL.title, poll_interval_s=0.5, poll_duration_s=900, sample_count=181)
+        POLL.title, poll_interval_s=0.5, poll_duration_s=300, sample_count=61)
     check(errors, "flow text",
-          flow and "0.5 s" in flow and "15 min" in flow and "SS_POLL_2P" in flow,
+          flow and "0.5 s" in flow and "5 min" in flow and "SS_POLL_2P" in flow,
           flow[:120] if flow else None)
 
 
@@ -283,9 +284,10 @@ def test_details_estimate(errors):
     check(errors, "details estimated time",
           f"Estimated time: {shown}" in text and "0:49:" not in text,
           text)
-    # 3 voltages x 15 min of polling, plus soak and capture, without the old per-sample pad.
-    check(errors, "default estimate about 47 min",
-          45 * 60 < test.total_time < 50 * 60, round(test.total_time, 1))
+    # 3 voltages x 5 min of polling, plus soak and capture.
+    check(errors, "default estimate about 17 min",
+          15 * 60 < test.total_time < 20 * 60, round(test.total_time, 1))
+    check(errors, "details say 5 min poll", "for 5 min" in text, text)
 
 
 def main() -> int:

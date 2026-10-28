@@ -196,8 +196,8 @@ def build_poll_flow_text(
     user_prompts: str = "Per-Capture Only",
     dual_load_mode: str = "",
     poll_interval_s: float = 5.0,
-    poll_duration_s: float = 900.0,
-    sample_count: int = 181,
+    poll_duration_s: float = 300.0,
+    sample_count: int = 61,
 ) -> str:
     pre_test, per_capture = _user_prompts_flags(user_prompts)
     mode_note = dual_load_mode.strip() or "Dual Load Mode"
@@ -248,8 +248,8 @@ def build_flow_text_for_title(
     dual_load_mode: str = "",
     discharge_pulses: int = 0,
     poll_interval_s: float = 5.0,
-    poll_duration_s: float = 900.0,
-    sample_count: int = 181,
+    poll_duration_s: float = 300.0,
+    sample_count: int = 61,
 ) -> str | None:
     if title == STEADY_STATE_POLL_WAVEFORM_2PORT_TITLE:
         return build_poll_flow_text(

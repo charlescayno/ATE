@@ -20,7 +20,7 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
     Waveform 2 Port. After the screenshot, power-meter and scope measurements
     are read again every Poll Interval until Poll Duration has elapsed.
     Each sample is its own Excel row (Sample, Elapsed).
-    Default window is 5 s for 15 minutes. Stop at any time keeps the rows
+    Default window is 5 s for 5 minutes. Stop at any time keeps the rows
     already taken and writes them to the Excel file.
     """
 
@@ -31,7 +31,7 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
     POLL_INTERVAL_PARAM_INDEX = 10
     POLL_DURATION_PARAM_INDEX = 11
     POLL_INTERVAL_DEFAULT_S = 5.0
-    POLL_DURATION_DEFAULT_S = 15 * 60.0
+    POLL_DURATION_DEFAULT_S = 5 * 60.0
 
     i2c_ui_definitions = EfficiencyWaveformTest_2Port.i2c_ui_definitions
     tc_default = None

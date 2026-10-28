@@ -27,7 +27,7 @@ def _enabled_trigger_channels(scope_channels: dict) -> list[int]:
     return enabled or [1]
 
 
-def _seconds_to_minutes_text(seconds_text, default_min="15") -> str:
+def _seconds_to_minutes_text(seconds_text, default_min="5") -> str:
     """Stored poll duration is seconds. The gear field shows minutes."""
     try:
         seconds = float(str(seconds_text).strip())
@@ -38,7 +38,7 @@ def _seconds_to_minutes_text(seconds_text, default_min="15") -> str:
     return f"{seconds / 60.0:g}"
 
 
-def _minutes_text_to_seconds(minutes_text, default_min="15") -> str:
+def _minutes_text_to_seconds(minutes_text, default_min="5") -> str:
     """Gear field is minutes. Persist seconds for the test engine."""
     try:
         minutes = float(str(minutes_text).strip())
@@ -177,7 +177,7 @@ class Eff2PWaveformAdvancedDialog(QDialog):
 
         if self.le_poll_interval is not None:
             interval = "5"
-            duration_s = "900"
+            duration_s = "300"
             if self.poll_interval_le is not None and self.poll_interval_le.text().strip():
                 interval = self.poll_interval_le.text().strip()
             if self.poll_duration_le is not None and self.poll_duration_le.text().strip():
@@ -207,4 +207,4 @@ class Eff2PWaveformAdvancedDialog(QDialog):
             self.poll_interval_le.setText(self.le_poll_interval.text().strip() or "5")
         if self.le_poll_duration is not None and self.poll_duration_le is not None:
             self.poll_duration_le.setText(
-                _minutes_text_to_seconds(self.le_poll_duration.text().strip() or "15"))
+                _minutes_text_to_seconds(self.le_poll_duration.text().strip() or "5"))
