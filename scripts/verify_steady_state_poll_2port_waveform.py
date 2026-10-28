@@ -32,6 +32,35 @@ OPTION_C = "Option C: Fixed Aux / Swept Main (Port 2 Fixed Load)"
 POLL = SteadyStatePollWaveformTest_2Port
 
 
+def _console_table_cells(line):
+    return [cell.strip() for cell in line.strip().strip("|").split("|")]
+
+
+def _console_table_samples(log):
+    """Return (sample numbers, first Vin (rms)) from the printed grid."""
+    grid = [ln for ln in log.splitlines() if ln.startswith("|")]
+    header = next((ln for ln in grid if "Vin (rms)" in ln and "Sample" in ln), None)
+    if header is None:
+        return [], None
+    hcells = _console_table_cells(header)
+    sample_i = hcells.index("Sample")
+    vin_i = hcells.index("Vin (rms)")
+    samples = []
+    vin = None
+    for ln in grid:
+        cells = _console_table_cells(ln)
+        if cells == hcells or not cells:
+            continue
+        if all(set(cell) <= {"-"} for cell in cells):
+            continue
+        if len(cells) <= max(sample_i, vin_i):
+            continue
+        samples.append(cells[sample_i])
+        if vin is None:
+            vin = cells[vin_i]
+    return samples, vin
+
+
 def check(errors, name, ok, detail=""):
     if ok:
         print(f"OK  {name}")
@@ -122,14 +151,11 @@ def test_run(errors):
         with redirect_stdout(log_buf):
             test.run()
         log = log_buf.getvalue()
-        table_lines = [ln for ln in log.splitlines() if ln.startswith("[POLL TABLE]")]
+        samples, vin = _console_table_samples(log)
         check(errors, "terminal table header",
-              any(ln.startswith("[POLL TABLE] sample 1/3") for ln in table_lines)
-              and any("Vin (rms)" in ln and ln.rstrip().endswith("115.00") for ln in table_lines),
-              table_lines[:3])
-        check(errors, "terminal table three samples",
-              sum(ln.startswith("[POLL TABLE] sample ") for ln in table_lines) == 3
-              and any(ln.startswith("[POLL TABLE] sample 3/3") for ln in table_lines))
+              vin == "115.00" and "Vin (rms)" in log and log.count("[POLL TABLE]") == 1,
+              (samples, vin))
+        check(errors, "terminal table three samples", samples == ["1", "2", "3"], samples)
         check(errors, "run complete", TestStatus.COMPLETE in statuses, statuses)
         expected_name = "SSP 115VAC 5V 25W+24W Primary Vds+Ids"
         check(errors, "workbook name", test.data_filename == expected_name, test.data_filename)
@@ -215,12 +241,8 @@ def test_abort_saves_excel(errors):
             with redirect_stdout(log_buf):
                 test.run()
             log = log_buf.getvalue()
-            table_lines = [ln for ln in log.splitlines() if ln.startswith("[POLL TABLE] sample ")]
-            check(errors, "abort terminal table",
-                  any(ln.startswith("[POLL TABLE] sample 1/5") for ln in table_lines)
-                  and any(ln.startswith("[POLL TABLE] sample 2/5") for ln in table_lines)
-                  and not any(ln.startswith("[POLL TABLE] sample 3/5") for ln in table_lines),
-                  table_lines)
+            samples, _vin = _console_table_samples(log)
+            check(errors, "abort terminal table", samples == ["1", "2"], samples)
             check(errors, "abort status", TestStatus.STOPPED in statuses, statuses)
             check(errors, "abort workbook exists", os.path.isfile(test.data_file_path))
             wb = openpyxl.load_workbook(test.data_file_path)
