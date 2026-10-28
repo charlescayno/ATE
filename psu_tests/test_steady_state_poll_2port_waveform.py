@@ -45,6 +45,18 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
             params.append(0.0)
         params[cls.POLL_INTERVAL_PARAM_INDEX] = cls.POLL_INTERVAL_DEFAULT_S
         params[cls.POLL_DURATION_PARAM_INDEX] = cls.POLL_DURATION_DEFAULT_S
+        scope_channels = deepcopy(tc.scope_channels)
+        ch1 = dict(scope_channels.get(1) or {})
+        ch1['enabled'] = True
+        ch1['name'] = 'VDS_PRI'
+        ch1['measurements'] = ['MAXimum']
+        ch1['derating'] = 1700.0
+        scope_channels[1] = ch1
+        ch2 = dict(scope_channels.get(2) or {})
+        if ch2.get('name') == 'VDS_PRI':
+            ch2['name'] = 'VDS_SR'
+            ch2['enabled'] = False
+            scope_channels[2] = ch2
         return TestConditions(
             name=cls.title,
             nominal_output_voltage_V=tc.nominal_output_voltage_V,
@@ -62,7 +74,7 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
             ),
             unit_id=tc.unit_id,
             ambient_temp=tc.ambient_temp,
-            scope_channels=deepcopy(tc.scope_channels),
+            scope_channels=scope_channels,
         )
 
     @staticmethod

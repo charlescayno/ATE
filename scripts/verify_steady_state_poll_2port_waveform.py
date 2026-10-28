@@ -82,6 +82,12 @@ def test_sample_math(errors):
         and float(params[POLL.POLL_INTERVAL_PARAM_INDEX]) == 5.0
         and float(params[POLL.POLL_DURATION_PARAM_INDEX]) == 900.0,
         params)
+    ch1 = POLL.tc_default.scope_channels[1]
+    check(errors, "default scope VDS_PRI max 1700",
+          ch1.get('enabled') and ch1.get('name') == 'VDS_PRI'
+          and ch1.get('measurements') == ['MAXimum']
+          and float(ch1.get('derating')) == 1700.0,
+          ch1)
     check(errors, "registered in TestTypes", POLL in TestTypes)
     check(errors, "does not shift waveform index 0",
           TestTypes[0].title == "Steady-State Waveform 2 Port")
