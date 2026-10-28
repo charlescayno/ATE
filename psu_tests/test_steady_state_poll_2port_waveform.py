@@ -32,6 +32,13 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
     POLL_DURATION_PARAM_INDEX = 11
     POLL_INTERVAL_DEFAULT_S = 5.0
     POLL_DURATION_DEFAULT_S = 5 * 60.0
+    # One console row must fit a normal terminal. Extra columns wrap under it.
+    POLL_CONSOLE_WIDTH = 96
+    POLL_PIPE_COLUMNS = (
+        "Sample", "Elapsed (s)", "Vin (rms)", "Iin (mA)", "Pin (W)",
+        "Vo1 (V)", "Io1 (A)", "Po1 (W)", "Vo2 (V)", "Io2 (A)", "Po2 (W)",
+        "Efficiency (%)",
+    )
 
     i2c_ui_definitions = EfficiencyWaveformTest_2Port.i2c_ui_definitions
     tc_default = None
@@ -143,17 +150,92 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
             return f"{float(value):.2f}"
         return str(value)
 
+    def _poll_console_omit(self, header: str) -> bool:
+        """Columns already shown on the sample banner, or a long file path."""
+        if header in ("Ch1 Load", "Ch2 Load", "Freq (Hz)", "Waveform File"):
+            return True
+        return header == f"V{getattr(self, 'coupling', 'AC')} (rms)"
+
     @staticmethod
-    def _poll_grid_line(cells, widths) -> str:
-        padded = [str(cell).ljust(width) for cell, width in zip(cells, widths)]
+    def _poll_col_widths(headers, by_name):
+        return [max(len(header), len(by_name.get(header, "")), 1) for header in headers]
+
+    @classmethod
+    def _poll_grid_width(cls, headers, by_name) -> int:
+        if not headers:
+            return 0
+        widths = cls._poll_col_widths(headers, by_name)
+        return sum(widths) + 3 * len(widths) + 1
+
+    @staticmethod
+    def _poll_grid_line(cells, widths, align_right=False) -> str:
+        padded = []
+        for cell, width in zip(cells, widths):
+            text = str(cell)
+            padded.append(text.rjust(width) if align_right else text.ljust(width))
         return "| " + " | ".join(padded) + " |"
 
     @staticmethod
     def _poll_sep_line(widths) -> str:
         return "|" + "|".join("-" * (width + 2) for width in widths) + "|"
 
+    def _poll_pipe_headers(self, by_name):
+        """Columns for the one-line grid. The rest print on following lines."""
+        must = ("Sample", "Elapsed (s)", "Vin (rms)")
+        ordered = [h for h in self.POLL_PIPE_COLUMNS if h in by_name]
+        ordered += [h for h in by_name if h not in ordered and not self._poll_console_omit(h)]
+        chosen = []
+        for header in ordered:
+            trial = chosen + [header]
+            if header not in must and self._poll_grid_width(trial, by_name) > self.POLL_CONSOLE_WIDTH:
+                continue
+            chosen.append(header)
+        return chosen
+
+    def _print_wrapped(self, text, indent=""):
+        width = self.POLL_CONSOLE_WIDTH
+        pending = text
+        while pending:
+            room = width - len(indent)
+            if len(pending) <= room:
+                print(indent + pending, flush=True)
+                return
+            cut = pending.rfind(" ", 0, room + 1)
+            if cut <= 0:
+                cut = max(1, room)
+            print(indent + pending[:cut].rstrip(), flush=True)
+            pending = pending[cut:].lstrip()
+            indent = "  "
+
+    def _print_poll_banner(self, by_name):
+        count = self._sample_count()
+        index = int(getattr(self, "poll_sample_index", 1) or 1)
+        elapsed = by_name.get("Elapsed (s)", "")
+        ch1 = by_name.get("Ch1 Load", "")
+        ch2 = by_name.get("Ch2 Load", "")
+        freq = by_name.get("Freq (Hz)", "")
+        vin_set = by_name.get(f"V{getattr(self, 'coupling', 'AC')} (rms)", "")
+        parts = [f"[POLL] {index}/{count}  t={elapsed} s", f"Ch1 {ch1}", f"Ch2 {ch2}"]
+        if vin_set:
+            parts.append(f"set {vin_set} {getattr(self, 'coupling', 'AC')}")
+        if freq:
+            parts.append(f"{freq} Hz")
+        self._print_wrapped("   ".join(parts))
+
+    def _print_poll_pairs(self, headers, by_name):
+        pending = ""
+        for header in headers:
+            piece = f"{header} {by_name.get(header, '')}"
+            if pending and len(".. ") + len(pending) + 3 + len(piece) > self.POLL_CONSOLE_WIDTH:
+                self._print_wrapped(".. " + pending)
+                pending = piece
+            else:
+                pending = piece if not pending else pending + "   " + piece
+        if pending:
+            self._print_wrapped(".. " + pending)
+
     def _print_poll_table_row(self):
-        """Print the latest Excel row as one row of a console table."""
+        """Print the latest sample as a short table, then the remaining columns."""
         headers = [str(h) for h in (list(self.header_list) + list(self.scope_header_list))]
         data = getattr(getattr(self, "test_data_table", None), "data", None) or []
         if not headers or not data:
@@ -161,15 +243,22 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
         row = list(data[-1])
         if len(row) < len(headers):
             row.extend([""] * (len(headers) - len(row)))
-        texts = [self._poll_cell_text(value) for value in row[:len(headers)]]
-        new_point = int(getattr(self, "poll_sample_index", 1) or 1) == 1
-        if new_point or not getattr(self, "_poll_table_widths", None):
-            self._poll_table_widths = [
-                max(len(header), len(text)) for header, text in zip(headers, texts)]
+        by_name = {
+            header: self._poll_cell_text(value)
+            for header, value in zip(headers, row[:len(headers)])
+        }
+        if int(getattr(self, "poll_sample_index", 1) or 1) == 1:
             print("[POLL TABLE]", flush=True)
-            print(self._poll_grid_line(headers, self._poll_table_widths), flush=True)
-            print(self._poll_sep_line(self._poll_table_widths), flush=True)
-        print(self._poll_grid_line(texts, self._poll_table_widths), flush=True)
+        self._print_poll_banner(by_name)
+        pipe_headers = self._poll_pipe_headers(by_name)
+        widths = self._poll_col_widths(pipe_headers, by_name)
+        print(self._poll_grid_line(pipe_headers, widths), flush=True)
+        print(self._poll_sep_line(widths), flush=True)
+        print(self._poll_grid_line(
+            [by_name[h] for h in pipe_headers], widths, align_right=True), flush=True)
+        rest = [h for h in headers if h not in pipe_headers and not self._poll_console_omit(h)]
+        self._print_poll_pairs(rest, by_name)
+        print(flush=True)
 
     def update_output_data(self):
         super().update_output_data()

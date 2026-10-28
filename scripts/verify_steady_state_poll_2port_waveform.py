@@ -36,6 +36,14 @@ def _console_table_cells(line):
     return [cell.strip() for cell in line.strip().strip("|").split("|")]
 
 
+def _console_table_lines(log):
+    """Lines that belong to the live poll table, not other log text."""
+    return [
+        ln for ln in log.splitlines()
+        if ln.startswith("|") or ln.startswith("[POLL]") or ln.startswith(".. ")
+    ]
+
+
 def _console_table_samples(log):
     """Return (sample numbers, first Vin (rms)) from the printed grid."""
     grid = [ln for ln in log.splitlines() if ln.startswith("|")]
@@ -59,6 +67,23 @@ def _console_table_samples(log):
         if vin is None:
             vin = cells[vin_i]
     return samples, vin
+
+
+def _console_table_is_readable(log, samples_expected):
+    """Each poll line fits a normal terminal, and each sample is its own block."""
+    lines = _console_table_lines(log)
+    if not lines:
+        return False, "no table lines"
+    widest = max(len(ln) for ln in lines)
+    if widest > SteadyStatePollWaveformTest_2Port.POLL_CONSOLE_WIDTH:
+        return False, f"widest {widest}"
+    banners = [ln for ln in lines if ln.startswith("[POLL] ")]
+    if len(banners) != samples_expected:
+        return False, f"banners {len(banners)}"
+    joined = "\n".join(lines)
+    if "Efficiency (%)" not in joined:
+        return False, "missing efficiency"
+    return True, widest
 
 
 def check(errors, name, ok, detail=""):
@@ -167,6 +192,8 @@ def test_run(errors):
               vin == "115.00" and "Vin (rms)" in log and log.count("[POLL TABLE]") == 1,
               (samples, vin))
         check(errors, "terminal table three samples", samples == ["1", "2", "3"], samples)
+        readable, detail = _console_table_is_readable(log, 3)
+        check(errors, "terminal table fits the screen", readable, detail)
         check(errors, "run complete", TestStatus.COMPLETE in statuses, statuses)
         expected_name = "SSP 115VAC 5V 25W+24W Primary Vds+Ids"
         check(errors, "workbook name", test.data_filename == expected_name, test.data_filename)
@@ -256,6 +283,8 @@ def test_abort_saves_excel(errors):
             log = log_buf.getvalue()
             samples, _vin = _console_table_samples(log)
             check(errors, "abort terminal table", samples == ["1", "2"], samples)
+            readable, detail = _console_table_is_readable(log, 2)
+            check(errors, "abort table fits the screen", readable, detail)
             check(errors, "abort status", TestStatus.STOPPED in statuses, statuses)
             check(errors, "abort workbook exists", os.path.isfile(test.data_file_path))
             wb = openpyxl.load_workbook(test.data_file_path)
