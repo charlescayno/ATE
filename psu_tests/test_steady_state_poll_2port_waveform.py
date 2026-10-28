@@ -175,7 +175,7 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
         super()._write_run_metadata_rows(ws)
         rows = (
             (2, "Poll interval (s)", self.poll_interval_s),
-            (3, "Poll duration (s)", self.poll_duration_s),
+            (3, "Poll duration (min)", self.poll_duration_s / 60.0),
             (4, "Samples per point", self._sample_count()),
         )
         for row, label, value in rows:
@@ -325,10 +325,7 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
     def update_test_list_text(self):
         super().update_test_list_text()
         duration_s = float(self.poll_duration_s)
-        if duration_s >= 60 and abs(duration_s % 60) < 1e-6:
-            duration_txt = f"{duration_s / 60:g} min"
-        else:
-            duration_txt = f"{duration_s:g} s"
+        duration_txt = f"{duration_s / 60.0:g} min"
         note = (
             f"Poll: every {self.poll_interval_s:g} s for {duration_txt} "
             f"({self._sample_count()} samples per point). "

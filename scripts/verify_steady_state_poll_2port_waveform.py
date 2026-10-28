@@ -91,20 +91,24 @@ def test_dialog(errors):
     interval = QLineEdit()
     duration = QLineEdit()
     interval.setText("1")
-    duration.setText("2")
+    duration.setText("120")
     hidden = [QLineEdit() for _ in range(10)]
     dlg = Eff2PWaveformAdvancedDialog(
         None, hidden, scope_channels={1: {'enabled': True, 'name': 'Primary Vds'}},
         for_poll=True, poll_interval_le=interval, poll_duration_le=duration)
-    check(errors, "dialog poll fields", dlg.le_poll_interval is not None and dlg.le_poll_duration.text() == "2")
+    check(errors, "dialog poll fields",
+          dlg.le_poll_interval is not None and dlg.le_poll_duration.text() == "2",
+          dlg.le_poll_duration.text() if dlg.le_poll_duration else None)
     dlg.le_poll_interval.setText("0.5")
     dlg.le_poll_duration.setText("4")
     dlg.apply_to_lineedits()
-    check(errors, "dialog writes poll storage", interval.text() == "0.5" and duration.text() == "4",
+    check(errors, "dialog writes poll storage", interval.text() == "0.5" and duration.text() == "240",
           f"{interval.text()} {duration.text()}")
     flow = build_flow_text_for_title(
-        POLL.title, poll_interval_s=0.5, poll_duration_s=4, sample_count=9)
-    check(errors, "flow text", flow and "0.5 s" in flow and "SS_POLL_2P" in flow, flow[:80] if flow else None)
+        POLL.title, poll_interval_s=0.5, poll_duration_s=900, sample_count=181)
+    check(errors, "flow text",
+          flow and "0.5 s" in flow and "15 min" in flow and "SS_POLL_2P" in flow,
+          flow[:120] if flow else None)
 
 
 class FakeParent:
@@ -172,8 +176,10 @@ def test_run(errors):
         ws = wb[test.sheet_name]
         check(errors, "poll metadata",
               ws['D2'].value == 'Poll interval (s)' and ws['E2'].value == 1
-              and ws['E3'].value == 2 and ws['E4'].value == 3,
-              (ws['D2'].value, ws['E2'].value, ws['E3'].value, ws['E4'].value))
+              and ws['D3'].value == 'Poll duration (min)'
+              and abs(float(ws['E3'].value) - (2.0 / 60.0)) < 1e-9
+              and ws['E4'].value == 3,
+              (ws['D2'].value, ws['E2'].value, ws['D3'].value, ws['E3'].value, ws['E4'].value))
         check(errors, "section title", ws['T14'].value == 'Timed Poll', ws['T14'].value)
         hdr = test.excel_first_data_row
         check(errors, "sample header",

@@ -205,7 +205,7 @@ def build_poll_flow_text(
         "STEADY-STATE POLL WAVEFORM 2 PORT — SEQUENCE",
         f"Dual Load Mode: {mode_note}",
         f"User Prompts: {user_prompts.strip() or '(default)'}",
-        f"Poll: every {poll_interval_s:g} s for {poll_duration_s:g} s "
+        f"Poll: every {poll_interval_s:g} s for {poll_duration_s / 60.0:g} min "
         f"({sample_count} samples per load point, gear → advanced)",
         "",
         "=== ONCE AT TEST START ===",
@@ -225,7 +225,7 @@ def build_poll_flow_text(
         "  →",
         _step(per_capture, "[USER] Optional per-capture review (sample 1 only)"),
         "  →",
-        f"[AUTO] Further samples every {poll_interval_s:g} s until {poll_duration_s:g} s",
+        f"[AUTO] Further samples every {poll_interval_s:g} s until {poll_duration_s / 60.0:g} min",
         "  →",
         "[AUTO] Each sample: power meters + scope measurements → Excel row",
         "",

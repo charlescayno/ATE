@@ -27,6 +27,28 @@ def _enabled_trigger_channels(scope_channels: dict) -> list[int]:
     return enabled or [1]
 
 
+def _seconds_to_minutes_text(seconds_text, default_min="15") -> str:
+    """Stored poll duration is seconds. The gear field shows minutes."""
+    try:
+        seconds = float(str(seconds_text).strip())
+    except (TypeError, ValueError):
+        return default_min
+    if seconds < 0:
+        return default_min
+    return f"{seconds / 60.0:g}"
+
+
+def _minutes_text_to_seconds(minutes_text, default_min="15") -> str:
+    """Gear field is minutes. Persist seconds for the test engine."""
+    try:
+        minutes = float(str(minutes_text).strip())
+    except (TypeError, ValueError):
+        minutes = float(default_min)
+    if minutes < 0:
+        minutes = float(default_min)
+    return f"{minutes * 60.0:g}"
+
+
 class Eff2PWaveformAdvancedDialog(QDialog):
     """Edits hidden i2c lineedits 5–10 (and optional ambient on test conditions)."""
 
@@ -101,7 +123,7 @@ class Eff2PWaveformAdvancedDialog(QDialog):
             self.le_poll_interval.setValidator(validator)
             self.le_poll_duration.setValidator(validator)
             form.addRow("Poll Interval (s):", self.le_poll_interval)
-            form.addRow("Poll Duration (s):", self.le_poll_duration)
+            form.addRow("Poll Duration (min):", self.le_poll_duration)
 
         hint = QLabel(
             "Stop Test always runs a safety discharge at 1.0 A CCH "
@@ -155,13 +177,13 @@ class Eff2PWaveformAdvancedDialog(QDialog):
 
         if self.le_poll_interval is not None:
             interval = "5"
-            duration = "900"
+            duration_s = "900"
             if self.poll_interval_le is not None and self.poll_interval_le.text().strip():
                 interval = self.poll_interval_le.text().strip()
             if self.poll_duration_le is not None and self.poll_duration_le.text().strip():
-                duration = self.poll_duration_le.text().strip()
+                duration_s = self.poll_duration_le.text().strip()
             self.le_poll_interval.setText(interval)
-            self.le_poll_duration.setText(duration)
+            self.le_poll_duration.setText(_seconds_to_minutes_text(duration_s))
 
     def apply_to_lineedits(self):
         def set_txt(idx, value):
@@ -184,4 +206,5 @@ class Eff2PWaveformAdvancedDialog(QDialog):
         if self.le_poll_interval is not None and self.poll_interval_le is not None:
             self.poll_interval_le.setText(self.le_poll_interval.text().strip() or "5")
         if self.le_poll_duration is not None and self.poll_duration_le is not None:
-            self.poll_duration_le.setText(self.le_poll_duration.text().strip() or "900")
+            self.poll_duration_le.setText(
+                _minutes_text_to_seconds(self.le_poll_duration.text().strip() or "15"))
