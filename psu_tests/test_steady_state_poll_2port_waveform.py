@@ -291,6 +291,56 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
         parts.append(f"{secs} s")
         return " ".join(parts)
 
+    @classmethod
+    def preview_total_s(
+        cls,
+        vin_list,
+        n_loads,
+        initial_soak,
+        line_soak,
+        load_soak,
+        integration_s,
+        settle_s,
+        post_capture_s,
+        auto_find,
+        discharge_pulses,
+        poll_interval_s,
+        poll_duration_s,
+        coupling_dc=True,
+        usbpd=False,
+    ) -> float:
+        """Same queue total as estimate_remaining, for the Add Tests preview."""
+        n_samples = cls.sample_count_for(poll_interval_s, poll_duration_s)
+        extra = 0.0 if n_samples <= 1 else (n_samples - 1) * float(poll_interval_s)
+        n_loads = max(1, int(n_loads or 1))
+        vins = list(vin_list or [[0, 0]])
+        total = 0.0
+        ramp = float(cls.BULK_CAP_RAMP_V_PER_S)
+        for index, row in enumerate(vins):
+            if coupling_dc:
+                v_set = float(row[0])
+                if index == 0:
+                    total += 0.5
+                else:
+                    v_prev = float(vins[index - 1][0])
+                    total += abs(v_set - v_prev) / ramp + 0.2
+            total += 4
+            if usbpd:
+                total += 1
+            total += float(initial_soak if index == 0 else line_soak)
+            for _ in range(n_loads):
+                total += 2
+                total += float(load_soak)
+                total += float(settle_s)
+                total += float(integration_s)
+                total += 1.7
+                total += 12 if auto_find else 2
+                total += extra
+                total += float(post_capture_s)
+            total += 3
+        total += float(discharge_pulses) * 1.5
+        return total
+
     def _scope_row_from_measurements(self, meas: dict, trig_level, img_path: str = "") -> list:
         try:
             level = round(float(trig_level), 2)

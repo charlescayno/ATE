@@ -281,6 +281,24 @@ def test_details_estimate(errors):
     test.update_test_list_text()
     text = test.test_list_text
     shown = POLL._format_estimate(test.total_time)
+    preview = POLL.preview_total_s(
+        vin_list=test.vin_list,
+        n_loads=len(test.load_pairs),
+        initial_soak=test.soak_time.initial_soak,
+        line_soak=test.soak_time.soak_per_line,
+        load_soak=test.soak_time.soak_per_load,
+        integration_s=test.soak_time.integration_time,
+        settle_s=test.settle_time,
+        post_capture_s=test.post_capture_delay,
+        auto_find=test.auto_find_trigger,
+        discharge_pulses=test.discharge_pulses,
+        poll_interval_s=test.poll_interval_s,
+        poll_duration_s=test.poll_duration_s,
+        coupling_dc=(test.coupling == 'DC'),
+        usbpd=bool(test.usbpd_test),
+    )
+    check(errors, "preview matches queue estimate",
+          abs(preview - test.total_time) < 0.2, (round(preview, 1), round(test.total_time, 1)))
     check(errors, "details estimated time",
           f"Estimated time: {shown}" in text and "0:49:" not in text,
           text)

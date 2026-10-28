@@ -1939,7 +1939,7 @@ class AddTestPageHandler(QObject):
             self.btn_eff2p_advanced_gear.setText("\u2699")
             self.btn_eff2p_advanced_gear.setToolTip(
                 "Trigger delta, settle time, discharge pulses, ambient temp, "
-                "post-capture delay, trigger channel, and poll timing when that test is selected")
+                "post-capture delay, and trigger channel")
             self.btn_eff2p_advanced_gear.setStyleSheet(GEAR_STYLE)
             self.btn_eff2p_advanced_gear.setCursor(Qt.PointingHandCursor)
             self.btn_eff2p_advanced_gear.clicked.connect(self._open_eff2p_waveform_advanced_dialog)
@@ -1975,15 +1975,200 @@ class AddTestPageHandler(QObject):
 
     def _poll_timing_storage(self):
         if not hasattr(self, '_poll_interval_lineedit'):
+            validator = QDoubleValidator(0.0, 1e6, 4, self.parent)
+            validator.setNotation(QDoubleValidator.StandardNotation)
             self._poll_interval_lineedit = QLineEdit(self.parent)
-            self._poll_interval_lineedit.hide()
             self._poll_duration_lineedit = QLineEdit(self.parent)
+            self._poll_interval_lineedit.setValidator(validator)
+            self._poll_duration_lineedit.setValidator(validator)
             self._poll_duration_lineedit.hide()
             self._poll_interval_lineedit.setText(
                 f"{SteadyStatePollWaveformTest_2Port.POLL_INTERVAL_DEFAULT_S:g}")
             self._poll_duration_lineedit.setText(
                 f"{SteadyStatePollWaveformTest_2Port.POLL_DURATION_DEFAULT_S:g}")
+            self._poll_duration_lineedit.textChanged.connect(self._on_poll_storage_changed)
+            self._poll_interval_lineedit.textChanged.connect(self._refresh_poll_estimate_label)
         return self._poll_interval_lineedit, self._poll_duration_lineedit
+
+    def _ensure_poll_timing_frame(self):
+        if hasattr(self, 'frame_poll_timing'):
+            return
+        interval_le, duration_le = self._poll_timing_storage()
+        cls = SteadyStatePollWaveformTest_2Port
+        self._poll_duration_min_lineedit = QLineEdit(self.parent)
+        validator = QDoubleValidator(0.0, 1e6, 4, self.parent)
+        validator.setNotation(QDoubleValidator.StandardNotation)
+        self._poll_duration_min_lineedit.setValidator(validator)
+        self._poll_duration_min_lineedit.setPlaceholderText("5")
+        interval_le.setPlaceholderText("5")
+        interval_le.setMinimumWidth(120)
+        self._poll_duration_min_lineedit.setMinimumWidth(120)
+        try:
+            minutes = float(duration_le.text()) / 60.0
+        except (TypeError, ValueError):
+            minutes = cls.POLL_DURATION_DEFAULT_S / 60.0
+        self._poll_duration_min_lineedit.setText(f"{minutes:g}")
+        self._poll_duration_min_lineedit.textChanged.connect(self._on_poll_duration_minutes_edited)
+
+        self.frame_poll_timing = QFrame(self.ui.frame_add_tests_i2c)
+        self.frame_poll_timing.setObjectName("frame_poll_timing")
+        form = QFormLayout(self.frame_poll_timing)
+        form.setContentsMargins(0, 6, 0, 6)
+        title = QLabel("Timed poll")
+        title.setStyleSheet("color: rgb(236, 239, 244); font-weight: 600;")
+        hint = QLabel("Interval is seconds. Duration is minutes. Sample 1 is at t = 0.")
+        hint.setWordWrap(True)
+        hint.setStyleSheet("color: rgb(180, 190, 205); font-size: 11px;")
+        self.label_poll_estimate = QLabel("")
+        self.label_poll_estimate.setWordWrap(True)
+        self.label_poll_estimate.setStyleSheet(
+            "color: rgb(236, 239, 244); background-color: rgb(46, 52, 64); "
+            "border: 1px solid rgb(94, 129, 172); border-radius: 4px; padding: 8px;")
+        form.addRow(title)
+        form.addRow(hint)
+        form.addRow("Poll Interval (s):", interval_le)
+        form.addRow("Poll Duration (min):", self._poll_duration_min_lineedit)
+        form.addRow(self.label_poll_estimate)
+        interval_le.show()
+
+        for name in (
+            'lineedit_add_tests_testtime_param1',
+            'lineedit_add_tests_testtime_param2',
+            'lineedit_add_tests_testtime_param3',
+            'lineedit_add_tests_testtime_param4',
+        ):
+            getattr(self.ui, name).textChanged.connect(self._refresh_poll_estimate_label)
+        self.ui.cbx_add_tests_line_range_type.currentIndexChanged.connect(
+            self._refresh_poll_estimate_label)
+        self.ui.cbx_add_tests_load_range_type.currentIndexChanged.connect(
+            self._refresh_poll_estimate_label)
+        self.ui.widget_toggle_add_tests_line_range_coupling.toggled.connect(
+            self._refresh_poll_estimate_label)
+        if getattr(self, 'i2c_ui_combo_boxes', None):
+            self.i2c_ui_combo_boxes[0].currentIndexChanged.connect(self._refresh_poll_estimate_label)
+            if len(self.i2c_ui_combo_boxes) > 3:
+                self.i2c_ui_combo_boxes[3].currentIndexChanged.connect(self._refresh_poll_estimate_label)
+        self._refresh_poll_estimate_label()
+
+    def _on_poll_duration_minutes_edited(self):
+        if getattr(self, '_poll_syncing', False):
+            return
+        if not hasattr(self, '_poll_duration_lineedit'):
+            return
+        text = self._poll_duration_min_lineedit.text().strip()
+        try:
+            minutes = float(text) if text else 0.0
+        except ValueError:
+            return
+        if minutes < 0:
+            minutes = 0.0
+        self._poll_syncing = True
+        try:
+            self._poll_duration_lineedit.setText(f"{minutes * 60.0:g}")
+        finally:
+            self._poll_syncing = False
+        self._refresh_poll_estimate_label()
+
+    def _on_poll_storage_changed(self):
+        if getattr(self, '_poll_syncing', False):
+            return
+        if not hasattr(self, '_poll_duration_min_lineedit'):
+            self._refresh_poll_estimate_label()
+            return
+        try:
+            seconds = float(self._poll_duration_lineedit.text().strip() or 0)
+        except ValueError:
+            return
+        self._poll_syncing = True
+        try:
+            self._poll_duration_min_lineedit.setText(f"{seconds / 60.0:g}")
+        finally:
+            self._poll_syncing = False
+        self._refresh_poll_estimate_label()
+
+    def _poll_ui_float(self, text, default):
+        try:
+            if str(text).strip() == '':
+                return float(default)
+            return float(text)
+        except (TypeError, ValueError):
+            return float(default)
+
+    def _poll_load_point_count(self):
+        loads = list(getattr(self.selected_load_range, 'load_range_pct', None) or [100])
+        mode = ""
+        if getattr(self, 'i2c_ui_combo_boxes', None):
+            mode = self.i2c_ui_combo_boxes[0].currentText()
+        if "Option B" in mode and len(getattr(self, 'i2c_ui_lineedits', [])) > 3:
+            parts = [p for p in self.i2c_ui_lineedits[3].text().split(',') if p.strip()]
+            return max(1, len(loads) * max(1, len(parts)))
+        return max(1, len(loads))
+
+    def _refresh_poll_estimate_label(self, *_args):
+        label = getattr(self, 'label_poll_estimate', None)
+        if label is None or not getattr(self, 'frame_poll_timing', None):
+            return
+        if not self.frame_poll_timing.isVisible():
+            return
+        cls = SteadyStatePollWaveformTest_2Port
+        interval_le, duration_le = self._poll_timing_storage()
+        interval_s = self._poll_ui_float(interval_le.text(), cls.POLL_INTERVAL_DEFAULT_S)
+        duration_s = self._poll_ui_float(duration_le.text(), cls.POLL_DURATION_DEFAULT_S)
+        samples = cls.sample_count_for(interval_s, duration_s)
+        try:
+            line_index = self.ui.cbx_add_tests_line_range_type.currentIndex()
+            vins = list(self.line_settings.line_range_list[line_index].vin_freq or [[0, 0]])
+        except Exception:
+            vins = [[0, 0]]
+        n_loads = self._poll_load_point_count()
+        ui = self.ui
+        settle = self._poll_ui_float(
+            self.i2c_ui_lineedits[5].text() if len(getattr(self, 'i2c_ui_lineedits', [])) > 5 else "", 1.0)
+        post = self._poll_ui_float(
+            self.i2c_ui_lineedits[8].text() if len(getattr(self, 'i2c_ui_lineedits', [])) > 8 else "", 1.0)
+        discharge = self._poll_ui_float(
+            self.i2c_ui_lineedits[6].text() if len(getattr(self, 'i2c_ui_lineedits', [])) > 6 else "", 2)
+        auto_find = True
+        if len(getattr(self, 'i2c_ui_combo_boxes', [])) > 3:
+            auto_find = self.i2c_ui_combo_boxes[3].currentText().strip() == "Yes"
+        total_s = cls.preview_total_s(
+            vin_list=vins,
+            n_loads=n_loads,
+            initial_soak=self._poll_ui_float(ui.lineedit_add_tests_testtime_param1.text(), 0),
+            line_soak=self._poll_ui_float(ui.lineedit_add_tests_testtime_param2.text(), 0),
+            load_soak=self._poll_ui_float(ui.lineedit_add_tests_testtime_param3.text(), 0),
+            integration_s=self._poll_ui_float(ui.lineedit_add_tests_testtime_param4.text(), 0),
+            settle_s=settle,
+            post_capture_s=post,
+            auto_find=auto_find,
+            discharge_pulses=discharge,
+            poll_interval_s=interval_s,
+            poll_duration_s=duration_s,
+            coupling_dc=bool(ui.widget_toggle_add_tests_line_range_coupling.isChecked()),
+            usbpd=bool(ui.chkbox_add_tests_usbpd_device.isChecked()),
+        )
+        per_point = cls._format_estimate(max(0, samples - 1) * interval_s)
+        label.setText(
+            f"{samples} samples per load point  ·  poll window {per_point}\n"
+            f"{len(vins)} voltage step(s) × {n_loads} load point(s)\n"
+            f"Estimated time: {cls._format_estimate(total_s)}"
+        )
+
+    def _apply_poll_timing_visibility(self, visible: bool):
+        self._ensure_poll_timing_frame()
+        self.frame_poll_timing.setVisible(visible)
+        if not visible:
+            return
+        ui = self.ui
+        ui.gridLayout_12.removeWidget(self.frame_poll_timing)
+        ui.gridLayout_12.addWidget(self.frame_poll_timing, 3, 0, 1, 2)
+        if hasattr(self, 'frame_scope_channels'):
+            ui.gridLayout_12.removeWidget(self.frame_scope_channels)
+            ui.gridLayout_12.addWidget(self.frame_scope_channels, 4, 0, 1, 2)
+        if hasattr(self, 'label_dual_load_mode_desc'):
+            ui.gridLayout_12.removeWidget(self.label_dual_load_mode_desc)
+            ui.gridLayout_12.addWidget(self.label_dual_load_mode_desc, 5, 0, 1, 2)
+        self._refresh_poll_estimate_label()
 
     def _sync_poll_timing_from_i2c(self, i2c_params):
         interval_le, duration_le = self._poll_timing_storage()
@@ -2042,6 +2227,7 @@ class AddTestPageHandler(QObject):
     def _apply_eff2p_waveform_i2c_visibility(self):
         selected = getattr(self, 'selected_test_class', None)
         is_wf = selected is not None and selected.title in WAVEFORM_2PORT_TITLES
+        is_poll = selected is not None and selected.title == STEADY_STATE_POLL_WAVEFORM_2PORT_TITLE
         if is_wf:
             for i in range(4, 10):
                 self.i2c_ui_lineedit_frames[i].setVisible(False)
@@ -2050,14 +2236,20 @@ class AddTestPageHandler(QObject):
             ui = self.ui
             ui.gridLayout_12.removeWidget(self.frame_eff2p_advanced_gear)
             ui.gridLayout_12.addWidget(self.frame_eff2p_advanced_gear, 2, 0, 1, 2)
-            if hasattr(self, 'frame_scope_channels'):
-                ui.gridLayout_12.removeWidget(self.frame_scope_channels)
-                ui.gridLayout_12.addWidget(self.frame_scope_channels, 3, 0, 1, 2)
-            if hasattr(self, 'label_dual_load_mode_desc'):
-                ui.gridLayout_12.removeWidget(self.label_dual_load_mode_desc)
-                ui.gridLayout_12.addWidget(self.label_dual_load_mode_desc, 4, 0, 1, 2)
-        elif hasattr(self, 'frame_eff2p_advanced_gear'):
-            self.frame_eff2p_advanced_gear.setVisible(False)
+            self._apply_poll_timing_visibility(is_poll)
+            if not is_poll:
+                scope_row, dual_row = 3, 4
+                if hasattr(self, 'frame_scope_channels'):
+                    ui.gridLayout_12.removeWidget(self.frame_scope_channels)
+                    ui.gridLayout_12.addWidget(self.frame_scope_channels, scope_row, 0, 1, 2)
+                if hasattr(self, 'label_dual_load_mode_desc'):
+                    ui.gridLayout_12.removeWidget(self.label_dual_load_mode_desc)
+                    ui.gridLayout_12.addWidget(self.label_dual_load_mode_desc, dual_row, 0, 1, 2)
+        else:
+            if hasattr(self, 'frame_eff2p_advanced_gear'):
+                self.frame_eff2p_advanced_gear.setVisible(False)
+            if hasattr(self, 'frame_poll_timing'):
+                self.frame_poll_timing.setVisible(False)
 
     def set_ui_states(self):
         """Change the state of the UI depending on 
