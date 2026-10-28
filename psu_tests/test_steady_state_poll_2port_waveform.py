@@ -19,6 +19,8 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
     Waveform 2 Port. After the screenshot, power-meter and scope measurements
     are read again every Poll Interval until Poll Duration has elapsed.
     Each sample is its own Excel row (Sample, Elapsed).
+    Default window is 5 s for 15 minutes. Stop at any time keeps the rows
+    already taken and writes them to the Excel file.
     """
 
     title = "Steady-State Poll Waveform 2 Port"
@@ -27,8 +29,8 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
     POLL_COLUMNS = ("Sample", "Elapsed (s)")
     POLL_INTERVAL_PARAM_INDEX = 10
     POLL_DURATION_PARAM_INDEX = 11
-    POLL_INTERVAL_DEFAULT_S = 1.0
-    POLL_DURATION_DEFAULT_S = 10.0
+    POLL_INTERVAL_DEFAULT_S = 5.0
+    POLL_DURATION_DEFAULT_S = 15 * 60.0
 
     i2c_ui_definitions = EfficiencyWaveformTest_2Port.i2c_ui_definitions
     tc_default = None
@@ -160,6 +162,56 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
         self.wb = openpyxl.load_workbook(self.data_file_path)
         self.ws = self.wb[self.sheet_name]
 
+    def test_loop(self):
+        try:
+            super().test_loop()
+        except (TestStopped, TestSkipped):
+            self._save_collected_rows()
+            raise
+
+    def _save_collected_rows(self):
+        """Write samples already taken when the operator stops or skips."""
+        try:
+            df = getattr(self, 'output_dataframe', None)
+            if df is not None and len(df) > 1 and getattr(self, 'data_file_path', None):
+                self._export_line_block()
+            if getattr(self, 'data_file_path', None):
+                self._apply_main_sheet_number_formats()
+            if getattr(self, 'embed_images', False) and getattr(self, 'captured_records', None):
+                self._link_capture_main_sheet_rows()
+                self.embed_waveforms_in_excel()
+            path = getattr(self, 'data_file_path', None)
+            if path:
+                print(f"[POLL] Partial results saved to {path}")
+        except Exception as exc:
+            print(f"[Warning] Could not save partial poll workbook: {exc}")
+
+    def _note_partial_capture(self, records_before, rows_at_start):
+        if len(getattr(self, 'captured_records', []) or []) <= records_before:
+            return
+        taken = len(self.output_dataframe) - rows_at_start
+        if taken > 0:
+            self.captured_records[records_before]['n_samples'] = taken
+
+    def _raise_if_abort(self, records_before, rows_at_start):
+        stop = test_control_flags.get('StopTest', False)
+        skip = test_control_flags.get('SkipTest', False)
+        if not stop and not skip:
+            return
+        self._note_partial_capture(records_before, rows_at_start)
+        if stop:
+            raise TestStopped
+        raise TestSkipped
+
+    def _wait_or_stop(self, seconds, records_before, rows_at_start):
+        """Sleep in short slices so Stop is honored during the poll interval."""
+        remaining = float(seconds)
+        while remaining > 1e-9:
+            self._raise_if_abort(records_before, rows_at_start)
+            chunk = min(0.25, remaining)
+            sleep(chunk)
+            remaining -= chunk
+
     def _extra_acquire_time_s(self) -> float:
         n = self._sample_count()
         if n <= 1:
@@ -184,37 +236,40 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
         n = self._sample_count()
         interval = float(self.poll_interval_s) if n > 1 else 0.0
         records_before = len(self.captured_records)
+        rows_at_start = len(self.output_dataframe)
         trig_level = None
         img_path = ""
-        for sample in range(n):
-            if test_control_flags.get('StopTest', False):
-                raise TestStopped
-            if test_control_flags.get('SkipTest', False):
-                raise TestSkipped
-            self.poll_sample_index = sample + 1
-            self.poll_elapsed_s = sample * interval
-            if sample == 0:
-                self.update_status_log(
-                    f"Poll sample 1/{n}", upcoming="Capture Waveform")
-                self._measure_efficiency(i2_A)
-                scope_row = self.capture_waveform_at_point(vin_set, i1_A, i2_A)
-                if len(scope_row) > 1 and scope_row[1] == "N/A":
-                    self._append_measurement_row(scope_row)
-                    return
-                trig_level = scope_row[1] if len(scope_row) > 1 else None
-                if not self.embed_images and scope_row:
-                    img_path = scope_row[-1]
-            else:
-                self.update_status_log(
-                    f"Poll sample {sample + 1}/{n} after {interval:g} s",
-                    upcoming="Read meters")
-                sleep(interval)
-                self._measure_efficiency(i2_A)
-                meas = self.query_active_scope_measurements()
-                scope_row = self._scope_row_from_measurements(meas, trig_level, img_path)
-            self._append_measurement_row(scope_row)
+        try:
+            for sample in range(n):
+                self._raise_if_abort(records_before, rows_at_start)
+                self.poll_sample_index = sample + 1
+                self.poll_elapsed_s = sample * interval
+                if sample == 0:
+                    self.update_status_log(
+                        f"Poll sample 1/{n}", upcoming="Capture Waveform")
+                    self._measure_efficiency(i2_A)
+                    scope_row = self.capture_waveform_at_point(vin_set, i1_A, i2_A)
+                    if len(scope_row) > 1 and scope_row[1] == "N/A":
+                        self._append_measurement_row(scope_row)
+                        return
+                    trig_level = scope_row[1] if len(scope_row) > 1 else None
+                    if not self.embed_images and scope_row:
+                        img_path = scope_row[-1]
+                else:
+                    self.update_status_log(
+                        f"Poll sample {sample + 1}/{n} after {interval:g} s",
+                        upcoming="Read meters")
+                    self._wait_or_stop(interval, records_before, rows_at_start)
+                    self._measure_efficiency(i2_A)
+                    meas = self.query_active_scope_measurements()
+                    scope_row = self._scope_row_from_measurements(meas, trig_level, img_path)
+                self._append_measurement_row(scope_row)
+        except (TestStopped, TestSkipped):
+            self._note_partial_capture(records_before, rows_at_start)
+            raise
         if len(self.captured_records) > records_before:
-            self.captured_records[records_before]['n_samples'] = n
+            self.captured_records[records_before]['n_samples'] = (
+                len(self.output_dataframe) - rows_at_start)
 
     def _link_capture_main_sheet_rows(self):
         row = self.excel_first_data_row + 1
@@ -224,9 +279,15 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
 
     def update_test_list_text(self):
         super().update_test_list_text()
+        duration_s = float(self.poll_duration_s)
+        if duration_s >= 60 and abs(duration_s % 60) < 1e-6:
+            duration_txt = f"{duration_s / 60:g} min"
+        else:
+            duration_txt = f"{duration_s:g} s"
         note = (
-            f"Poll: every {self.poll_interval_s:g} s for {self.poll_duration_s:g} s "
-            f"({self._sample_count()} samples per point)"
+            f"Poll: every {self.poll_interval_s:g} s for {duration_txt} "
+            f"({self._sample_count()} samples per point). "
+            "Stop keeps rows already saved to Excel."
         )
         if note not in self.test_list_text:
             self.test_list_text += "\n" + note

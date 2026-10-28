@@ -154,8 +154,8 @@ class Eff2PWaveformAdvancedDialog(QDialog):
             self.le_capture_timeout.setText(default)
 
         if self.le_poll_interval is not None:
-            interval = "1"
-            duration = "10"
+            interval = "5"
+            duration = "900"
             if self.poll_interval_le is not None and self.poll_interval_le.text().strip():
                 interval = self.poll_interval_le.text().strip()
             if self.poll_duration_le is not None and self.poll_duration_le.text().strip():
@@ -182,6 +182,6 @@ class Eff2PWaveformAdvancedDialog(QDialog):
             self.startup_capture_timeout_le.setText(
                 self.le_capture_timeout.text().strip() or "10")
         if self.le_poll_interval is not None and self.poll_interval_le is not None:
-            self.poll_interval_le.setText(self.le_poll_interval.text().strip() or "1")
+            self.poll_interval_le.setText(self.le_poll_interval.text().strip() or "5")
         if self.le_poll_duration is not None and self.poll_duration_le is not None:
-            self.poll_duration_le.setText(self.le_poll_duration.text().strip() or "10")
+            self.poll_duration_le.setText(self.le_poll_duration.text().strip() or "900")

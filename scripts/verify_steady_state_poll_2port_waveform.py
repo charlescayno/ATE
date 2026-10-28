@@ -17,7 +17,8 @@ app = QApplication.instance() or QApplication(sys.argv)
 
 import openpyxl  # noqa: E402
 from psu_tests.definitions import (TestConditions, LineRange, LoadRange, SoakTime,  # noqa: E402
-                                   GeneralOptions, USBPDOptions, I2CTestParameters, TestStatus)
+                                   GeneralOptions, USBPDOptions, I2CTestParameters, TestStatus,
+                                   test_control_flags)
 from psu_tests.test_type import TestTypes  # noqa: E402
 from psu_tests.test_steady_state_poll_2port_waveform import SteadyStatePollWaveformTest_2Port  # noqa: E402
 from equipment.simulated_handler import SimulatedEquipmentHandler  # noqa: E402
@@ -38,7 +39,7 @@ def check(errors, name, ok, detail=""):
 
 
 def test_sample_math(errors):
-    check(errors, "samples 1s x 10s", POLL.sample_count_for(1, 10) == 11, POLL.sample_count_for(1, 10))
+    check(errors, "samples 5s x 15min", POLL.sample_count_for(5, 900) == 181, POLL.sample_count_for(5, 900))
     check(errors, "samples 1s x 2s", POLL.sample_count_for(1, 2) == 3, POLL.sample_count_for(1, 2))
     check(errors, "samples 3s x 10s", POLL.sample_count_for(3, 10) == 4, POLL.sample_count_for(3, 10))
     check(errors, "samples duration 0", POLL.sample_count_for(1, 0) == 1)
@@ -47,8 +48,8 @@ def test_sample_math(errors):
     check(
         errors, "default interval param",
         len(params) > POLL.POLL_DURATION_PARAM_INDEX
-        and float(params[POLL.POLL_INTERVAL_PARAM_INDEX]) == 1.0
-        and float(params[POLL.POLL_DURATION_PARAM_INDEX]) == 10.0,
+        and float(params[POLL.POLL_INTERVAL_PARAM_INDEX]) == 5.0
+        and float(params[POLL.POLL_DURATION_PARAM_INDEX]) == 900.0,
         params)
     check(errors, "registered in TestTypes", POLL in TestTypes)
     check(errors, "does not shift waveform index 0",
@@ -161,11 +162,68 @@ def test_run(errors):
               len([r for r in test.test_data_table.data if any(v != '' for v in r)]) == 3)
 
 
+def test_abort_saves_excel(errors):
+    """Stop after two samples; those rows must already be in the workbook."""
+    test_control_flags['StopTest'] = False
+    test_control_flags['SkipTest'] = False
+    conditions = TestConditions(
+        name=POLL.title,
+        nominal_output_voltage_V=5, nominal_load_current_A=5, max_load_current_A=5,
+        line_range=LineRange(name='TEST', vin_freq=[[115, 60]], custom=True),
+        load_range=LoadRange(name='TEST', load_range_pct=[100], custom=True),
+        soak_time=SoakTime(name='POLL_SOAK', initial=0, line=0, load=0, integration=0),
+        general_options=GeneralOptions(coupling='AC'),
+        usbpd_options=USBPDOptions(),
+        i2c_test_parameters=I2CTestParameters(
+            params=[12.0, 2.0, 0.0, 0, 1.0, 0, 0, 25.0, 0, 1, 5.0, 20.0],
+            cbx_params=[OPTION_C, 'Yes', 'None (Fully Automated)', 'No']),
+        unit_id='P1', ambient_temp=25.0,
+        scope_channels={
+            1: {'enabled': True, 'name': 'Primary Vds', 'derating': 650, 'measurements': ['MAXimum']},
+            2: {'enabled': False, 'name': ''},
+            3: {'enabled': False, 'name': ''},
+            4: {'enabled': False, 'name': ''},
+        })
+    statuses = []
+    try:
+        with tempfile.TemporaryDirectory() as out_dir:
+            test = POLL(FakeItem(FakeParent(), conditions))
+            test.status_update.connect(statuses.append)
+            test.output_folder_path = out_dir
+            original = test._append_measurement_row
+
+            def stop_after_two(scope_row):
+                original(scope_row)
+                if test.poll_sample_index >= 2:
+                    test_control_flags['StopTest'] = True
+
+            test._append_measurement_row = stop_after_two
+            test.run()
+            check(errors, "abort status", TestStatus.STOPPED in statuses, statuses)
+            check(errors, "abort workbook exists", os.path.isfile(test.data_file_path))
+            wb = openpyxl.load_workbook(test.data_file_path)
+            ws = wb[test.sheet_name]
+            hdr = test.excel_first_data_row
+            samples = [ws.cell(row=hdr + i, column=20).value for i in (1, 2, 3)]
+            elapsed = [ws.cell(row=hdr + i, column=21).value for i in (1, 2, 3)]
+            check(errors, "abort kept two samples",
+                  samples[:2] == [1, 2] and [float(x) for x in elapsed[:2]] == [0.0, 5.0]
+                  and samples[2] in (None, ""),
+                  (samples, elapsed))
+            check(errors, "abort n_samples",
+                  test.captured_records and test.captured_records[0].get('n_samples') == 2,
+                  test.captured_records)
+    finally:
+        test_control_flags['StopTest'] = False
+        test_control_flags['SkipTest'] = False
+
+
 def main() -> int:
     errors = []
     test_sample_math(errors)
     test_dialog(errors)
     test_run(errors)
+    test_abort_saves_excel(errors)
     if errors:
         print("FAIL")
         for e in errors:

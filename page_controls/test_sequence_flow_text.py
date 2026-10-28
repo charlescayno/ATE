@@ -195,9 +195,9 @@ def build_poll_flow_text(
     *,
     user_prompts: str = "Per-Capture Only",
     dual_load_mode: str = "",
-    poll_interval_s: float = 1.0,
-    poll_duration_s: float = 10.0,
-    sample_count: int = 11,
+    poll_interval_s: float = 5.0,
+    poll_duration_s: float = 900.0,
+    sample_count: int = 181,
 ) -> str:
     pre_test, per_capture = _user_prompts_flags(user_prompts)
     mode_note = dual_load_mode.strip() or "Dual Load Mode"
@@ -229,6 +229,9 @@ def build_poll_flow_text(
         "  →",
         "[AUTO] Each sample: power meters + scope measurements → Excel row",
         "",
+        "=== STOP AT ANY TIME ===",
+        "[USER] Stop keeps samples already taken and writes them to the Excel file",
+        "",
         "=== END OF TEST ===",
         "[AUTO] Discharge output",
         "  →",
@@ -244,9 +247,9 @@ def build_flow_text_for_title(
     capture_timeout_s: float = 10.0,
     dual_load_mode: str = "",
     discharge_pulses: int = 0,
-    poll_interval_s: float = 1.0,
-    poll_duration_s: float = 10.0,
-    sample_count: int = 11,
+    poll_interval_s: float = 5.0,
+    poll_duration_s: float = 900.0,
+    sample_count: int = 181,
 ) -> str | None:
     if title == STEADY_STATE_POLL_WAVEFORM_2PORT_TITLE:
         return build_poll_flow_text(
