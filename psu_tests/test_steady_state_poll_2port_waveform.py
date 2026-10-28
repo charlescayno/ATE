@@ -18,9 +18,10 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
 
     Same line/load sweep and one scope screenshot per point as Steady-State
     Waveform 2 Port. After the screenshot, power-meter and scope measurements
-    are read again every Poll Interval until Poll Duration has elapsed.
+    are read again after Poll Interval (idle gap since the previous read finished)
+    until Poll Duration has elapsed.
     Each sample is its own Excel row (Sample, Elapsed, Time Start/End, Time Sampled).
-    Default window is 5 s for 15 minutes. Stop at any time keeps the rows
+    Default window is 10 s between samples for 15 minutes. Stop at any time keeps the rows
     already taken and writes them to the Excel file.
     """
 
@@ -33,11 +34,13 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
         "Time Start",
         "Time End",
         "Time Sampled",
+        "Interval (s)",
     )
     POLL_DATETIME_EXCEL_FMT = "yyyy-mm-dd hh:mm:ss"
     POLL_INTERVAL_PARAM_INDEX = 10
     POLL_DURATION_PARAM_INDEX = 11
-    POLL_INTERVAL_DEFAULT_S = 5.0
+    POLL_INTERVAL_DEFAULT_S = 10.0
+    POLL_READ_DURATION_GUESS_S = 0.75
     POLL_DURATION_DEFAULT_S = 15 * 60.0
 
     i2c_ui_definitions = EfficiencyWaveformTest_2Port.i2c_ui_definitions
@@ -112,6 +115,8 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
         self.poll_point_start_dt = None
         self.poll_point_end_dt = None
         self.poll_row_sampled_dt = None
+        self.poll_prev_sampled_dt = None
+        self._poll_repeat_read_duration_s = self.POLL_READ_DURATION_GUESS_S
 
     def build_detailed_output_basename(self) -> str:
         return (
@@ -127,12 +132,23 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
 
     def process_data_row(self):
         row = super().process_data_row()
+        if (
+            self.poll_row_sampled_dt is not None
+            and self.poll_prev_sampled_dt is not None
+        ):
+            interval_s = round(
+                (self.poll_row_sampled_dt - self.poll_prev_sampled_dt).total_seconds(),
+                2,
+            )
+        else:
+            interval_s = 0.0
         return row + [
             int(self.poll_sample_index),
             round(float(self.poll_elapsed_s), 2),
             self.poll_point_start_dt,
             self.poll_point_end_dt,
             self.poll_row_sampled_dt,
+            interval_s,
         ]
 
     def _poll_first_excel_col(self) -> int:
@@ -142,7 +158,7 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
     def _excel_num_format_for_header(header: str) -> str:
         if header == 'Sample':
             return '0'
-        if header == 'Elapsed (s)':
+        if header in ('Elapsed (s)', 'Interval (s)'):
             return '#,##0.00'
         if header in ('Time Start', 'Time End', 'Time Sampled'):
             return SteadyStatePollWaveformTest_2Port.POLL_DATETIME_EXCEL_FMT
@@ -240,12 +256,56 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
             sleep(chunk)
             remaining -= chunk
 
+    def _wait_for_scheduled_poll_sample(
+            self, interval_s, records_before, rows_at_start):
+        """Start the next read so Time Sampled is ~interval_s after the previous."""
+        if self.poll_prev_sampled_dt is None:
+            return
+        gap = float(interval_s)
+        slack = float(getattr(self, '_poll_repeat_read_duration_s',
+                              self.POLL_READ_DURATION_GUESS_S))
+        slack = min(max(slack, 0.05), gap * 0.9)
+        target_start = (
+            self.poll_prev_sampled_dt
+            + datetime.timedelta(seconds=gap - slack)
+        )
+        while datetime.datetime.now() < target_start:
+            self._raise_if_abort(records_before, rows_at_start)
+            remaining = (target_start - datetime.datetime.now()).total_seconds()
+            self._wait_or_stop(min(0.25, max(remaining, 0.0)),
+                               records_before, rows_at_start)
+
+    def _measure_poll_readings(self, i2_A):
+        """PM reads for poll samples without re-sending AUTO range every tick."""
+        self.test_data.gather_data(coupling=self.coupling, usb_pd=self.usbpd_test)
+        if self.power_meter_load_2 or self.electronic_load_2:
+            self.test_data_2.gather_data_load(
+                integrate=False, force_use_eload_data=self.use_eload_data)
+            self.test_data_2.vreg_pct = (
+                ((self.test_data_2.vout_V - self.vout_2_V) / self.vout_2_V) * 100
+                if self.vout_2_V else 0)
+        else:
+            self.test_data_2.vout_V = self.vout_2_V
+            self.test_data_2.iout_A = i2_A
+            self.test_data_2.pout_W = self.vout_2_V * i2_A
+            self.test_data_2.vreg_pct = 0.0
+
+        self.po_total_W = self.test_data.pout_W + self.test_data_2.pout_W
+        self.eff_total_pct = (
+            (self.po_total_W / self.test_data.pin_W * 100)
+            if self.test_data.pin_W > 0 else 0)
+
     def _extra_acquire_time_s(self) -> float:
         n = self._sample_count()
         if n <= 1:
             return 0.0
         integ = float(getattr(self.soak_time, 'integration_time', 0) or 0)
         return (n - 1) * (float(self.poll_interval_s) + integ + 0.3)
+
+    def _append_measurement_row(self, scope_row):
+        super()._append_measurement_row(scope_row)
+        if self.poll_row_sampled_dt is not None:
+            self.poll_prev_sampled_dt = self.poll_row_sampled_dt
 
     def _scope_row_from_measurements(self, meas: dict, trig_level, img_path: str = "") -> list:
         try:
@@ -265,8 +325,12 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
         interval = float(self.poll_interval_s) if n > 1 else 0.0
         records_before = len(self.captured_records)
         rows_at_start = len(self.output_dataframe)
+        self.poll_prev_sampled_dt = None
+        self._poll_repeat_read_duration_s = self.POLL_READ_DURATION_GUESS_S
         trig_level = None
         img_path = ""
+        self.ensure_load_power_meters_auto_range()
+        self.prepare_source_power_meter_for_measurement()
         try:
             for sample in range(n):
                 self._raise_if_abort(records_before, rows_at_start)
@@ -280,7 +344,7 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
                     )
                     self.update_status_log(
                         f"Poll sample 1/{n}", upcoming="Capture Waveform")
-                    self._measure_efficiency(i2_A)
+                    self._measure_poll_readings(i2_A)
                     scope_row = self.capture_waveform_at_point(vin_set, i1_A, i2_A)
                     if len(scope_row) > 1 and scope_row[1] == "N/A":
                         self._append_measurement_row(scope_row)
@@ -290,12 +354,21 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
                         img_path = scope_row[-1]
                 else:
                     self.update_status_log(
-                        f"Poll sample {sample + 1}/{n} after {interval:g} s",
+                        f"Poll sample {sample + 1}/{n} "
+                        f"(~{interval:g} s period)",
                         upcoming="Read meters")
-                    self._wait_or_stop(interval, records_before, rows_at_start)
-                    self._measure_efficiency(i2_A)
+                    self._wait_for_scheduled_poll_sample(
+                        interval, records_before, rows_at_start)
+                    read_t0 = datetime.datetime.now()
+                    self._measure_poll_readings(i2_A)
                     meas = self.query_active_scope_measurements()
-                    scope_row = self._scope_row_from_measurements(meas, trig_level, img_path)
+                    scope_row = self._scope_row_from_measurements(
+                        meas, trig_level, img_path)
+                    read_t1 = datetime.datetime.now()
+                    self._poll_repeat_read_duration_s = max(
+                        0.05,
+                        (read_t1 - read_t0).total_seconds(),
+                    )
                 self.poll_row_sampled_dt = datetime.datetime.now()
                 self._append_measurement_row(scope_row)
         except (TestStopped, TestSkipped):
@@ -319,7 +392,7 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
         else:
             duration_txt = f"{duration_s:g} s"
         note = (
-            f"Poll: every {self.poll_interval_s:g} s for {duration_txt} "
+            f"Poll: ~{self.poll_interval_s:g} s between Time Sampled rows for {duration_txt} "
             f"({self._sample_count()} samples per point). "
             "Stop keeps rows already saved to Excel."
         )

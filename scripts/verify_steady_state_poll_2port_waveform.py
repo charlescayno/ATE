@@ -50,7 +50,7 @@ def test_sample_math(errors):
     check(
         errors, "default interval param",
         len(params) > POLL.POLL_DURATION_PARAM_INDEX
-        and float(params[POLL.POLL_INTERVAL_PARAM_INDEX]) == 5.0
+        and float(params[POLL.POLL_INTERVAL_PARAM_INDEX]) == 10.0
         and float(params[POLL.POLL_DURATION_PARAM_INDEX]) == 900.0,
         params)
     check(errors, "registered in TestTypes", POLL in TestTypes)
@@ -139,11 +139,11 @@ def test_run(errors):
               (ws['D2'].value, ws['E2'].value, ws['E3'].value, ws['E4'].value))
         check(errors, "section title", ws['T14'].value == 'Timed Poll', ws['T14'].value)
         hdr = test.excel_first_data_row
-        poll_headers = [ws.cell(row=hdr, column=c).value for c in range(20, 25)]
+        poll_headers = [ws.cell(row=hdr, column=c).value for c in range(20, 26)]
         check(errors, "poll headers",
               poll_headers == list(POLL.POLL_COLUMNS), poll_headers)
         scope_col = test.scope_excel_col()
-        check(errors, "scope starts after poll columns", scope_col == 25 and ws.cell(row=hdr, column=scope_col).value == 'Trig Ch',
+        check(errors, "scope starts after poll columns", scope_col == 26 and ws.cell(row=hdr, column=scope_col).value == 'Trig Ch',
               (scope_col, ws.cell(row=hdr, column=scope_col).value))
         for i, (sample, elapsed) in enumerate(((1, 0), (2, 1), (3, 2)), start=1):
             row = hdr + i
@@ -182,6 +182,14 @@ def test_run(errors):
         fmt = ws.cell(row=hdr + 1, column=22).number_format
         check(errors, "time start excel format",
               fmt == POLL.POLL_DATETIME_EXCEL_FMT, fmt)
+        iv1 = ws.cell(row=hdr + 1, column=25).value
+        iv2 = ws.cell(row=hdr + 2, column=25).value
+        check(errors, "interval sample1 zero", float(iv1) == 0.0, iv1)
+        check(errors, "interval sample2 non-negative", float(iv2) >= 0.0, iv2)
+        if sampled[1] and sampled[0]:
+            expected_iv2 = round((sampled[1] - sampled[0]).total_seconds(), 2)
+            check(errors, "interval matches time sampled delta",
+                  abs(float(iv2) - expected_iv2) < 0.01, (iv2, expected_iv2))
         wf = f"{test.short_title}_Waveforms"
         check(errors, "one embedded image",
               wf in wb.sheetnames and len(wb[wf]._images) == 1,
