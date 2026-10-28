@@ -1,8 +1,10 @@
 """Headless run of Steady-State Poll Waveform 2 Port against simulated equipment."""
+import io
 import os
 import sys
 import tempfile
 import time
+from contextlib import redirect_stdout
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -116,7 +118,18 @@ def test_run(errors):
         test.output_folder_path = out_dir
         check(errors, "queue estimate includes poll",
               test.total_time >= 2.0, test.total_time)
-        test.run()
+        log_buf = io.StringIO()
+        with redirect_stdout(log_buf):
+            test.run()
+        log = log_buf.getvalue()
+        table_lines = [ln for ln in log.splitlines() if ln.startswith("[POLL TABLE]")]
+        check(errors, "terminal table header",
+              any(ln.startswith("[POLL TABLE] sample 1/3") for ln in table_lines)
+              and any("Vin (rms)" in ln and ln.rstrip().endswith("115.00") for ln in table_lines),
+              table_lines[:3])
+        check(errors, "terminal table three samples",
+              sum(ln.startswith("[POLL TABLE] sample ") for ln in table_lines) == 3
+              and any(ln.startswith("[POLL TABLE] sample 3/3") for ln in table_lines))
         check(errors, "run complete", TestStatus.COMPLETE in statuses, statuses)
         expected_name = "SSP 115VAC 5V 25W+24W Primary Vds+Ids"
         check(errors, "workbook name", test.data_filename == expected_name, test.data_filename)
@@ -198,7 +211,16 @@ def test_abort_saves_excel(errors):
                     test_control_flags['StopTest'] = True
 
             test._append_measurement_row = stop_after_two
-            test.run()
+            log_buf = io.StringIO()
+            with redirect_stdout(log_buf):
+                test.run()
+            log = log_buf.getvalue()
+            table_lines = [ln for ln in log.splitlines() if ln.startswith("[POLL TABLE] sample ")]
+            check(errors, "abort terminal table",
+                  any(ln.startswith("[POLL TABLE] sample 1/5") for ln in table_lines)
+                  and any(ln.startswith("[POLL TABLE] sample 2/5") for ln in table_lines)
+                  and not any(ln.startswith("[POLL TABLE] sample 3/5") for ln in table_lines),
+                  table_lines)
             check(errors, "abort status", TestStatus.STOPPED in statuses, statuses)
             check(errors, "abort workbook exists", os.path.isfile(test.data_file_path))
             wb = openpyxl.load_workbook(test.data_file_path)

@@ -1,5 +1,6 @@
 """Steady-state 2-port waveform test that polls meters for a timed window."""
 import math
+import numbers
 from copy import deepcopy
 from time import sleep
 
@@ -117,6 +118,45 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
     def process_data_row(self):
         row = super().process_data_row()
         return row + [int(self.poll_sample_index), round(float(self.poll_elapsed_s), 2)]
+
+    @staticmethod
+    def _poll_cell_text(value) -> str:
+        if value is None:
+            return ""
+        if isinstance(value, bool):
+            return str(value)
+        if isinstance(value, numbers.Integral):
+            return str(int(value))
+        if isinstance(value, numbers.Real):
+            return f"{float(value):.2f}"
+        return str(value)
+
+    def _print_poll_table_row(self):
+        """Print the latest Excel row to the console, one column per line."""
+        headers = list(self.header_list) + list(self.scope_header_list)
+        data = getattr(getattr(self, "test_data_table", None), "data", None) or []
+        if not headers or not data:
+            return
+        row = list(data[-1])
+        if len(row) < len(headers):
+            row.extend([""] * (len(headers) - len(row)))
+        width = max(len(str(header)) for header in headers)
+        n = self._sample_count()
+        sample = int(getattr(self, "poll_sample_index", 0) or 0)
+        elapsed = float(getattr(self, "poll_elapsed_s", 0) or 0)
+        print(
+            f"[POLL TABLE] sample {sample}/{n}  elapsed {elapsed:.2f} s",
+            flush=True,
+        )
+        for header, value in zip(headers, row):
+            print(
+                f"[POLL TABLE] {str(header):<{width}}  {self._poll_cell_text(value)}",
+                flush=True,
+            )
+
+    def update_output_data(self):
+        super().update_output_data()
+        self._print_poll_table_row()
 
     @staticmethod
     def _excel_num_format_for_header(header: str) -> str:
