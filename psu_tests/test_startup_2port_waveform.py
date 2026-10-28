@@ -250,11 +250,12 @@ class StartupWaveformTest_2Port(EfficiencyWaveformTest_2Port):
             print(f"[Warning] scope.stop after wait: {exc}")
 
     def _apply_vin_setpoint(self, vin_set: float, vin_freq_row):
-        if self._bulk_cap_ramp_applies():
-            self._bulk_cap_ramp_to_voltage(vin_set)
-        else:
-            self.input_supply.set_voltage_with_coupling(voltage=vin_set, coupling=self.coupling)
+        if self.coupling == AC_SOURCE_COUPLING.AC:
+            self.input_supply.set_voltage_with_coupling(
+                voltage=vin_set, coupling=self.coupling)
             self.input_supply.turn_on()
+        else:
+            self._ramp_dc_input_to_voltage(vin_set)
         if self.coupling == AC_SOURCE_COUPLING.AC:
             self.input_supply.frequency = vin_freq_row[1]
         self.source_vout = vin_set

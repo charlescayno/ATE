@@ -1,6 +1,6 @@
 # Standard Library imports
 from time import sleep
-from math import ceil
+from math import ceil, isfinite
 import os
 
 # Third party imports
@@ -662,6 +662,19 @@ from equipment.power_meter import PowerMeter
 from equipment.ac_source import ACSource
 from equipment.electronic_load import ElectronicLoadModule
 
+
+def _normalize_meter_scalar(value):
+    if value is None:
+        return None
+    try:
+        x = float(value)
+    except (TypeError, ValueError):
+        return None
+    if not isfinite(x):
+        return None
+    return x
+
+
 class TestData():
 
     def __init__(self):
@@ -692,8 +705,36 @@ class TestData():
         self.source_power_meter:PowerMeter = None
         self.load_power_meter:PowerMeter = None
         self.electronic_load:ElectronicLoadModule = None
-    
-    
+
+    def _reconcile_load_vout(self):
+        """Keep Excel Vo aligned with bench: PM U when e-load V is wrong; P/I when U failed."""
+        v = _normalize_meter_scalar(self.vout_V)
+        i = _normalize_meter_scalar(self.iout_A)
+        p = _normalize_meter_scalar(self.pout_W)
+        pm = self.load_power_meter
+
+        if pm is not None:
+            pm_v = _normalize_meter_scalar(pm.voltage)
+            if pm_v is not None and pm_v > 0.05:
+                u_missing = v is None or v < 0.05
+                u_inconsistent = (
+                    v is not None and i is not None and p is not None
+                    and i > 1e-6 and p > 0.05
+                    and abs(v * i - p) > max(1.0, 0.08 * abs(p))
+                )
+                if u_missing or u_inconsistent:
+                    v = pm_v
+                    self.vout_V = pm_v
+
+        v = _normalize_meter_scalar(self.vout_V)
+        if (v is None or v < 0.05) and i is not None and i > 1e-6 and p is not None and p > 0.05:
+            self.vout_V = p / i
+            v = self.vout_V
+
+        self.vout_V = 0 if v is None else v
+        self.iout_A = 0 if i is None else i
+        self.pout_W = 0 if p is None else p
+
     def gather_data(self, 
                     integrate: bool = True, 
                     measure_thd: bool = True, 
@@ -761,6 +802,8 @@ class TestData():
             else:
                 self.pout_W = 0
 
+        self._reconcile_load_vout()
+
         # THD is placed AFTER power measurement so it doesn't flush the power meter buffer
         if measure_thd and not (coupling == 'DC'):
             self.thd_pct = self.source_power_meter.thd
@@ -770,6 +813,9 @@ class TestData():
         # Measurement handling
         if self.vin_V is None:
             self.vin_V = 0
+        else:
+            vin_n = _normalize_meter_scalar(self.vin_V)
+            self.vin_V = 0 if vin_n is None else vin_n
             
         if self.iin_mA is None:
             self.iin_mA = 0
@@ -895,6 +941,8 @@ class TestData():
                 self.pout_W = self.load_power_meter.get_integrated_power()
             else:
                 self.pout_W = self.load_power_meter.power
+
+        self._reconcile_load_vout()
 
         if self.vout_V is None:
             self.vout_V = 0

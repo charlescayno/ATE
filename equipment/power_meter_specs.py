@@ -8,15 +8,20 @@ def parse_float_response(val, default=0.0):
     if val is None:
         return default
     if isinstance(val, (int, float)):
-        return float(val)
+        f = float(val)
+        return default if f != f or f in (float('inf'), float('-inf')) else f
     val_str = str(val).strip()
+    if val_str.lower() in ('', 'nan', 'nan.', 'inf', '-inf', 'null', '--', '9.9e+37'):
+        return default
     try:
-        return float(val_str)
+        f = float(val_str)
+        return default if f != f or f in (float('inf'), float('-inf')) else f
     except ValueError:
         matches = re.findall(r'[-+]?(?:\d*\.\d+|\d+)(?:[eE][-+]?\d+)?', val_str)
         if matches:
             try:
-                return float(matches[-1])
+                f = float(matches[-1])
+                return default if f != f or f in (float('inf'), float('-inf')) else f
             except ValueError:
                 pass
         return default

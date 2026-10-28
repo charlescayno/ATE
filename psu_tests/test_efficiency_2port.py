@@ -28,6 +28,11 @@ class EfficiencyTest_2Port(BaseTestObject):
     title = "Efficiency 2 Port"
     use_average_efficiency_limits = True
 
+    # All DC Vin changes ramp (no step to target) to limit inrush.
+    DC_VIN_RAMP_V_PER_S = 50.0
+    DC_VIN_RAMP_STEP_S = 0.1
+    DC_VIN_RAMP_SKIP_FRACTION = 0.01
+
     # General UI Definitions
     ui_definitions = General_UI_Definitions()
     ui_definitions.stack_page_1 = StackWidget1Pages.LineVoltageRange
@@ -193,18 +198,20 @@ class EfficiencyTest_2Port(BaseTestObject):
         self.confirm_discharge_resistor_disengaged()
         
         # Loop through each line input level
-        for self.vin_index, self.vin_freq in enumerate(self.vin_list): 
-            self.input_supply.set_voltage_with_coupling(voltage=self.vin_freq[0], coupling=self.coupling)  
+        for self.vin_index, self.vin_freq in enumerate(self.vin_list):
             if self.coupling == AC_SOURCE_COUPLING.AC:
+                self.input_supply.set_voltage_with_coupling(
+                    voltage=self.vin_freq[0], coupling=self.coupling)
                 self.input_supply.frequency = self.vin_freq[1]
+                self.input_supply.turn_on()
+            else:
+                self._ramp_dc_input_to_voltage(self.vin_freq[0])
             self.source_vout = self.vin_freq[0]
-            
+
             self.test_data.vin_set_V = self.vin_freq[0]
             self.test_data.ac_freq_Hz = self.vin_freq[1]
-            
-            self.create_new_plot_series()
 
-            self.input_supply.turn_on()
+            self.create_new_plot_series()
 
             self.ensure_load_power_meters_auto_range()
             self.ensure_source_power_meter_auto_range(settle_s=0)
@@ -394,6 +401,112 @@ class EfficiencyTest_2Port(BaseTestObject):
             return False
         from equipment.dc_source import is_magna_hvdc
         return is_magna_hvdc(input_supply)
+
+    def _dc_vin_ramp_applies(self) -> bool:
+        if self.coupling != AC_SOURCE_COUPLING.DC:
+            return False
+        return getattr(self, 'input_supply', None) is not None
+
+    def _bulk_cap_ramp_applies(self) -> bool:
+        return self._dc_vin_ramp_applies()
+
+    def _bulk_cap_ramp_in_queue_estimate(self) -> bool:
+        if self.coupling != AC_SOURCE_COUPLING.DC:
+            return False
+        if getattr(self, 'input_supply', None) is not None:
+            return self._dc_vin_ramp_applies()
+        return True
+
+    def _read_input_voltage_for_skip(self):
+        try:
+            if self.power_meter_source:
+                v = self.power_meter_source.voltage
+                if v is not None:
+                    return float(v)
+        except (TypeError, ValueError, AttributeError):
+            pass
+        try:
+            v = getattr(self.input_supply, 'voltage', None)
+            if v is not None:
+                return float(v)
+        except (TypeError, ValueError, AttributeError):
+            pass
+        return None
+
+    def _bulk_cap_ramp_start_voltage(self, target_v: float) -> float:
+        measured = self._read_input_voltage_for_skip()
+        if measured is not None:
+            return float(measured)
+        last = getattr(self, '_last_bulk_cap_vin_set', None)
+        if last is not None:
+            return float(last)
+        try:
+            v = getattr(self.input_supply, 'voltage', None)
+            if v is not None:
+                return float(v)
+        except (TypeError, ValueError, AttributeError):
+            pass
+        return float(target_v)
+
+    def _ramp_dc_input_to_voltage(self, target_v: float):
+        """Ramp present input V to target_v at DC_VIN_RAMP_V_PER_S (DC coupling only)."""
+        target_v = float(target_v)
+        if not self._dc_vin_ramp_applies():
+            self.input_supply.set_voltage_with_coupling(
+                voltage=target_v, coupling=self.coupling)
+            self.input_supply.turn_on()
+            return
+
+        tol = self.DC_VIN_RAMP_SKIP_FRACTION * max(abs(target_v), 1.0)
+        start_v = self._bulk_cap_ramp_start_voltage(target_v)
+        if abs(start_v - target_v) <= tol:
+            print(
+                f"[TEST_STEP] DC input ramp skipped "
+                f"(within {self.DC_VIN_RAMP_SKIP_FRACTION * 100:g}% of {target_v:g} V, read {start_v:g} V)"
+            )
+            self.input_supply.set_voltage_with_coupling(
+                voltage=target_v, coupling=self.coupling)
+            self.input_supply.turn_on()
+            self._last_bulk_cap_vin_set = target_v
+            return
+
+        print(
+            f"[TEST_STEP] DC input ramp {start_v:g} -> {target_v:g} V "
+            f"at {self.DC_VIN_RAMP_V_PER_S:g} V/s"
+        )
+        self.input_supply.set_voltage_with_coupling(
+            voltage=start_v, coupling=self.coupling)
+        self.input_supply.turn_on()
+        sleep(0.05)
+
+        step_v = self.DC_VIN_RAMP_V_PER_S * self.DC_VIN_RAMP_STEP_S
+        v = start_v
+        if target_v >= start_v:
+            while v < target_v - step_v * 0.5:
+                if test_control_flags.get('StopTest'):
+                    raise TestStopped
+                if test_control_flags.get('SkipTest'):
+                    raise TestSkipped
+                v = min(v + step_v, target_v)
+                self.input_supply.set_voltage_with_coupling(
+                    voltage=v, coupling=self.coupling)
+                sleep(self.DC_VIN_RAMP_STEP_S)
+        else:
+            while v > target_v + step_v * 0.5:
+                if test_control_flags.get('StopTest'):
+                    raise TestStopped
+                if test_control_flags.get('SkipTest'):
+                    raise TestSkipped
+                v = max(v - step_v, target_v)
+                self.input_supply.set_voltage_with_coupling(
+                    voltage=v, coupling=self.coupling)
+                sleep(self.DC_VIN_RAMP_STEP_S)
+        self.input_supply.set_voltage_with_coupling(
+            voltage=target_v, coupling=self.coupling)
+        self._last_bulk_cap_vin_set = target_v
+
+    def _bulk_cap_ramp_to_voltage(self, target_v: float):
+        self._ramp_dc_input_to_voltage(target_v)
 
     def confirm_discharge_resistor_disengaged(self):
         import os

@@ -1,4 +1,4 @@
-"""Verify Steady-State Waveform 2 Port Vin ramp (no return-to-zero, 100 V/s)."""
+"""Verify Steady-State Waveform 2 Port Vin ramp (no return-to-zero, 50 V/s)."""
 import os
 import sys
 from pathlib import Path
