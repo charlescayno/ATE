@@ -15,6 +15,8 @@ from PySide2.QtWidgets import QApplication  # noqa: E402
 
 app = QApplication.instance() or QApplication(sys.argv)
 
+import datetime
+
 import openpyxl  # noqa: E402
 from psu_tests.definitions import (TestConditions, LineRange, LoadRange, SoakTime,  # noqa: E402
                                    GeneralOptions, USBPDOptions, I2CTestParameters, TestStatus,
@@ -137,23 +139,49 @@ def test_run(errors):
               (ws['D2'].value, ws['E2'].value, ws['E3'].value, ws['E4'].value))
         check(errors, "section title", ws['T14'].value == 'Timed Poll', ws['T14'].value)
         hdr = test.excel_first_data_row
-        check(errors, "sample header",
-              ws.cell(row=hdr, column=20).value == 'Sample'
-              and ws.cell(row=hdr, column=21).value == 'Elapsed (s)',
-              (ws.cell(row=hdr, column=20).value, ws.cell(row=hdr, column=21).value))
+        poll_headers = [ws.cell(row=hdr, column=c).value for c in range(20, 25)]
+        check(errors, "poll headers",
+              poll_headers == list(POLL.POLL_COLUMNS), poll_headers)
         scope_col = test.scope_excel_col()
-        check(errors, "scope starts after poll columns", scope_col == 22 and ws.cell(row=hdr, column=scope_col).value == 'Trig Ch',
+        check(errors, "scope starts after poll columns", scope_col == 25 and ws.cell(row=hdr, column=scope_col).value == 'Trig Ch',
               (scope_col, ws.cell(row=hdr, column=scope_col).value))
         for i, (sample, elapsed) in enumerate(((1, 0), (2, 1), (3, 2)), start=1):
             row = hdr + i
             got_s = ws.cell(row=row, column=20).value
             got_e = ws.cell(row=row, column=21).value
+            t_start = ws.cell(row=row, column=22).value
+            t_end = ws.cell(row=row, column=23).value
+            t_sampled = ws.cell(row=row, column=24).value
             eff = ws.cell(row=row, column=19).value
             vds = ws.cell(row=row, column=scope_col + 2).value
+            times_ok = (
+                isinstance(t_start, datetime.datetime)
+                and isinstance(t_end, datetime.datetime)
+                and isinstance(t_sampled, datetime.datetime)
+                and t_end >= t_start
+                and t_sampled >= t_start
+            )
             check(errors, f"row {row} sample",
                   got_s == sample and float(got_e) == float(elapsed)
+                  and times_ok
                   and isinstance(eff, (int, float)) and isinstance(vds, (int, float)),
-                  (got_s, got_e, eff, vds))
+                  (got_s, got_e, t_start, t_end, t_sampled, eff, vds))
+        row1_start = ws.cell(row=hdr + 1, column=22).value
+        row1_end = ws.cell(row=hdr + 1, column=23).value
+        row3_start = ws.cell(row=hdr + 3, column=22).value
+        row3_end = ws.cell(row=hdr + 3, column=23).value
+        check(errors, "time window same per load point",
+              row1_start == row3_start and row1_end == row3_end,
+              (row1_start, row3_start, row1_end, row3_end))
+        window_s = (row1_end - row1_start).total_seconds()
+        check(errors, "time end = start + poll duration (2 s)",
+              abs(window_s - 2.0) < 0.001, window_s)
+        sampled = [ws.cell(row=hdr + i, column=24).value for i in (1, 2, 3)]
+        check(errors, "time sampled monotonic",
+              sampled[0] <= sampled[1] <= sampled[2], sampled)
+        fmt = ws.cell(row=hdr + 1, column=22).number_format
+        check(errors, "time start excel format",
+              fmt == POLL.POLL_DATETIME_EXCEL_FMT, fmt)
         wf = f"{test.short_title}_Waveforms"
         check(errors, "one embedded image",
               wf in wb.sheetnames and len(wb[wf]._images) == 1,
@@ -210,6 +238,17 @@ def test_abort_saves_excel(errors):
                   samples[:2] == [1, 2] and [float(x) for x in elapsed[:2]] == [0.0, 5.0]
                   and samples[2] in (None, ""),
                   (samples, elapsed))
+            t0 = ws.cell(row=hdr + 1, column=24).value
+            t1 = ws.cell(row=hdr + 2, column=24).value
+            abort_end = ws.cell(row=hdr + 2, column=23).value
+            abort_start = ws.cell(row=hdr + 2, column=22).value
+            check(errors, "abort rows have timestamps",
+                  isinstance(t0, datetime.datetime) and isinstance(t1, datetime.datetime)
+                  and isinstance(abort_start, datetime.datetime)
+                  and isinstance(abort_end, datetime.datetime)
+                  and t0 <= t1
+                  and (abort_end - abort_start).total_seconds() == 20.0,
+                  (t0, t1, abort_start, abort_end))
             check(errors, "abort n_samples",
                   test.captured_records and test.captured_records[0].get('n_samples') == 2,
                   test.captured_records)

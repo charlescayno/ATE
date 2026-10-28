@@ -1,4 +1,5 @@
 """Steady-state 2-port waveform test that polls meters for a timed window."""
+import datetime
 import math
 from copy import deepcopy
 from time import sleep
@@ -18,7 +19,7 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
     Same line/load sweep and one scope screenshot per point as Steady-State
     Waveform 2 Port. After the screenshot, power-meter and scope measurements
     are read again every Poll Interval until Poll Duration has elapsed.
-    Each sample is its own Excel row (Sample, Elapsed).
+    Each sample is its own Excel row (Sample, Elapsed, Time Start/End, Time Sampled).
     Default window is 5 s for 15 minutes. Stop at any time keeps the rows
     already taken and writes them to the Excel file.
     """
@@ -26,7 +27,14 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
     title = "Steady-State Poll Waveform 2 Port"
     short_title = "SS_POLL_2P"
     PNG_SUFFIX = "_SSP"
-    POLL_COLUMNS = ("Sample", "Elapsed (s)")
+    POLL_COLUMNS = (
+        "Sample",
+        "Elapsed (s)",
+        "Time Start",
+        "Time End",
+        "Time Sampled",
+    )
+    POLL_DATETIME_EXCEL_FMT = "yyyy-mm-dd hh:mm:ss"
     POLL_INTERVAL_PARAM_INDEX = 10
     POLL_DURATION_PARAM_INDEX = 11
     POLL_INTERVAL_DEFAULT_S = 5.0
@@ -101,6 +109,9 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
             params, self.POLL_DURATION_PARAM_INDEX, self.POLL_DURATION_DEFAULT_S)
         self.poll_sample_index = 1
         self.poll_elapsed_s = 0.0
+        self.poll_point_start_dt = None
+        self.poll_point_end_dt = None
+        self.poll_row_sampled_dt = None
 
     def build_detailed_output_basename(self) -> str:
         return (
@@ -116,7 +127,16 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
 
     def process_data_row(self):
         row = super().process_data_row()
-        return row + [int(self.poll_sample_index), round(float(self.poll_elapsed_s), 2)]
+        return row + [
+            int(self.poll_sample_index),
+            round(float(self.poll_elapsed_s), 2),
+            self.poll_point_start_dt,
+            self.poll_point_end_dt,
+            self.poll_row_sampled_dt,
+        ]
+
+    def _poll_first_excel_col(self) -> int:
+        return self.scope_excel_col() - len(self.POLL_COLUMNS)
 
     @staticmethod
     def _excel_num_format_for_header(header: str) -> str:
@@ -124,6 +144,8 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
             return '0'
         if header == 'Elapsed (s)':
             return '#,##0.00'
+        if header in ('Time Start', 'Time End', 'Time Sampled'):
+            return SteadyStatePollWaveformTest_2Port.POLL_DATETIME_EXCEL_FMT
         return EfficiencyWaveformTest_2Port._excel_num_format_for_header(header)
 
     def _write_run_metadata_rows(self, ws):
@@ -141,9 +163,15 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
 
     def _write_excel_section_header_row(self, ws, row: int):
         super()._write_excel_section_header_row(ws, row)
-        ws.merge_cells(f"T{row}:U{row}")
-        ws[f"T{row}"] = "Timed Poll"
-        self._style_excel_section_title_cell(ws[f"T{row}"])
+        from openpyxl.utils import get_column_letter
+        first_col = self._poll_first_excel_col()
+        last_col = self.scope_excel_col() - 1
+        first_letter = get_column_letter(first_col)
+        last_letter = get_column_letter(last_col)
+        ws.merge_cells(f"{first_letter}{row}:{last_letter}{row}")
+        cell = ws[f"{first_letter}{row}"]
+        cell.value = "Timed Poll"
+        self._style_excel_section_title_cell(cell)
 
     def setup_data_file(self):
         super().setup_data_file()
@@ -245,6 +273,11 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
                 self.poll_sample_index = sample + 1
                 self.poll_elapsed_s = sample * interval
                 if sample == 0:
+                    self.poll_point_start_dt = datetime.datetime.now()
+                    self.poll_point_end_dt = (
+                        self.poll_point_start_dt
+                        + datetime.timedelta(seconds=float(self.poll_duration_s))
+                    )
                     self.update_status_log(
                         f"Poll sample 1/{n}", upcoming="Capture Waveform")
                     self._measure_efficiency(i2_A)
@@ -263,6 +296,7 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
                     self._measure_efficiency(i2_A)
                     meas = self.query_active_scope_measurements()
                     scope_row = self._scope_row_from_measurements(meas, trig_level, img_path)
+                self.poll_row_sampled_dt = datetime.datetime.now()
                 self._append_measurement_row(scope_row)
         except (TestStopped, TestSkipped):
             self._note_partial_capture(records_before, rows_at_start)
