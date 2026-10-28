@@ -7,7 +7,7 @@ from time import sleep
 import openpyxl
 from openpyxl.styles import Font as CellFont
 
-from psu_tests.definitions import TestConditions, I2CTestParameters, test_control_flags
+from psu_tests.definitions import TestConditions, I2CTestParameters, TestStatus, test_control_flags
 from psu_tests.test_object_imports import TestStopped, TestSkipped
 from psu_tests.test_efficiency_2port_waveform import EfficiencyWaveformTest_2Port
 
@@ -270,11 +270,26 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
             remaining -= chunk
 
     def _extra_acquire_time_s(self) -> float:
+        """Scheduled waits after sample 1. Each later sample sleeps the poll interval."""
         n = self._sample_count()
         if n <= 1:
             return 0.0
-        integ = float(getattr(self.soak_time, 'integration_time', 0) or 0)
-        return (n - 1) * (float(self.poll_interval_s) + integ + 0.3)
+        return (n - 1) * float(self.poll_interval_s)
+
+    @staticmethod
+    def _format_estimate(seconds) -> str:
+        total = int(round(float(seconds or 0)))
+        if total < 0:
+            total = 0
+        hours, rem = divmod(total, 3600)
+        minutes, secs = divmod(rem, 60)
+        parts = []
+        if hours:
+            parts.append(f"{hours} h")
+        if minutes or hours:
+            parts.append(f"{minutes} min")
+        parts.append(f"{secs} s")
+        return " ".join(parts)
 
     def _scope_row_from_measurements(self, meas: dict, trig_level, img_path: str = "") -> list:
         try:
@@ -335,14 +350,33 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
             row += int(rec.get('n_samples') or 1)
 
     def update_test_list_text(self):
+        if self.status == TestStatus.IN_QUEUE:
+            self.total_time, self.total_steps = self.estimate_remaining(0, 0, vin_delays=True)
+            self.estimated_time_s = self.total_time
         super().update_test_list_text()
-        duration_s = float(self.poll_duration_s)
-        duration_txt = f"{duration_s / 60.0:g} min"
+        shown_s = self.estimated_time_s if self.status == TestStatus.IN_PROGRESS else self.total_time
+        label = "Estimated time remaining" if self.status == TestStatus.IN_PROGRESS else "Estimated time"
+        prog = getattr(self, 'progress_txt', '') or '0%'
+        estimate_line = f"{self.status}: {label}: {self._format_estimate(shown_s)}, {prog}"
+        lines = []
+        replaced = False
+        for line in self.test_list_text.split("\n"):
+            if line.startswith("Poll:"):
+                continue
+            if line.startswith(f"{TestStatus.IN_QUEUE}:") or line.startswith(f"{TestStatus.IN_PROGRESS}:"):
+                lines.append(estimate_line)
+                replaced = True
+            else:
+                lines.append(line)
+        if not replaced and self.status in (TestStatus.IN_QUEUE, TestStatus.IN_PROGRESS):
+            lines.append(estimate_line)
+        duration_txt = f"{float(self.poll_duration_s) / 60.0:g} min"
         note = (
             f"Poll: every {self.poll_interval_s:g} s for {duration_txt} "
             f"({self._sample_count()} samples per point). "
             "Stop keeps rows already saved to Excel."
         )
+        self.test_list_text = "\n".join(lines)
         if note not in self.test_list_text:
             self.test_list_text += "\n" + note
 

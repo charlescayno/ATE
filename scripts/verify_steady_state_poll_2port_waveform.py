@@ -274,10 +274,25 @@ def test_abort_saves_excel(errors):
         test_control_flags['SkipTest'] = False
 
 
+def test_details_estimate(errors):
+    """Queued test details show the full-run estimate, including every poll window."""
+    test = POLL(FakeItem(FakeParent(), POLL.tc_default))
+    test.update_test_list_text()
+    text = test.test_list_text
+    shown = POLL._format_estimate(test.total_time)
+    check(errors, "details estimated time",
+          f"Estimated time: {shown}" in text and "0:49:" not in text,
+          text)
+    # 3 voltages x 15 min of polling, plus soak and capture, without the old per-sample pad.
+    check(errors, "default estimate about 47 min",
+          45 * 60 < test.total_time < 50 * 60, round(test.total_time, 1))
+
+
 def main() -> int:
     errors = []
     test_sample_math(errors)
     test_dialog(errors)
+    test_details_estimate(errors)
     test_run(errors)
     test_abort_saves_excel(errors)
     if errors:
