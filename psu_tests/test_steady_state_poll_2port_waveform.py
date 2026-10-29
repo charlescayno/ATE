@@ -17,12 +17,9 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
     Steady-State Poll Waveform 2 Port.
 
     Same line/load sweep and one scope screenshot per point as Steady-State
-    Waveform 2 Port. After the screenshot, power-meter and scope measurements
-    are read again after Poll Interval (idle gap since the previous read finished)
-    until Poll Duration has elapsed.
-    Each sample is its own Excel row (Sample, Elapsed, Time Start/End, Time Sampled).
-    Default window is 5 min between samples for 20 min per load point. Stop at any time keeps the rows
-    already taken and writes them to the Excel file.
+    Waveform 2 Port.     Each sample: integrate Pin (soak integration time) → meters → scope capture (PNG)
+    → Excel row → optional wait (Poll Interval) → repeat for N samples per load point.
+    Poll Interval is wait-only between samples; it does not set integration length.
     """
 
     title = "Steady-State Poll Waveform 2 Port"
@@ -38,10 +35,14 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
     )
     POLL_DATETIME_EXCEL_FMT = "yyyy-mm-dd hh:mm:ss"
     POLL_INTERVAL_PARAM_INDEX = 10
-    POLL_DURATION_PARAM_INDEX = 11
-    POLL_INTERVAL_DEFAULT_S = 300.0
+    POLL_SAMPLES_PARAM_INDEX = 11
+    POLL_DURATION_PARAM_INDEX = 11  # legacy alias (stored value is sample count)
+    POLL_INTERVAL_DEFAULT_S = 30.0
     POLL_READ_DURATION_GUESS_S = 0.75
-    POLL_DURATION_DEFAULT_S = 20 * 60.0
+    POLL_SAMPLES_DEFAULT = 3
+    POLL_DURATION_DEFAULT_S = 20 * 60.0  # legacy duration for migration only
+    LEGACY_POLL_DURATION_MIN_S = 60.0
+    POLL_SCOPE_CAPTURE_GUESS_S = 12.0
     POLL_DEFAULT_SCOPE_CHANNELS = {
         1: {
             'enabled': True,
@@ -63,10 +64,10 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
         tc = EfficiencyWaveformTest_2Port.tc_default
         i2c = tc.i2c_test_parameters
         params = list(getattr(i2c, 'param', []) or [])
-        while len(params) <= cls.POLL_DURATION_PARAM_INDEX:
+        while len(params) <= cls.POLL_SAMPLES_PARAM_INDEX:
             params.append(0.0)
         params[cls.POLL_INTERVAL_PARAM_INDEX] = cls.POLL_INTERVAL_DEFAULT_S
-        params[cls.POLL_DURATION_PARAM_INDEX] = cls.POLL_DURATION_DEFAULT_S
+        params[cls.POLL_SAMPLES_PARAM_INDEX] = float(cls.POLL_SAMPLES_DEFAULT)
         cbx = list(getattr(i2c, 'cbx_param', []) or [])
         while len(cbx) < 4:
             cbx.append('')
@@ -107,29 +108,35 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
         return int(math.floor((duration + 1e-9) / interval)) + 1
 
     def _sample_count(self) -> int:
-        return self.sample_count_for(self.poll_interval_s, self.poll_duration_s)
+        return int(getattr(self, 'poll_samples_n', self.POLL_SAMPLES_DEFAULT))
+
+    @classmethod
+    def read_samples_per_point(cls, params, poll_interval_s=None) -> int:
+        """Param 11 = sample count; values >= LEGACY_POLL_DURATION_MIN_S are old duration (s)."""
+        interval = poll_interval_s
+        if interval is None:
+            interval = cls._read_poll_param(
+                params, cls.POLL_INTERVAL_PARAM_INDEX, cls.POLL_INTERVAL_DEFAULT_S)
+        raw = cls._read_poll_param(
+            params, cls.POLL_SAMPLES_PARAM_INDEX, float(cls.POLL_SAMPLES_DEFAULT))
+        if raw >= cls.LEGACY_POLL_DURATION_MIN_S and interval > 0:
+            return cls.sample_count_for(interval, raw)
+        return max(1, int(round(raw)))
 
     @staticmethod
-    def effective_integration_s(soak_integration_s, poll_interval_s) -> float:
-        """Integrate Pin/Pout for max(soak integration, poll interval) on this test only."""
+    def effective_integration_s(soak_integration_s, poll_interval_s=None) -> float:
+        """Pin integration window = soak integration time only (poll interval is wait-only)."""
         try:
             soak = float(soak_integration_s or 0)
         except (TypeError, ValueError):
             soak = 0.0
-        try:
-            poll = float(poll_interval_s or 0)
-        except (TypeError, ValueError):
-            poll = 0.0
         if soak < 0:
             soak = 0.0
-        if poll < 0:
-            poll = 0.0
-        return max(soak, poll)
+        return soak
 
     def _effective_integration_s(self) -> float:
         return self.effective_integration_s(
             getattr(self.soak_time, 'integration_time', 0),
-            getattr(self, 'poll_interval_s', 0),
         )
 
     def _configure_poll_power_meter_integration(self):
@@ -156,8 +163,8 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
             soak = float(getattr(self.soak_time, 'integration_time', 0) or 0)
             print(
                 f"[POLL] Power meter integration: {eff:g} s "
-                f"(max of soak integration {soak:g} s, "
-                f"poll interval {float(self.poll_interval_s):g} s)"
+                f"(soak integration {soak:g} s; "
+                f"poll wait between samples {float(self.poll_interval_s):g} s)"
             )
 
     @classmethod
@@ -178,8 +185,7 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
         params = list(getattr(i2c, 'param', []) or [])
         self.poll_interval_s = self._read_poll_param(
             params, self.POLL_INTERVAL_PARAM_INDEX, self.POLL_INTERVAL_DEFAULT_S)
-        self.poll_duration_s = self._read_poll_param(
-            params, self.POLL_DURATION_PARAM_INDEX, self.POLL_DURATION_DEFAULT_S)
+        self.poll_samples_n = self.read_samples_per_point(params, self.poll_interval_s)
         self.poll_sample_index = 1
         self.poll_elapsed_s = 0.0
         self.poll_point_start_dt = None
@@ -237,10 +243,10 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
     def _write_run_metadata_rows(self, ws):
         super()._write_run_metadata_rows(ws)
         rows = (
-            (2, "Poll interval (s)", self.poll_interval_s),
-            (3, "Poll duration (s)", self.poll_duration_s),
-            (4, "Samples per point", self._sample_count()),
-            (5, "Effective integration (s)", self._effective_integration_s()),
+            (2, "Poll wait between samples (s)", self.poll_interval_s),
+            (3, "Samples per load point", self._sample_count()),
+            (4, "Integration time (s)", self._effective_integration_s()),
+            (5, "Est. poll window (s)", round(self._estimated_poll_point_duration_s(), 1)),
         )
         for row, label, value in rows:
             ws[f"D{row}"] = label
@@ -302,11 +308,8 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
             print(f"[Warning] Could not save partial poll workbook: {exc}")
 
     def _note_partial_capture(self, records_before, rows_at_start):
-        if len(getattr(self, 'captured_records', []) or []) <= records_before:
-            return
-        taken = len(self.output_dataframe) - rows_at_start
-        if taken > 0:
-            self.captured_records[records_before]['n_samples'] = taken
+        """One scope PNG per poll sample; linking is 1:1 (no n_samples blob on first capture)."""
+        return
 
     def _raise_if_abort(self, records_before, rows_at_start):
         stop = test_control_flags.get('StopTest', False)
@@ -329,22 +332,61 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
 
     def _wait_for_scheduled_poll_sample(
             self, interval_s, records_before, rows_at_start):
-        """Start the next read so Time Sampled is ~interval_s after the previous."""
+        """Idle wait after previous Time Sampled before the next integration starts."""
         if self.poll_prev_sampled_dt is None:
             return
-        gap = float(interval_s)
-        slack = float(getattr(self, '_poll_repeat_read_duration_s',
-                              self.POLL_READ_DURATION_GUESS_S))
-        slack = min(max(slack, 0.05), gap * 0.9)
+        gap = max(0.0, float(interval_s))
+        if gap <= 0:
+            return
         target_start = (
-            self.poll_prev_sampled_dt
-            + datetime.timedelta(seconds=gap - slack)
+            self.poll_prev_sampled_dt + datetime.timedelta(seconds=gap)
         )
         while datetime.datetime.now() < target_start:
             self._raise_if_abort(records_before, rows_at_start)
             remaining = (target_start - datetime.datetime.now()).total_seconds()
             self._wait_or_stop(min(0.25, max(remaining, 0.0)),
                                records_before, rows_at_start)
+
+    def prepare_source_power_meter_for_poll_input(self):
+        """Poll: integration timer from soak only (not poll wait interval)."""
+        pm = self.power_meter_source
+        if pm is not None and hasattr(pm, '_stop_and_reset_integration'):
+            pm._stop_and_reset_integration()
+        self.ensure_source_power_meter_auto_range(settle_s=0)
+        if pm is None:
+            return
+        integ = self._effective_integration_s()
+        if integ >= 1.0:
+            sec = max(1, int(round(integ)))
+            pm.integration_settings(mode='NORMAL', timer_s=sec, reset=True)
+            try:
+                pm.enable_averaging(False)
+            except Exception:
+                pass
+        else:
+            try:
+                pm.integration_settings(mode='NORMAL', timer_s=0, reset=True)
+            except Exception:
+                pass
+            try:
+                pm.enable_averaging(True)
+            except Exception:
+                pass
+
+    def _poll_per_sample_overhead_s(self) -> float:
+        return max(
+            float(getattr(self, '_poll_repeat_read_duration_s', self.POLL_READ_DURATION_GUESS_S)),
+            self.POLL_READ_DURATION_GUESS_S,
+        ) + self.POLL_SCOPE_CAPTURE_GUESS_S
+
+    def _estimated_poll_point_duration_s(self) -> float:
+        n = self._sample_count()
+        if n <= 0:
+            return 0.0
+        integ = max(self._effective_integration_s(), 0.0)
+        wait = float(self.poll_interval_s or 0) if n > 1 else 0.0
+        per = integ + self._poll_per_sample_overhead_s()
+        return n * per + (n - 1) * wait
 
     def _measure_poll_readings(self, i2_A):
         """PM reads for poll samples without re-sending AUTO range every tick."""
@@ -371,11 +413,7 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
             if self.test_data.pin_W > 0 else 0)
 
     def _extra_acquire_time_s(self) -> float:
-        n = self._sample_count()
-        if n <= 1:
-            return 0.0
-        integ = self._effective_integration_s()
-        return (n - 1) * (float(self.poll_interval_s) + integ + 0.3)
+        return self._estimated_poll_point_duration_s()
 
     def _append_measurement_row(self, scope_row):
         super()._append_measurement_row(scope_row)
@@ -402,8 +440,6 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
         rows_at_start = len(self.output_dataframe)
         self.poll_prev_sampled_dt = None
         self._poll_repeat_read_duration_s = self.POLL_READ_DURATION_GUESS_S
-        trig_level = None
-        img_path = ""
         self.prepare_load_power_meters_for_poll_output()
         self.prepare_source_power_meter_for_poll_input()
         try:
@@ -415,60 +451,47 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
                     self.poll_point_start_dt = datetime.datetime.now()
                     self.poll_point_end_dt = (
                         self.poll_point_start_dt
-                        + datetime.timedelta(seconds=float(self.poll_duration_s))
+                        + datetime.timedelta(seconds=self._estimated_poll_point_duration_s())
                     )
-                    self.update_status_log(
-                        f"Poll sample 1/{n}", upcoming="Capture Waveform")
-                    self._measure_poll_readings(i2_A)
-                    scope_row = self.capture_waveform_at_point(vin_set, i1_A, i2_A)
-                    if len(scope_row) > 1 and scope_row[1] == "N/A":
-                        self._append_measurement_row(scope_row)
-                        return
-                    trig_level = scope_row[1] if len(scope_row) > 1 else None
-                    if not self.embed_images and scope_row:
-                        img_path = scope_row[-1]
                 else:
                     self.update_status_log(
                         f"Poll sample {sample + 1}/{n} "
-                        f"(~{interval:g} s period)",
+                        f"(wait {interval:g} s after previous sample)",
                         upcoming="Read meters")
                     self._wait_for_scheduled_poll_sample(
                         interval, records_before, rows_at_start)
-                    read_t0 = datetime.datetime.now()
-                    self._measure_poll_readings(i2_A)
-                    meas = self.query_active_scope_measurements()
-                    scope_row = self._scope_row_from_measurements(
-                        meas, trig_level, img_path)
-                    read_t1 = datetime.datetime.now()
-                    self._poll_repeat_read_duration_s = max(
-                        0.05,
-                        (read_t1 - read_t0).total_seconds(),
-                    )
+                read_t0 = datetime.datetime.now()
+                self.update_status_log(
+                    f"Poll sample {self.poll_sample_index}/{n}",
+                    upcoming="Capture Waveform")
+                self._measure_poll_readings(i2_A)
+                self._poll_waveform_filename_tag = f"_S{self.poll_sample_index}"
+                scope_row = self.capture_waveform_at_point(vin_set, i1_A, i2_A)
+                read_t1 = datetime.datetime.now()
+                self._poll_repeat_read_duration_s = max(
+                    0.05,
+                    (read_t1 - read_t0).total_seconds(),
+                )
+                if len(scope_row) > 1 and scope_row[1] == "N/A":
+                    self.poll_row_sampled_dt = datetime.datetime.now()
+                    self._append_measurement_row(scope_row)
+                    return
                 self.poll_row_sampled_dt = datetime.datetime.now()
                 self._append_measurement_row(scope_row)
         except (TestStopped, TestSkipped):
             self._note_partial_capture(records_before, rows_at_start)
             raise
-        if len(self.captured_records) > records_before:
-            self.captured_records[records_before]['n_samples'] = (
-                len(self.output_dataframe) - rows_at_start)
 
     def _link_capture_main_sheet_rows(self):
-        row = self.excel_first_data_row + 1
-        for rec in self.captured_records:
-            rec['main_sheet_row'] = row
-            row += int(rec.get('n_samples') or 1)
+        """One embedded PNG per poll sample → one main sheet row per capture record."""
+        super()._link_capture_main_sheet_rows()
 
     def update_test_list_text(self):
         super().update_test_list_text()
-        duration_s = float(self.poll_duration_s)
-        if duration_s >= 60 and abs(duration_s % 60) < 1e-6:
-            duration_txt = f"{duration_s / 60:g} min"
-        else:
-            duration_txt = f"{duration_s:g} s"
         note = (
-            f"Poll: ~{self.poll_interval_s:g} s between Time Sampled rows for {duration_txt} "
-            f"({self._sample_count()} samples per point). "
+            f"Poll: {self._sample_count()} samples/load point, "
+            f"{self._effective_integration_s():g} s Pin integration, "
+            f"{self.poll_interval_s:g} s wait between samples. "
             "Stop keeps rows already saved to Excel."
         )
         if note not in self.test_list_text:

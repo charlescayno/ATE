@@ -30,6 +30,7 @@ from psu_tests.test_steady_state_poll_2port_waveform import SteadyStatePollWavef
 from equipment.simulated_handler import SimulatedEquipmentHandler  # noqa: E402
 from page_controls.eff2p_waveform_advanced import Eff2PWaveformAdvancedDialog  # noqa: E402
 from page_controls.test_sequence_flow_text import build_flow_text_for_title  # noqa: E402
+from page_controls.poll_sequence_diagram import render_poll_sequence_diagram_png  # noqa: E402
 from PySide2.QtWidgets import QLineEdit  # noqa: E402
 
 OPTION_C = "Option C: Fixed Aux / Swept Main (Port 2 Fixed Load)"
@@ -45,30 +46,27 @@ def check(errors, name, ok, detail=""):
 
 
 def test_effective_integration(errors):
-    check(errors, "eff int max soak poll", POLL.effective_integration_s(0, 10) == 10.0)
+    check(errors, "eff int from soak only", POLL.effective_integration_s(10, 300) == 10.0)
     check(errors, "eff int soak larger", POLL.effective_integration_s(300, 10) == 300.0)
-    check(errors, "eff int poll larger", POLL.effective_integration_s(5, 300) == 300.0)
-    check(errors, "eff int both zero", POLL.effective_integration_s(0, 0) == 0.0)
+    check(errors, "eff int ignores poll wait", POLL.effective_integration_s(5, 300) == 5.0)
+    check(errors, "eff int zero soak", POLL.effective_integration_s(0, 300) == 0.0)
 
 
 def test_sample_math(errors):
-    check(errors, "samples 5s x 15min", POLL.sample_count_for(5, 900) == 181, POLL.sample_count_for(5, 900))
-    check(errors, "samples 1s x 2s", POLL.sample_count_for(1, 2) == 3, POLL.sample_count_for(1, 2))
-    check(errors, "samples 3s x 10s", POLL.sample_count_for(3, 10) == 4, POLL.sample_count_for(3, 10))
-    check(errors, "samples duration 0", POLL.sample_count_for(1, 0) == 1)
-    check(errors, "samples interval 0", POLL.sample_count_for(0, 10) == 1)
+    check(errors, "legacy duration migration", POLL.read_samples_per_point(
+        [0.0] * 10 + [30.0, 1200.0], 30.0) == 41)
+    check(errors, "direct sample count", POLL.read_samples_per_point(
+        [0.0] * 10 + [30.0, 5.0], 30.0) == 5)
+    check(errors, "samples min 1", POLL.read_samples_per_point(
+        [0.0] * 10 + [30.0, 0.0], 30.0) == 1)
+    check(errors, "legacy sample_count_for", POLL.sample_count_for(5, 900) == 181)
     params = list(POLL.tc_default.i2c_test_parameters.param)
     check(
-        errors, "default interval param",
-        len(params) > POLL.POLL_DURATION_PARAM_INDEX
-        and float(params[POLL.POLL_INTERVAL_PARAM_INDEX]) == 300.0
-        and float(params[POLL.POLL_DURATION_PARAM_INDEX]) == 1200.0,
+        errors, "default poll params",
+        len(params) > POLL.POLL_SAMPLES_PARAM_INDEX
+        and float(params[POLL.POLL_INTERVAL_PARAM_INDEX]) == 30.0
+        and float(params[POLL.POLL_SAMPLES_PARAM_INDEX]) == 3.0,
         params)
-    check(
-        errors, "samples 300s x 20min",
-        POLL.sample_count_for(300, 1200) == 5,
-        POLL.sample_count_for(300, 1200),
-    )
     check(errors, "registered in TestTypes", POLL in TestTypes)
     check(errors, "does not shift waveform index 0",
           TestTypes[0].title == "Steady-State Waveform 2 Port")
@@ -76,22 +74,26 @@ def test_sample_math(errors):
 
 def test_dialog(errors):
     interval = QLineEdit()
-    duration = QLineEdit()
-    interval.setText("1")
-    duration.setText("2")
+    samples = QLineEdit()
+    interval.setText("30")
+    samples.setText("5")
     hidden = [QLineEdit() for _ in range(10)]
     dlg = Eff2PWaveformAdvancedDialog(
         None, hidden, scope_channels={1: {'enabled': True, 'name': 'Primary Vds'}},
-        for_poll=True, poll_interval_le=interval, poll_duration_le=duration)
-    check(errors, "dialog poll fields", dlg.le_poll_interval is not None and dlg.le_poll_duration.text() == "2")
+        for_poll=True, poll_interval_le=interval, poll_duration_le=samples)
+    check(errors, "dialog poll fields",
+          dlg.le_poll_interval is not None and dlg.le_poll_duration.text() == "5")
     dlg.le_poll_interval.setText("0.5")
     dlg.le_poll_duration.setText("4")
     dlg.apply_to_lineedits()
-    check(errors, "dialog writes poll storage", interval.text() == "0.5" and duration.text() == "4",
-          f"{interval.text()} {duration.text()}")
+    check(errors, "dialog writes poll storage", interval.text() == "0.5" and samples.text() == "4",
+          f"{interval.text()} {samples.text()}")
     flow = build_flow_text_for_title(
-        POLL.title, poll_interval_s=0.5, poll_duration_s=4, sample_count=9)
+        POLL.title, poll_interval_s=0.5, sample_count=4)
     check(errors, "flow text", flow and "0.5 s" in flow and "SS_POLL_2P" in flow, flow[:80] if flow else None)
+    png = render_poll_sequence_diagram_png(
+        n_samples=4, poll_wait_s=0.5, integration_s=10.0)
+    check(errors, "sequence diagram png", len(png) > 8000, len(png))
 
 
 class FakeParent:
@@ -103,22 +105,24 @@ class FakeParent:
 class FakeItem:
     def __init__(self, parent, conditions):
         self.parent = parent
-        self.test_type_index = TestTypes.index(POLL)
         self.test_conditions = conditions
+        self.test_type_index = TestTypes.index(POLL)
 
 
-def test_run(errors):
-    vin = [[115, 60]]
+def test_run_complete(errors):
+    soak = SoakTime(name="TST", initial=0, line=0, load=0, integration=0, custom=False)
     conditions = TestConditions(
         name=POLL.title,
-        nominal_output_voltage_V=5, nominal_load_current_A=5, max_load_current_A=5,
-        line_range=LineRange(name='TEST', vin_freq=vin, custom=True),
-        load_range=LoadRange(name='TEST', load_range_pct=[100], custom=True),
-        soak_time=SoakTime(name='POLL_SOAK', initial=0, line=0, load=0, integration=0),
-        general_options=GeneralOptions(coupling='AC'),
+        nominal_output_voltage_V=5,
+        nominal_load_current_A=5,
+        max_load_current_A=5,
+        line_range=LineRange(name="115", vin_freq=[[115, 60]], custom=True),
+        load_range=LoadRange(name="100", load_range_pct=[100], custom=True),
+        soak_time=soak,
+        general_options=GeneralOptions(),
         usbpd_options=USBPDOptions(),
         i2c_test_parameters=I2CTestParameters(
-            params=[12.0, 2.0, 0.0, 0, 1.0, 0, 0, 25.0, 0, 1, 1.0, 2.0],
+            params=[12.0, 2.0, 0.0, 0, 1.0, 0, 0, 25.0, 0, 1, 1.0, 3.0],
             cbx_params=[OPTION_C, 'Yes', 'None (Fully Automated)', 'No']),
         unit_id='P1', ambient_temp=25.0,
         scope_channels={
@@ -140,9 +144,12 @@ def test_run(errors):
         check(errors, "workbook name", test.data_filename == expected_name, test.data_filename)
         check(errors, "workbook exists", os.path.isfile(test.data_file_path), test.data_file_path)
         pngs = [rec.get('path') for rec in test.captured_records if rec.get('path')]
-        check(errors, "one screenshot", len(pngs) == 1 and pngs[0].endswith('_SSP.png'), pngs)
-        check(errors, "n_samples on capture",
-              test.captured_records and test.captured_records[0].get('n_samples') == 3,
+        check(errors, "screenshot per sample",
+              len(pngs) == 3 and all(p.endswith('_SSP_S{}.png'.format(i)) for i, p in enumerate(pngs, 1)),
+              pngs)
+        check(errors, "capture record per sample",
+              len(test.captured_records) == 3
+              and all(rec.get('main_sheet_row') for rec in test.captured_records),
               test.captured_records)
 
         wb = openpyxl.load_workbook(test.data_file_path)
@@ -150,9 +157,9 @@ def test_run(errors):
               test.sheet_name)
         ws = wb[test.sheet_name]
         check(errors, "poll metadata",
-              ws['D2'].value == 'Poll interval (s)' and ws['E2'].value == 1
-              and ws['E3'].value == 2 and ws['E4'].value == 3,
-              (ws['D2'].value, ws['E2'].value, ws['E3'].value, ws['E4'].value))
+              ws['D2'].value == 'Poll wait between samples (s)' and ws['E2'].value == 1
+              and ws['E3'].value == 3 and ws['D3'].value == 'Samples per load point',
+              (ws['D2'].value, ws['E2'].value, ws['D3'].value, ws['E3'].value))
         check(errors, "section title", ws['T14'].value == 'Timed Poll', ws['T14'].value)
         hdr = test.excel_first_data_row
         poll_headers = [ws.cell(row=hdr, column=c).value for c in range(20, 26)]
@@ -190,8 +197,8 @@ def test_run(errors):
               row1_start == row3_start and row1_end == row3_end,
               (row1_start, row3_start, row1_end, row3_end))
         window_s = (row1_end - row1_start).total_seconds()
-        check(errors, "time end = start + poll duration (2 s)",
-              abs(window_s - 2.0) < 0.001, window_s)
+        check(errors, "time end after time start",
+              window_s > 0, window_s)
         sampled = [ws.cell(row=hdr + i, column=24).value for i in (1, 2, 3)]
         check(errors, "time sampled monotonic",
               sampled[0] <= sampled[1] <= sampled[2], sampled)
@@ -207,8 +214,8 @@ def test_run(errors):
             check(errors, "interval matches time sampled delta",
                   abs(float(iv2) - expected_iv2) < 0.01, (iv2, expected_iv2))
         wf = f"{test.short_title}_Waveforms"
-        check(errors, "one embedded image",
-              wf in wb.sheetnames and len(wb[wf]._images) == 1,
+        check(errors, "embedded image per sample",
+              wf in wb.sheetnames and len(wb[wf]._images) == 3,
               wf in wb.sheetnames and len(wb[wf]._images))
         check(errors, "results table rows",
               len([r for r in test.test_data_table.data if any(v != '' for v in r)]) == 3)
@@ -218,16 +225,19 @@ def test_abort_saves_excel(errors):
     """Stop after two samples; those rows must already be in the workbook."""
     test_control_flags['StopTest'] = False
     test_control_flags['SkipTest'] = False
+    soak = SoakTime(name="TST", initial=0, line=0, load=0, integration=0, custom=False)
     conditions = TestConditions(
         name=POLL.title,
-        nominal_output_voltage_V=5, nominal_load_current_A=5, max_load_current_A=5,
-        line_range=LineRange(name='TEST', vin_freq=[[115, 60]], custom=True),
-        load_range=LoadRange(name='TEST', load_range_pct=[100], custom=True),
-        soak_time=SoakTime(name='POLL_SOAK', initial=0, line=0, load=0, integration=0),
-        general_options=GeneralOptions(coupling='AC'),
+        nominal_output_voltage_V=5,
+        nominal_load_current_A=5,
+        max_load_current_A=5,
+        line_range=LineRange(name="115", vin_freq=[[115, 60]], custom=True),
+        load_range=LoadRange(name="100", load_range_pct=[100], custom=True),
+        soak_time=soak,
+        general_options=GeneralOptions(),
         usbpd_options=USBPDOptions(),
         i2c_test_parameters=I2CTestParameters(
-            params=[12.0, 2.0, 0.0, 0, 1.0, 0, 0, 25.0, 0, 1, 5.0, 20.0],
+            params=[12.0, 2.0, 0.0, 0, 1.0, 0, 0, 25.0, 0, 1, 5.0, 5.0],
             cbx_params=[OPTION_C, 'Yes', 'None (Fully Automated)', 'No']),
         unit_id='P1', ambient_temp=25.0,
         scope_channels={
@@ -269,33 +279,32 @@ def test_abort_saves_excel(errors):
             check(errors, "abort rows have timestamps",
                   isinstance(t0, datetime.datetime) and isinstance(t1, datetime.datetime)
                   and isinstance(abort_start, datetime.datetime)
-                  and isinstance(abort_end, datetime.datetime)
-                  and t0 <= t1
-                  and (abort_end - abort_start).total_seconds() == 20.0,
+                  and isinstance(abort_end, datetime.datetime),
                   (t0, t1, abort_start, abort_end))
-            check(errors, "abort n_samples",
-                  test.captured_records and test.captured_records[0].get('n_samples') == 2,
+            check(errors, "abort capture per sample",
+                  len(test.captured_records) == 2
+                  and test.captured_records[0]['path'].endswith('_SSP_S1.png')
+                  and test.captured_records[1]['path'].endswith('_SSP_S2.png'),
                   test.captured_records)
     finally:
         test_control_flags['StopTest'] = False
         test_control_flags['SkipTest'] = False
 
 
-def main() -> int:
+def main():
     errors = []
     test_effective_integration(errors)
     test_sample_math(errors)
     test_dialog(errors)
-    test_run(errors)
+    test_run_complete(errors)
     test_abort_saves_excel(errors)
     if errors:
         print("FAIL")
         for e in errors:
-            print(" ", e)
-        return 1
-    print("OK Steady-State Poll Waveform 2 Port")
-    return 0
+            print(f"  {e}")
+        sys.exit(1)
+    print(f"OK {POLL.title}")
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()

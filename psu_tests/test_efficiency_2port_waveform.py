@@ -890,8 +890,10 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
             prefix = f"{self.unit_id}_" if self.unit_id else ""
             pwr = self._dual_port_power_filename_part(i1_A=i1_A, i2_A=i2_A, png_suffix=True)
             png_suffix = getattr(self, 'PNG_SUFFIX', '') or ''
+            poll_tag = getattr(self, '_poll_waveform_filename_tag', '') or ''
             img_filename = (
-                f"{prefix}{vin_set:g}V{self.coupling}_Ch1_{i1_A:g}A_Ch2_{i2_A:g}A{pwr}{png_suffix}.png")
+                f"{prefix}{vin_set:g}V{self.coupling}_Ch1_{i1_A:g}A_Ch2_{i2_A:g}A"
+                f"{pwr}{png_suffix}{poll_tag}.png")
             img_path = os.path.join(self.waveform_filepath, img_filename)
             try:
                 self.oscilloscope.get_screenshot(img_filename, self.waveform_filepath)

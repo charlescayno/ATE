@@ -21,10 +21,10 @@ Many I2C / Transients / Light Load classes exist but are **commented out** of `T
 
 ## Poll test (feature summary)
 
-- Params: poll interval (s), poll duration (s) on I2C param slots 10–11.  
-- Defaults: **300 s** interval, **1200 s** duration (5 samples/point).  
+- Params: **poll wait between samples** (s), **samples per load point** on I2C slots 10–11 (legacy: slot 11 ≥ 60 s interpreted as old duration).  
+- Defaults: **30 s** wait, **3** samples/point.  
 - Default scope: **CH1** `VDS_PRI`, MAXimum, **1700 V** derating (CH2–4 off).  
-- **Effective integration** = `max(soak.integration_time, poll_interval_s)` for WT500 timers (this test only).
+- **One scope PNG per sample** (`_S1`, `_S2`, …). Pin integration uses **soak integration time only** (decoupled from poll wait).
 
 ## Manual control
 

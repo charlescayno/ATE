@@ -4,8 +4,7 @@ from psu_tests.test_steady_state_poll_2port_waveform import SteadyStatePollWavef
 
 _POLL_DEFAULT_INTERVAL_S = SteadyStatePollWaveformTest_2Port.POLL_INTERVAL_DEFAULT_S
 _POLL_DEFAULT_DURATION_S = SteadyStatePollWaveformTest_2Port.POLL_DURATION_DEFAULT_S
-_POLL_DEFAULT_SAMPLE_COUNT = SteadyStatePollWaveformTest_2Port.sample_count_for(
-    _POLL_DEFAULT_INTERVAL_S, _POLL_DEFAULT_DURATION_S)
+_POLL_DEFAULT_SAMPLE_COUNT = SteadyStatePollWaveformTest_2Port.POLL_SAMPLES_DEFAULT
 
 STEADY_STATE_WAVEFORM_2PORT_TITLE = "Steady-State Waveform 2 Port"
 STEADY_STATE_POLL_WAVEFORM_2PORT_TITLE = "Steady-State Poll Waveform 2 Port"
@@ -212,8 +211,8 @@ def build_poll_flow_text(
         "STEADY-STATE POLL WAVEFORM 2 PORT — SEQUENCE",
         f"Dual Load Mode: {mode_note}",
         f"User Prompts: {user_prompts.strip() or '(default)'}",
-        f"Poll: every {poll_interval_s:g} s for {poll_duration_s:g} s "
-        f"({sample_count} samples per load point, gear → advanced)",
+        f"Poll: {sample_count:g} samples/load point, {poll_interval_s:g} s wait between samples "
+        f"(integration from soak profile, gear → advanced)",
         "",
         "=== ONCE AT TEST START ===",
         _step(pre_test, "[USER] OK — Oscilloscope setup reminder"),
@@ -228,13 +227,11 @@ def build_poll_flow_text(
         "=== EACH LOAD POINT AT THIS Vin ===",
         "[AUTO] Set loads + load soak",
         "  →",
-        "[AUTO] Sample 1: efficiency + scope RUN SINGLE + screenshot",
+        "[AUTO] Each sample: integrate Pin (soak) → meters → scope RUN SINGLE + PNG → Excel row",
         "  →",
-        _step(per_capture, "[USER] Optional per-capture review (sample 1 only)"),
+        _step(per_capture, "[USER] Optional per-capture review (each sample if enabled)"),
         "  →",
-        f"[AUTO] Further samples every {poll_interval_s:g} s until {poll_duration_s:g} s",
-        "  →",
-        "[AUTO] Each sample: power meters + scope measurements → Excel row",
+        f"[AUTO] Wait {poll_interval_s:g} s (if more samples), then repeat ({sample_count:g} total)",
         "",
         "=== STOP AT ANY TIME ===",
         "[USER] Stop keeps samples already taken and writes them to the Excel file",
@@ -242,7 +239,7 @@ def build_poll_flow_text(
         "=== END OF TEST ===",
         "[AUTO] Discharge output",
         "  →",
-        "[AUTO] Save workbook + SS_POLL_2P waveforms sheet (one image per load point)",
+        "[AUTO] Save workbook + SS_POLL_2P waveforms sheet (one PNG per poll sample)",
     ]
     return "\n".join(lines)
 

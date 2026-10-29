@@ -2,7 +2,7 @@
 
 Usage (repo root, conda env):
   python scripts/run_ss_poll_hardware_smoke.py --auto-confirm
-  python scripts/run_ss_poll_hardware_smoke.py --auto-confirm --poll-interval 60 --poll-duration 120
+  python scripts/run_ss_poll_hardware_smoke.py --auto-confirm --poll-interval 30 --poll-samples 3
 """
 from __future__ import annotations
 
@@ -123,7 +123,7 @@ def _build_conditions(args) -> TestConditions:
     params = [
         20.0, 0.1, 0.1, 0.0, 1.0, 1.0, 2.0, 25.0, 1.0, 1.0,
         float(args.poll_interval),
-        float(args.poll_duration),
+        float(args.poll_samples if args.poll_duration is None else args.poll_duration),
     ]
     scope = dict(POLL.POLL_DEFAULT_SCOPE_CHANNELS)
     return TestConditions(
@@ -161,8 +161,12 @@ def _build_conditions(args) -> TestConditions:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--auto-confirm", action="store_true")
-    parser.add_argument("--poll-interval", type=float, default=60.0)
-    parser.add_argument("--poll-duration", type=float, default=120.0)
+    parser.add_argument("--poll-interval", type=float, default=30.0,
+                        help="Wait between samples (s)")
+    parser.add_argument("--poll-samples", type=float, default=3.0,
+                        help="Samples per load point")
+    parser.add_argument("--poll-duration", type=float, default=None,
+                        help="Legacy: duration (s) → converted to sample count if >= 60")
     parser.add_argument("--initial-soak", type=float, default=5.0)
     parser.add_argument("--load-soak", type=float, default=5.0)
     parser.add_argument("--unit-id", default="TST-326")
@@ -246,7 +250,7 @@ def main() -> int:
         n = test._sample_count()
         print(
             f"[INFO] SS Poll: 750 VDC, 48 V / 4.5 A + 20 V / 0.1 A, "
-            f"poll {args.poll_interval:g}s × {args.poll_duration:g}s → {n} samples/point",
+            f"poll wait {args.poll_interval:g}s, {n} samples/point",
             flush=True,
         )
         print(f"[INFO] Output: {out}", flush=True)

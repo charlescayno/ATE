@@ -15,13 +15,13 @@ Class: `SteadyStatePollWaveformTest_2Port` extends `EfficiencyWaveformTest_2Port
 
 Default scope (Add Test → new poll item): **CH1** `VDS_PRI`, **MAXimum**, derating **1700 V**; CH2–4 off (`POLL_DEFAULT_SCOPE_CHANNELS` in `test_steady_state_poll_2port_waveform.py`).
 
-Per load point:
+Per load point (each sample):
 
-1. Sample 1: `_measure_poll_readings()` then scope capture.  
-2. Samples 2…N: wait ~`poll_interval_s`, `_measure_poll_readings()`, scope meas refresh, Excel row with poll columns.  
-3. `_effective_integration_s()` drives meter programming.
+1. Integrate Pin for **soak integration time** (not poll wait).  
+2. `_measure_poll_readings()` → **`capture_waveform_at_point()`** (unique `_S{n}` PNG).  
+3. Excel row → wait **`poll_interval_s`** → repeat for **N** samples.
 
-I2C param indices: **10** interval, **11** duration.
+I2C param indices: **10** poll wait between samples (s), **11** samples per load point (legacy: values ≥ 60 treated as old duration in s).
 
 ## PowerMeterWT500 integration SCPI
 

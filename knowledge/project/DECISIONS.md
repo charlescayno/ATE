@@ -1,8 +1,8 @@
 # Design decisions
 
-## Poll test: effective integration (2026)
+## Poll test: effective integration (2026 → 2026-10 v2)
 
-**Decision:** For `SteadyStatePollWaveformTest_2Port` only, WT500 integration timer = **`max(soak.integration_time, poll_interval_s)`**, applied in `setup_equipment()` after parent setup.
+**Decision:** For `SteadyStatePollWaveformTest_2Port`, WT500 Pin integration = **soak integration time only** (poll wait does not extend integration). Param **11** = samples per load point; param **10** = wait between samples. Legacy sequences with param 11 ≥ 60 s still map to sample count via old duration ÷ interval formula.
 
 **Rationale:** TST-326 soak integration defaults to 0; poll interval alone should still enable integrated Pin. Avoids mismatch when operators set 5 min poll but forget soak integration field.
 

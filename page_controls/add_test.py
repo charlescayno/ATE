@@ -8,6 +8,7 @@ from app.app_modules import *
 from page_controls.manual_control import AC_SOURCE_REQUEST, ManualControlPageHandler
 from page_controls.eff2p_waveform_advanced import Eff2PWaveformAdvancedDialog
 from page_controls.test_sequence_flow_text import build_flow_text_for_title
+from page_controls.poll_sequence_diagram import poll_sequence_diagram_pixmap
 from page_controls.pml_grid import GEAR_STYLE
 from sink_controllers.epr_sink_control import *
 from sink_controllers.definitions import * 
@@ -1886,41 +1887,96 @@ class AddTestPageHandler(QObject):
                 capture_timeout_s = float(le.text())
 
         poll_interval_s = SteadyStatePollWaveformTest_2Port.POLL_INTERVAL_DEFAULT_S
-        poll_duration_s = SteadyStatePollWaveformTest_2Port.POLL_DURATION_DEFAULT_S
+        poll_samples_n = SteadyStatePollWaveformTest_2Port.POLL_SAMPLES_DEFAULT
         if test_class.title == STEADY_STATE_POLL_WAVEFORM_2PORT_TITLE:
-            interval_le, duration_le = self._poll_timing_storage()
+            interval_le, samples_le = self._poll_timing_storage()
             if is_numeric(interval_le.text()):
                 poll_interval_s = float(interval_le.text())
-            if is_numeric(duration_le.text()):
-                poll_duration_s = float(duration_le.text())
+            if is_numeric(samples_le.text()):
+                poll_samples_n = SteadyStatePollWaveformTest_2Port.read_samples_per_point(
+                    [0.0] * 10 + [poll_interval_s, float(samples_le.text())],
+                    poll_interval_s,
+                )
 
-        body = build_flow_text_for_title(
+        is_poll = test_class.title == STEADY_STATE_POLL_WAVEFORM_2PORT_TITLE
+        body = None if is_poll else build_flow_text_for_title(
             test_class.title,
             user_prompts=user_prompts,
             capture_timeout_s=capture_timeout_s,
             dual_load_mode=dual_load_mode,
             discharge_pulses=discharge_pulses,
             poll_interval_s=poll_interval_s,
-            poll_duration_s=poll_duration_s,
-            sample_count=SteadyStatePollWaveformTest_2Port.sample_count_for(
-                poll_interval_s, poll_duration_s),
+            poll_duration_s=0.0,
+            sample_count=poll_samples_n,
         )
-        if not body:
+        if not is_poll and not body:
             return
 
         dlg = QDialog(self.parent)
         dlg.setWindowTitle(f"{test_class.title} — sequence")
-        dlg.setMinimumSize(520, 480)
+        dlg.setMinimumSize(720 if is_poll else 520, 520 if is_poll else 480)
         dlg.setStyleSheet(
             "QDialog { background-color: rgb(40, 44, 52); }"
             "QTextEdit { color: rgb(220, 220, 220); background-color: rgb(30, 33, 40); "
             "font-family: Consolas, monospace; font-size: 11px; border: 1px solid rgb(60, 66, 78); }"
+            "QLabel#poll_sequence_diagram { background-color: white; border: 1px solid rgb(60, 66, 78); }"
             "QPushButton { color: white; background-color: rgb(52, 59, 72); padding: 6px 16px; }")
         layout = QVBoxLayout(dlg)
-        editor = QTextEdit(dlg)
-        editor.setReadOnly(True)
-        editor.setPlainText(body)
-        layout.addWidget(editor)
+        if is_poll:
+            integration_s = 600.0
+            soak = getattr(self, "selected_soaktime", None)
+            if soak is not None:
+                try:
+                    integration_s = float(soak.integration_time)
+                except (TypeError, ValueError):
+                    pass
+            pix = poll_sequence_diagram_pixmap(
+                dlg,
+                n_samples=int(poll_samples_n),
+                poll_wait_s=poll_interval_s,
+                integration_s=integration_s,
+                dual_load_mode=dual_load_mode,
+                user_prompts=user_prompts,
+            )
+            scroll = QScrollArea(dlg)
+            scroll.setWidgetResizable(True)
+            scroll.setFrameShape(QFrame.NoFrame)
+            img_host = QWidget()
+            img_layout = QVBoxLayout(img_host)
+            img_layout.setContentsMargins(0, 0, 0, 0)
+            if pix is not None and not pix.isNull():
+                img_label = QLabel(img_host)
+                img_label.setObjectName("poll_sequence_diagram")
+                img_label.setAlignment(Qt.AlignCenter)
+                img_label.setPixmap(pix)
+                img_layout.addWidget(img_label)
+            else:
+                fallback = build_flow_text_for_title(
+                    test_class.title,
+                    user_prompts=user_prompts,
+                    dual_load_mode=dual_load_mode,
+                    poll_interval_s=poll_interval_s,
+                    sample_count=poll_samples_n,
+                )
+                editor = QTextEdit(img_host)
+                editor.setReadOnly(True)
+                editor.setPlainText(fallback or "")
+                img_layout.addWidget(editor)
+            scroll.setWidget(img_host)
+            layout.addWidget(scroll)
+            note = QLabel(
+                "Stop anytime — samples already captured are kept in Excel. "
+                "End of test: discharge output, save workbook + SS_POLL_2P waveforms sheet.",
+                dlg,
+            )
+            note.setWordWrap(True)
+            note.setStyleSheet("color: rgb(180, 190, 205); font-size: 10px; padding: 4px 2px;")
+            layout.addWidget(note)
+        else:
+            editor = QTextEdit(dlg)
+            editor.setReadOnly(True)
+            editor.setPlainText(body)
+            layout.addWidget(editor)
         buttons = QDialogButtonBox(QDialogButtonBox.Ok)
         buttons.accepted.connect(dlg.accept)
         layout.addWidget(buttons)
@@ -1986,7 +2042,7 @@ class AddTestPageHandler(QObject):
             self._poll_interval_lineedit.setText(
                 f"{SteadyStatePollWaveformTest_2Port.POLL_INTERVAL_DEFAULT_S:g}")
             self._poll_duration_lineedit.setText(
-                f"{SteadyStatePollWaveformTest_2Port.POLL_DURATION_DEFAULT_S:g}")
+                f"{SteadyStatePollWaveformTest_2Port.POLL_SAMPLES_DEFAULT:g}")
         return self._poll_interval_lineedit, self._poll_duration_lineedit
 
     def _ensure_poll_timing_frame(self):
@@ -1999,13 +2055,13 @@ class AddTestPageHandler(QObject):
         form = QFormLayout(self.frame_poll_timing)
         form.setContentsMargins(0, 4, 0, 4)
         hint = QLabel(
-            "After each scope capture, PM/scope readings repeat every "
-            "Poll Interval until Poll Duration elapses (extra Excel rows per sample)."
+            "Each sample: Pin integration (soak profile) → meters → scope PNG → Excel row. "
+            "Then wait the interval below before the next sample, for the sample count shown."
         )
         hint.setWordWrap(True)
         hint.setStyleSheet("color: rgb(150, 170, 190); font-size: 11px;")
-        form.addRow("Poll Interval (s):", interval_le)
-        form.addRow("Poll Duration (s):", duration_le)
+        form.addRow("Poll wait between samples (s):", interval_le)
+        form.addRow("Samples per load point:", duration_le)
         form.addRow(hint)
         interval_le.show()
         duration_le.show()
@@ -2040,7 +2096,7 @@ class AddTestPageHandler(QObject):
             le.setText(f"{default:g}")
 
         _set(interval_le, cls.POLL_INTERVAL_PARAM_INDEX, cls.POLL_INTERVAL_DEFAULT_S)
-        _set(duration_le, cls.POLL_DURATION_PARAM_INDEX, cls.POLL_DURATION_DEFAULT_S)
+        _set(duration_le, cls.POLL_SAMPLES_PARAM_INDEX, float(cls.POLL_SAMPLES_DEFAULT))
 
     def _sync_startup_capture_timeout_from_i2c(self, i2c_params):
         if not i2c_params:
@@ -3710,7 +3766,7 @@ class AddTestPageHandler(QObject):
             if is_numeric(duration_le.text()):
                 params.append(float(duration_le.text()))
             else:
-                params.append(SteadyStatePollWaveformTest_2Port.POLL_DURATION_DEFAULT_S)
+                params.append(float(SteadyStatePollWaveformTest_2Port.POLL_SAMPLES_DEFAULT))
 
         i2c_test_parameters = I2CTestParameters(params, cbx_params)
         return i2c_test_parameters

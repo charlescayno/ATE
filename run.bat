@@ -10,8 +10,8 @@ echo   PI ATE  git %PI_ATE_GIT%
 echo   %PI_ATE_ROOT%
 echo ------------------------------------------------------------
 echo   Add Tests ^> Test Type: dual-output / 2-port tests at top
-echo   Steady-State Poll Waveform 2 Port: Poll Interval and
-echo   Poll Duration fields on the main Add Tests form
+echo   Steady-State Poll Waveform 2 Port: poll wait + samples/load
+echo   point on Add Tests (Gear Advanced has same labels)
 echo   Virtual bench: run_simulation.bat
 echo ============================================================
 echo.

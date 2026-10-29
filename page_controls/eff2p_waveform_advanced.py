@@ -100,8 +100,8 @@ class Eff2PWaveformAdvancedDialog(QDialog):
             self.le_poll_duration = QLineEdit(self)
             self.le_poll_interval.setValidator(validator)
             self.le_poll_duration.setValidator(validator)
-            form.addRow("Poll Interval (s):", self.le_poll_interval)
-            form.addRow("Poll Duration (s):", self.le_poll_duration)
+            form.addRow("Poll wait between samples (s):", self.le_poll_interval)
+            form.addRow("Samples per load point:", self.le_poll_duration)
 
         hint = QLabel(
             "Stop Test always runs a safety discharge at 1.0 A CCH "
@@ -154,14 +154,14 @@ class Eff2PWaveformAdvancedDialog(QDialog):
             self.le_capture_timeout.setText(default)
 
         if self.le_poll_interval is not None:
-            interval = "5"
-            duration = "900"
+            interval = "30"
+            duration = "3"
             if self.poll_interval_le is not None and self.poll_interval_le.text().strip():
                 interval = self.poll_interval_le.text().strip()
             if self.poll_duration_le is not None and self.poll_duration_le.text().strip():
                 duration = self.poll_duration_le.text().strip()
             self.le_poll_interval.setText(interval)
-            self.le_poll_duration.setText(duration)
+            self.le_poll_duration.setText(duration or "3")
 
     def apply_to_lineedits(self):
         def set_txt(idx, value):
@@ -182,6 +182,6 @@ class Eff2PWaveformAdvancedDialog(QDialog):
             self.startup_capture_timeout_le.setText(
                 self.le_capture_timeout.text().strip() or "10")
         if self.le_poll_interval is not None and self.poll_interval_le is not None:
-            self.poll_interval_le.setText(self.le_poll_interval.text().strip() or "5")
+            self.poll_interval_le.setText(self.le_poll_interval.text().strip() or "30")
         if self.le_poll_duration is not None and self.poll_duration_le is not None:
-            self.poll_duration_le.setText(self.le_poll_duration.text().strip() or "900")
+            self.poll_duration_le.setText(self.le_poll_duration.text().strip() or "3")
