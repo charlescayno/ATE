@@ -845,7 +845,10 @@ class TestData():
             
             if has_load_pm:
                 if not integrate:
-                    self.pout_W = self.load_power_meter.power
+                    if stable_source_pin:
+                        self.pout_W = self.load_power_meter.read_instant_power_w()
+                    else:
+                        self.pout_W = self.load_power_meter.power
 
         if stable_source_pin:
             self._apply_stable_source_input_readings()
@@ -1015,7 +1018,8 @@ class TestData():
                 self.load_power_meter.poll_integration_status()
                 self.pout_W = self.load_power_meter.get_integrated_power()
             else:
-                self.pout_W = self.load_power_meter.power
+                read = getattr(self.load_power_meter, 'read_instant_power_w', None)
+                self.pout_W = read() if read else self.load_power_meter.power
 
         self._reconcile_load_vout()
 

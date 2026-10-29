@@ -753,6 +753,22 @@ class EfficiencyTest_2Port(BaseTestObject):
     def prepare_source_power_meter_for_measurement(self, settle_s: float = 0.5):
         self.ensure_source_power_meter_auto_range(settle_s=settle_s)
 
+    def prepare_load_power_meters_for_poll_output(self):
+        """Load PMs use instant P during poll; only the source PM integrates."""
+        for attr in (
+            'power_meter_load', 'power_meter_load_2',
+            'power_meter_load_3', 'power_meter_load_4',
+        ):
+            pm = getattr(self, attr, None)
+            if pm is None:
+                continue
+            try:
+                if hasattr(pm, '_stop_and_reset_integration'):
+                    pm._stop_and_reset_integration()
+                pm.integration_settings(mode='NORMAL', timer_s=0, reset=True)
+            except Exception as exc:
+                print(f"[POWER_METER] poll load prep {attr}: {exc}")
+
     def prepare_source_power_meter_for_poll_input(self):
         """Poll tests: stable Pin via integration (effective timer) or averaging."""
         pm = self.power_meter_source

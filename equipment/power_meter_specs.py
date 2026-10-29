@@ -144,8 +144,8 @@ class PowerMeterBaseClass(Equipment):
             return False
 
     def _wait_integration_timer_s(self, timer_s: float) -> None:
-        """Wait out a configured integration window without hammering GPIB."""
-        deadline = time() + max(0.0, float(timer_s))
+        """Wait the integration window (sleep only — no INTEGRATE:STATE? polling)."""
+        wait_s = max(0.0, float(timer_s))
         old_timeout = None
         try:
             old_timeout = self.device.timeout
@@ -153,10 +153,8 @@ class PowerMeterBaseClass(Equipment):
         except Exception:
             pass
         try:
-            while time() < deadline:
-                if self._try_check_integration_status():
-                    return
-                sleep(min(2.0, max(0.5, deadline - time())))
+            if wait_s > 0:
+                sleep(wait_s)
             self._integration_done = True
             self._integration_status = "TIM"
             self._stop_and_reset_integration()
@@ -214,27 +212,22 @@ class PowerMeterBaseClass(Equipment):
         self.write('NUMERIC:ITEM2 I, 1')
         self._current = parse_float_response(self.write('NUM:NORM:VAL? 2'), 0.0)
         return self._current
+
+    def read_instant_power_w(self) -> float:
+        self.write('NUMERIC:ITEM3 P, 1')
+        self._power = parse_float_response(self.write('NUM:NORM:VAL? 3'), 0.0)
+        return self._power
     
     @property
     def power(self):
         if self.get_integration_timer() == 0:
-            self.write('NUMERIC:ITEM3 P, 1')
-            self._power = parse_float_response(self.write('NUM:NORM:VAL? 3'), 0.0)
-        else:
-            # Reset the integration before beginning to avoid issues
-            self.reset_integration()
-            self.set_integration_mode('NORMAL')
-            self._integration_done = False
-
-            # Start the integration and wait for it to finish
-            self.start_integration()
-            self.poll_integration_status()
-
-            # Process the resulting energy
-            power = self.get_integrated_power()
-            self.reset_integration()
-            
-            self._power = power      
+            return self.read_instant_power_w()
+        self._stop_and_reset_integration()
+        self.set_integration_mode('NORMAL')
+        self._integration_done = False
+        self.start_integration()
+        self.poll_integration_status()
+        self._power = self.get_integrated_power()
         return self._power
 
     @property
@@ -561,23 +554,13 @@ class PowerMeterWT310(PowerMeterBaseClass):
     
     def power(self):
         if self.get_integration_timer() == 0:
-            self.write('NUMERIC:ITEM3 P, 1')
-            self._power = parse_float_response(self.write('NUM:NORM:VAL? 3'), 0.0)
-        else:
-            # Reset the integration before beginning to avoid issues
-            self._stop_and_reset_integration()
-            self.set_integration_mode('NORMAL')
-            self._integration_done = False
-
-            # Start the integration and wait for it to finish
-            self.start_integration()
-            self.poll_integration_status()
-
-            # Process the resulting energy
-            power = self.get_integrated_power()
-            self.reset_integration()
-            
-            self._power = power      
+            return self.read_instant_power_w()
+        self._stop_and_reset_integration()
+        self.set_integration_mode('NORMAL')
+        self._integration_done = False
+        self.start_integration()
+        self.poll_integration_status()
+        self._power = self.get_integrated_power()
         return self._power
 
     @property
@@ -915,28 +898,23 @@ class PowerMeterWT500(PowerMeterBaseClass):
         self.write('NUMERIC:ITEM2 IRMS, 1')
         self._current = parse_float_response(self.write('NUM:NORM:VAL? 2'), 0.0)
         return self._current
+
+    def read_instant_power_w(self) -> float:
+        self.write('NUMERIC:ITEM3 P, 1')
+        self._power = parse_float_response(self.write('NUM:NORM:VAL? 3'), 0.0)
+        return self._power
     
     @property
     
     def power(self):
         if self.get_integration_timer() == 0:
-            self.write('NUMERIC:ITEM3 P, 1')
-            self._power = parse_float_response(self.write('NUM:NORM:VAL? 3'), 0.0)
-        else:
-            # Reset the integration before beginning to avoid issues
-            self.reset_integration()
-            self.set_integration_mode('NORMAL')
-            self._integration_done = False
-
-            # Start the integration and wait for it to finish
-            self.start_integration()
-            self.poll_integration_status()
-
-            # Process the resulting energy
-            power = self.get_integrated_power()
-            self.reset_integration()
-            
-            self._power = power      
+            return self.read_instant_power_w()
+        self._stop_and_reset_integration()
+        self.set_integration_mode('NORMAL')
+        self._integration_done = False
+        self.start_integration()
+        self.poll_integration_status()
+        self._power = self.get_integrated_power()
         return self._power
 
     @property

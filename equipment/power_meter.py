@@ -215,7 +215,7 @@ class PowerMeter(Equipment):
                 self.query_averaging_state()
                 self.current_auto_range_query()
                 self.voltage_auto_range_query()
-            self.reset_integration()
+            self._stop_and_reset_integration()
             self.power_meter_object.start_integration()
         except Exception as e:
             raise e
@@ -280,6 +280,15 @@ class PowerMeter(Equipment):
     def power(self):
         self._power = self.power_meter_object.power
         return self._power
+
+    @visa_io
+    def read_instant_power_w(self) -> float:
+        """Active power read without starting a new integration cycle."""
+        obj = self.power_meter_object
+        if hasattr(obj, 'read_instant_power_w'):
+            return float(obj.read_instant_power_w() or 0.0)
+        self._power = obj.power
+        return float(self._power or 0.0)
 
     @property
     @visa_io

@@ -395,6 +395,7 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
         trig_level = None
         img_path = ""
         self.ensure_load_power_meters_auto_range()
+        self.prepare_load_power_meters_for_poll_output()
         self.prepare_source_power_meter_for_poll_input()
         try:
             for sample in range(n):
