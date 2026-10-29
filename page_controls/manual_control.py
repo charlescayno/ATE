@@ -306,6 +306,11 @@ class ManualControlPageHandler():
         self.source_caps_listed = False
         self.setup_state_saving()
         self.initialize_aux_dc_source()
+        self.live_poll_enabled = (
+            self.chk_live_poll.isChecked()
+            if hasattr(self, "chk_live_poll")
+            else False
+        )
 
     def bind_ui_elements(self):
         from PySide2.QtGui import QDoubleValidator
@@ -550,6 +555,32 @@ class ManualControlPageHandler():
         ui.btn_manual_control_preset_import = self.btn_preset_import
         ui.btn_manual_control_preset_export = self.btn_preset_export
 
+        from PySide2.QtWidgets import QCheckBox
+
+        self.chk_live_poll = QCheckBox("Live poll", row)
+        self.chk_live_poll.setObjectName("chkbox_manual_control_live_poll")
+        self.chk_live_poll.setChecked(False)
+        self.chk_live_poll.setToolTip(
+            "When off, meters and loads are not polled on a timer (faster page). "
+            "Use Refresh for a one-time readout, or enable Live poll for continuous updates."
+        )
+        self.chk_live_poll.setStyleSheet(
+            f"color: {manual_control_theme.TEXT}; font-family: {manual_control_theme.FONT_UI};"
+        )
+        self.chk_live_poll.toggled.connect(self._on_live_poll_toggled)
+        h.addWidget(self.chk_live_poll, 0, Qt.AlignVCenter)
+        ui.chkbox_manual_control_live_poll = self.chk_live_poll
+
+        self.btn_refresh_readings = QPushButton("Refresh", row)
+        self.btn_refresh_readings.setObjectName("btn_manual_control_refresh_readings")
+        self.btn_refresh_readings.setStyleSheet(preset_style)
+        self.btn_refresh_readings.setToolTip(
+            "Read power meters and refresh displays once (no periodic GPIB polling)"
+        )
+        self.btn_refresh_readings.clicked.connect(self.refresh_equipment_readings)
+        h.addWidget(self.btn_refresh_readings)
+        ui.btn_manual_control_refresh_readings = self.btn_refresh_readings
+
         self.btn_pm_auto_range = QPushButton("PM Auto Range", row)
         self.btn_pm_auto_range.setObjectName("btn_manual_control_pm_auto_range")
         self.btn_pm_auto_range.setStyleSheet(preset_style)
@@ -731,6 +762,28 @@ class ManualControlPageHandler():
         self.update_timer = QTimer(self.parent)
         self.update_timer.timeout.connect(self.update_service)
 
+    def refresh_equipment_readings(self) -> None:
+        """One-shot GPIB read + UI refresh (used when live poll is off)."""
+        self.gpib_update()
+        self.ui_update()
+
+    def _on_live_poll_toggled(self, checked: bool) -> None:
+        self.live_poll_enabled = bool(checked)
+        self._apply_live_poll_timer()
+        if self.live_poll_enabled:
+            self.refresh_equipment_readings()
+
+    def _apply_live_poll_timer(self) -> None:
+        """Periodic updates only when Live poll is on or a software DC ramp is active."""
+        need_timer = bool(self.live_poll_enabled) or bool(
+            getattr(self, "is_ramping", False)
+        )
+        if need_timer:
+            if not self.update_timer.isActive():
+                self.update_timer.start(MANUAL_CONTROL_SETTINGS.UPDATE_INTERVAL_MS)
+        elif self.update_timer.isActive():
+            self.update_timer.stop()
+
     def start(self):
         """ Start the manual control handler
         """
@@ -742,7 +795,11 @@ class ManualControlPageHandler():
         self.initialize_gpib_equipment()
         self.initialize_usbpd()
         sleep(0.1)
-        self.update_timer.start(MANUAL_CONTROL_SETTINGS.UPDATE_INTERVAL_MS)
+        if hasattr(self, "chk_live_poll"):
+            self.live_poll_enabled = self.chk_live_poll.isChecked()
+        self._apply_live_poll_timer()
+        if not self.update_timer.isActive():
+            self.refresh_equipment_readings()
 
     
     def reset_all_power_meters_auto_range(self) -> None:
@@ -1656,9 +1713,12 @@ class ManualControlPageHandler():
                 if current_time - getattr(self, 'last_ramp_log_time', 0.0) >= 1.0 or not self.is_ramping:
                     print(f"[DC_SOURCE] Ramping Output: {self.current_ramp_voltage:.2f} V / {self.target_ramp_voltage:.2f} V")
                     self.last_ramp_log_time = current_time
+                if not self.is_ramping:
+                    self._apply_live_poll_timer()
             except Exception as e:
                 print(f"[ERROR] Exception during software ramp: {str(e)}")
                 self.is_ramping = False
+                self._apply_live_poll_timer()
 
         # Indicate the state of the AC source output by changing the frame color
         self.ac_source.update_status()
@@ -1740,6 +1800,7 @@ class ManualControlPageHandler():
                         # Only enable ramping if we actually have distance to cover
                         if abs(self.target_ramp_voltage - self.current_ramp_voltage) > self.ramp_step_v:
                             self.is_ramping = True
+                            self._apply_live_poll_timer()
                             self.ac_source.set_voltage_with_coupling(voltage=self.current_ramp_voltage, coupling=self.ac_source.coupling)
                             self.ac_source.turn_on()
                             return

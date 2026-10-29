@@ -28,7 +28,7 @@ Many I2C / Transients / Light Load classes exist but are **commented out** of `T
 
 ## Manual control
 
-- Live PM poll; integration timer temporarily set to 0 during fast poll (restored after).  
+- **Live poll** (header checkbox, **off by default**): periodic GPIB meter/load refresh; **Refresh** = one-shot readout; timer also runs during software DC ramp. Integration timer set to 0 during page visit for fast reads (restored on leave).  
 - Settings persisted (`manual_control_settings.json`).
 - Magna HVDC line input: DC SOURCE UI (ramp, current limit) when primary role is Magna or AC role is unset and DC Source is Magna.  
 - Equipment poll/init faults log to terminal as `[MANUAL_CONTROL] <role> (<fn>): …` (also in `app_log.txt`).

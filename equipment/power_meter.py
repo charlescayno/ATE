@@ -171,8 +171,29 @@ class PowerMeter(Equipment):
         time_s = self.power_meter_object.get_integration_timer()
         return time_s
 
+    def _integration_interval_s(self) -> float:
+        """Configured integration window in seconds (0 = instantaneous power reads)."""
+        try:
+            timer_s = float(self.get_integration_timer())
+        except (TypeError, ValueError):
+            timer_s = 0.0
+        if timer_s >= 1.0:
+            return timer_s
+        try:
+            return float(getattr(self, '_integration_time', 0) or 0)
+        except (TypeError, ValueError):
+            return 0.0
+
     def start_integration(self):
-        print(f'[POWER_METER] Power Meter {self.device_id}: Starting Integration...')
+        interval_s = self._integration_interval_s()
+        if interval_s >= 1.0:
+            interval_txt = f" (interval {interval_s:g} s)"
+        else:
+            interval_txt = ""
+        print(
+            f"[POWER_METER] Power Meter {self.device_id}: Starting integration"
+            f"{interval_txt}..."
+        )
         try:
             self.query_averaging_state()
             self.current_auto_range_query()
@@ -192,9 +213,26 @@ class PowerMeter(Equipment):
     
     @visa_io
     def poll_integration_status(self):
+        interval_s = self._integration_interval_s()
+        t0 = time()
         self.power_meter_object.poll_integration_status()
         self._integration_done = self.power_meter_object._integration_done
         self._integration_status = self.power_meter_object._integration_status
+        elapsed_s = time() - t0
+        status = self._integration_status
+        if interval_s >= 1.0:
+            print(
+                f"[POWER_METER] Power Meter {self.device_id}: Integration stopped "
+                f"after interval {interval_s:g} s "
+                f"(elapsed {elapsed_s:.1f} s"
+                f"{f', state {status}' if status else ''})"
+            )
+        else:
+            print(
+                f"[POWER_METER] Power Meter {self.device_id}: Integration stopped "
+                f"(elapsed {elapsed_s:.1f} s"
+                f"{f', state {status}' if status else ''})"
+            )
 
     @visa_io
     def get_integrated_power(self, reset = True):

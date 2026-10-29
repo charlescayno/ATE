@@ -28,6 +28,7 @@ I2C param indices: **10** interval, **11** duration.
 - Preset 4 → WH on numeric item 25.  
 - `INTEGRATE:TIMER h,m,s` → START → poll STATE? until TIM/RES.  
 - `get_integrated_power`: Wh → average W over window.
+- Terminal telemetry (`equipment/power_meter.py`): **Starting integration (interval … s)** and **Integration stopped after interval …** on the facade `start_integration` / `poll_integration_status` path (used by tests and poll Pin reads).
 
 ## Page controllers — poll UI
 

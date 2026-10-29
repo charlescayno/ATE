@@ -511,7 +511,7 @@ class SimulatedPowerMeter:
     def get_current_range(self): return 5.0
     def set_current_range_max(self): pass
     def set_voltage_range_max(self): pass
-    def integration_settings(self, mode="NORMAL", timer_s=0): pass
+    def integration_settings(self, mode="NORMAL", timer_s=0, reset=True): pass
     def start_integration(self): pass
     def stop_integration(self): pass
     def reset_integration(self): pass
