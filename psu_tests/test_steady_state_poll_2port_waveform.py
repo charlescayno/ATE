@@ -6,7 +6,9 @@ from copy import deepcopy
 from time import sleep
 
 import openpyxl
+from openpyxl.chart import Reference, ScatterChart, Series
 from openpyxl.styles import Font as CellFont
+from openpyxl.utils import get_column_letter
 
 from psu_tests.definitions import TestConditions, I2CTestParameters, TestStatus, test_control_flags
 from psu_tests.test_object_imports import TestStopped, TestSkipped
@@ -33,6 +35,8 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
     POLL_DURATION_PARAM_INDEX = 11
     POLL_INTERVAL_DEFAULT_S = 5.0
     POLL_DURATION_DEFAULT_S = 5 * 60.0
+    VDS_PLOT_MAX_V = 1700.0
+    TIME_PLOT_SHEET = "Time Plots"
     # One console row must fit a normal terminal. Extra columns wrap under it.
     POLL_CONSOLE_WIDTH = 100
     POLL_PIPE_COLUMNS = (
@@ -122,6 +126,7 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
             params, self.POLL_DURATION_PARAM_INDEX, self.POLL_DURATION_DEFAULT_S)
         self.poll_sample_index = 1
         self.poll_elapsed_s = 0.0
+        self._poll_time_points = []
 
     def build_detailed_output_basename(self) -> str:
         return (
@@ -255,9 +260,48 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
                 [by_name[h] for h in band], widths, align_right=True), flush=True)
         print(flush=True)
 
+    def define_output_data_objects(self):
+        super().define_output_data_objects()
+        plot = getattr(self, "vds_vs_vin_plot", None)
+        if plot is not None:
+            plot.y_range = (0, self.VDS_PLOT_MAX_V)
+            plot.y_min = 0
+            plot.y_max = self.VDS_PLOT_MAX_V
+
     def update_output_data(self):
         super().update_output_data()
+        self._record_time_point()
         self._print_poll_table_row()
+
+    def _record_time_point(self):
+        points = getattr(self, "_poll_time_points", None)
+        if points is None:
+            points = []
+            self._poll_time_points = points
+        vds = None
+        name = getattr(self, "primary_vds_name", None)
+        scope_row = list(getattr(self, "current_scope_row", []) or [])
+        headers = list(getattr(self, "scope_header_list", []) or [])
+        if name and f"{name} Max" in headers and scope_row:
+            try:
+                vds = float(scope_row[headers.index(f"{name} Max")])
+            except (TypeError, ValueError, IndexError):
+                vds = None
+        vin = ""
+        vin_freq = getattr(self, "vin_freq", None)
+        if vin_freq:
+            try:
+                vin = f"{float(vin_freq[0]):g} V{self.coupling}"
+            except (TypeError, ValueError):
+                vin = str(vin_freq[0])
+        series = f"{vin}  Ch1 {getattr(self, 'current_ch1_lbl', '')} / Ch2 {getattr(self, 'current_ch2_lbl', '')}".strip()
+        points.append({
+            "series": series or "Poll",
+            "t": round(float(getattr(self, "poll_elapsed_s", 0.0) or 0.0), 2),
+            "vds": vds,
+            "eff": None if self.eff_total_pct is None else round(float(self.eff_total_pct), 2),
+            "po": None if self.po_total_W is None else round(float(self.po_total_W), 2),
+        })
 
     @staticmethod
     def _excel_num_format_for_header(header: str) -> str:
@@ -309,6 +353,11 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
         except (TestStopped, TestSkipped):
             self._save_collected_rows()
             raise
+        self._write_time_plot_sheet()
+
+    def embed_waveforms_in_excel(self):
+        """Keep waveform files on disk. Do not embed sample images in the workbook."""
+        return
 
     def _save_collected_rows(self):
         """Write samples already taken when the operator stops or skips."""
@@ -318,14 +367,94 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
                 self._export_line_block()
             if getattr(self, 'data_file_path', None):
                 self._apply_main_sheet_number_formats()
-            if getattr(self, 'embed_images', False) and getattr(self, 'captured_records', None):
-                self._link_capture_main_sheet_rows()
-                self.embed_waveforms_in_excel()
+                self._write_time_plot_sheet()
             path = getattr(self, 'data_file_path', None)
             if path:
                 print(f"[POLL] Partial results saved to {path}")
         except Exception as exc:
             print(f"[Warning] Could not save partial poll workbook: {exc}")
+
+    def _write_time_plot_sheet(self):
+        """Vds, efficiency, and Po versus elapsed time, each as its own chart."""
+        points = list(getattr(self, "_poll_time_points", []) or [])
+        path = getattr(self, "data_file_path", None)
+        if not points or not path or not os.path.isfile(path):
+            return
+        try:
+            groups = {}
+            for point in points:
+                groups.setdefault(point["series"], []).append(point)
+            wb = openpyxl.load_workbook(path)
+            if self.TIME_PLOT_SHEET in wb.sheetnames:
+                del wb[self.TIME_PLOT_SHEET]
+            ws = wb.create_sheet(self.TIME_PLOT_SHEET)
+            header_font = CellFont(bold=True, size=10, color="1F497D")
+            blocks = []
+            col = 1
+            for name, rows in groups.items():
+                headers = (
+                    f"Time (s) | {name}",
+                    f"Vds (V) | {name}",
+                    f"Efficiency (%) | {name}",
+                    f"Po (W) | {name}",
+                )
+                for offset, header in enumerate(headers):
+                    cell = ws.cell(1, col + offset, header)
+                    cell.font = header_font
+                for index, point in enumerate(rows, start=2):
+                    ws.cell(index, col, point["t"]).number_format = "0.00"
+                    for offset, key in enumerate(("vds", "eff", "po"), start=1):
+                        value = point[key]
+                        if value is None:
+                            continue
+                        cell = ws.cell(index, col + offset, value)
+                        cell.number_format = "0.00"
+                blocks.append((col, len(rows)))
+                col += 5
+
+            po_values = [point["po"] for point in points if point["po"] is not None]
+            eff_values = [point["eff"] for point in points if point["eff"] is not None]
+            po_max = max(po_values) * 1.1 if po_values else 1.0
+            if po_max <= 0:
+                po_max = 1.0
+            eff_max = 100.0
+            if eff_values and max(eff_values) > eff_max:
+                eff_max = max(eff_values) * 1.05
+            elapsed = [point["t"] for point in points]
+            time_max = max(elapsed) if elapsed else 0.0
+            charts = (
+                (0, "Vds vs Time", "Vds (V)", 1, 0, self.VDS_PLOT_MAX_V),
+                (1, "Efficiency vs Time", "Efficiency (%)", 2, 0, eff_max),
+                (2, "Po vs Time", "Po (W)", 3, 0, po_max),
+            )
+            anchor_col = get_column_letter(col)
+            for slot, title, y_title, y_offset, y_min, y_max in charts:
+                chart = ScatterChart()
+                chart.title = title
+                chart.scatterStyle = "line"
+                chart.x_axis.title = "Time (s)"
+                chart.y_axis.title = y_title
+                chart.y_axis.scaling.min = y_min
+                chart.y_axis.scaling.max = y_max
+                chart.x_axis.scaling.min = 0
+                if time_max > 0:
+                    chart.x_axis.scaling.max = time_max
+                chart.style = 10
+                chart.width = 18
+                chart.height = 8
+                chart.legend.position = "b"
+                for time_col, nrows in blocks:
+                    if nrows < 1:
+                        continue
+                    xvalues = Reference(ws, min_col=time_col, min_row=2, max_row=1 + nrows)
+                    yvalues = Reference(
+                        ws, min_col=time_col + y_offset, min_row=1, max_row=1 + nrows)
+                    chart.series.append(Series(yvalues, xvalues, title_from_data=True))
+                ws.add_chart(chart, f"{anchor_col}{2 + slot * 18}")
+            wb.save(path)
+            wb.close()
+        except Exception as exc:
+            print(f"[Warning] Could not write poll time plots: {exc}")
 
     def _note_partial_capture(self, records_before, rows_at_start):
         for rec in (getattr(self, 'captured_records', []) or [])[records_before:]:

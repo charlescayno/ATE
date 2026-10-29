@@ -239,7 +239,8 @@ def build_poll_flow_text(
         "=== END OF TEST ===",
         "[AUTO] Discharge output",
         "  →",
-        "[AUTO] Save workbook + SS_POLL_2P waveforms sheet (one image per sample)",
+        "[AUTO] Save SS_POLL_2P workbook + Time Plots sheet (Vds, efficiency, Po vs time)",
+        "[AUTO] Waveform files stay on disk and are not embedded in the workbook",
     ]
     return "\n".join(lines)
 

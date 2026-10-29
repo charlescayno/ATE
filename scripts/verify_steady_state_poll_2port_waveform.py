@@ -113,6 +113,45 @@ def _poll_scope_cycles_ok(actions, expected):
     return True
 
 
+def _chart_title(chart):
+    title = getattr(chart, "title", None)
+    if title is None:
+        return ""
+    if isinstance(title, str):
+        return title
+    try:
+        return title.tx.rich.p[0].r[0].t
+    except Exception:
+        return str(title)
+
+
+def _time_plot_ok(wb, samples):
+    if POLL.TIME_PLOT_SHEET not in wb.sheetnames:
+        return False, "missing sheet"
+    ws = wb[POLL.TIME_PLOT_SHEET]
+    charts = list(getattr(ws, "_charts", []) or [])
+    titles = [_chart_title(chart) for chart in charts]
+    if titles != ["Vds vs Time", "Efficiency vs Time", "Po vs Time"]:
+        return False, titles
+    vds_max = charts[0].y_axis.scaling.max
+    if vds_max != POLL.VDS_PLOT_MAX_V:
+        return False, f"vds max {vds_max}"
+    times = [ws.cell(row, 1).value for row in range(2, 2 + samples)]
+    vds = [ws.cell(row, 2).value for row in range(2, 2 + samples)]
+    eff = [ws.cell(row, 3).value for row in range(2, 2 + samples)]
+    po = [ws.cell(row, 4).value for row in range(2, 2 + samples)]
+    if any(value is None for value in times + vds + eff + po):
+        return False, (times, vds, eff, po)
+    if [float(value) for value in times] != [float(i) for i in range(samples)] and samples == 3:
+        return False, times
+    images = []
+    for name in wb.sheetnames:
+        images.extend(list(getattr(wb[name], "_images", []) or []))
+    if images:
+        return False, f"images {len(images)}"
+    return True, titles
+
+
 def check(errors, name, ok, detail=""):
     if ok:
         print(f"OK  {name}")
@@ -267,9 +306,10 @@ def test_run(errors):
                   and isinstance(eff, (int, float)) and isinstance(vds, (int, float)),
                   (got_s, got_e, eff, vds))
         wf = f"{test.short_title}_Waveforms"
-        check(errors, "one embedded image per sample",
-              wf in wb.sheetnames and len(wb[wf]._images) == 3,
-              wf in wb.sheetnames and len(wb[wf]._images))
+        ok_plots, plot_detail = _time_plot_ok(wb, 3)
+        check(errors, "time plots sheet", ok_plots, plot_detail)
+        check(errors, "vds plot range 1700",
+              test.vds_vs_vin_plot.y_max == POLL.VDS_PLOT_MAX_V, test.vds_vs_vin_plot.y_max)
         check(errors, "results table rows",
               len([r for r in test.test_data_table.data if any(v != '' for v in r)]) == 3)
 
@@ -339,10 +379,12 @@ def test_abort_saves_excel(errors):
                   len(test.captured_records) == 2
                   and all(rec.get('n_samples') == 1 for rec in test.captured_records),
                   test.captured_records)
-            wf = f"{test.short_title}_Waveforms"
-            check(errors, "abort embedded images",
-                  wf in wb.sheetnames and len(wb[wf]._images) == 2,
-                  wf in wb.sheetnames and len(getattr(wb[wf], '_images', [])))
+            ok_plots, plot_detail = _time_plot_ok(wb, 2)
+            if ok_plots:
+                times = [wb[POLL.TIME_PLOT_SHEET].cell(row, 1).value for row in (2, 3)]
+                ok_plots = [float(value) for value in times] == [0.0, 5.0]
+                plot_detail = times
+            check(errors, "abort time plots", ok_plots, plot_detail)
     finally:
         test_control_flags['StopTest'] = False
         test_control_flags['SkipTest'] = False
