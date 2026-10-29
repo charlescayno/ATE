@@ -40,6 +40,13 @@ def check(errors, name, ok, detail=""):
         errors.append(f"{name}: {detail}")
 
 
+def test_effective_integration(errors):
+    check(errors, "eff int max soak poll", POLL.effective_integration_s(0, 10) == 10.0)
+    check(errors, "eff int soak larger", POLL.effective_integration_s(300, 10) == 300.0)
+    check(errors, "eff int poll larger", POLL.effective_integration_s(5, 300) == 300.0)
+    check(errors, "eff int both zero", POLL.effective_integration_s(0, 0) == 0.0)
+
+
 def test_sample_math(errors):
     check(errors, "samples 5s x 15min", POLL.sample_count_for(5, 900) == 181, POLL.sample_count_for(5, 900))
     check(errors, "samples 1s x 2s", POLL.sample_count_for(1, 2) == 3, POLL.sample_count_for(1, 2))
@@ -267,6 +274,7 @@ def test_abort_saves_excel(errors):
 
 def main() -> int:
     errors = []
+    test_effective_integration(errors)
     test_sample_math(errors)
     test_dialog(errors)
     test_run(errors)

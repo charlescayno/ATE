@@ -90,6 +90,54 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
     def _sample_count(self) -> int:
         return self.sample_count_for(self.poll_interval_s, self.poll_duration_s)
 
+    @staticmethod
+    def effective_integration_s(soak_integration_s, poll_interval_s) -> float:
+        """Integrate Pin/Pout for max(soak integration, poll interval) on this test only."""
+        try:
+            soak = float(soak_integration_s or 0)
+        except (TypeError, ValueError):
+            soak = 0.0
+        try:
+            poll = float(poll_interval_s or 0)
+        except (TypeError, ValueError):
+            poll = 0.0
+        if soak < 0:
+            soak = 0.0
+        if poll < 0:
+            poll = 0.0
+        return max(soak, poll)
+
+    def _effective_integration_s(self) -> float:
+        return self.effective_integration_s(
+            getattr(self.soak_time, 'integration_time', 0),
+            getattr(self, 'poll_interval_s', 0),
+        )
+
+    def _configure_poll_power_meter_integration(self):
+        timer_s = self._effective_integration_s()
+        for pm in (
+            self.power_meter_source,
+            self.power_meter_load,
+            self.power_meter_load_2,
+        ):
+            if pm is None:
+                continue
+            pm.integration_settings(mode="NORMAL", timer_s=timer_s)
+            pm.stop_integration()
+            pm.reset_integration()
+
+    def setup_equipment(self):
+        super().setup_equipment()
+        self._configure_poll_power_meter_integration()
+        eff = self._effective_integration_s()
+        if eff > 0:
+            soak = float(getattr(self.soak_time, 'integration_time', 0) or 0)
+            print(
+                f"[POLL] Power meter integration: {eff:g} s "
+                f"(max of soak integration {soak:g} s, "
+                f"poll interval {float(self.poll_interval_s):g} s)"
+            )
+
     @classmethod
     def _read_poll_param(cls, params, index, default) -> float:
         try:
@@ -170,6 +218,7 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
             (2, "Poll interval (s)", self.poll_interval_s),
             (3, "Poll duration (s)", self.poll_duration_s),
             (4, "Samples per point", self._sample_count()),
+            (5, "Effective integration (s)", self._effective_integration_s()),
         )
         for row, label, value in rows:
             ws[f"D{row}"] = label
@@ -299,7 +348,7 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
         n = self._sample_count()
         if n <= 1:
             return 0.0
-        integ = float(getattr(self.soak_time, 'integration_time', 0) or 0)
+        integ = self._effective_integration_s()
         return (n - 1) * (float(self.poll_interval_s) + integ + 0.3)
 
     def _append_measurement_row(self, scope_row):
