@@ -13,6 +13,7 @@ dist/
 test_codes/
 TODO.txt
 conda_env/
+.test_home/
 
 # Local ad-hoc scripts and debug output (repo root)
 /fix_*.py

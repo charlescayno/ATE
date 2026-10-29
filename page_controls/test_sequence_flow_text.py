@@ -1,5 +1,12 @@
 """High-level test sequence copy for Add Test flow (➜) dialog."""
 
+from psu_tests.test_steady_state_poll_2port_waveform import SteadyStatePollWaveformTest_2Port
+
+_POLL_DEFAULT_INTERVAL_S = SteadyStatePollWaveformTest_2Port.POLL_INTERVAL_DEFAULT_S
+_POLL_DEFAULT_DURATION_S = SteadyStatePollWaveformTest_2Port.POLL_DURATION_DEFAULT_S
+_POLL_DEFAULT_SAMPLE_COUNT = SteadyStatePollWaveformTest_2Port.sample_count_for(
+    _POLL_DEFAULT_INTERVAL_S, _POLL_DEFAULT_DURATION_S)
+
 STEADY_STATE_WAVEFORM_2PORT_TITLE = "Steady-State Waveform 2 Port"
 STEADY_STATE_POLL_WAVEFORM_2PORT_TITLE = "Steady-State Poll Waveform 2 Port"
 STARTUP_WAVEFORM_2PORT_TITLE = "Startup Waveform 2 Port"
@@ -195,9 +202,9 @@ def build_poll_flow_text(
     *,
     user_prompts: str = "Per-Capture Only",
     dual_load_mode: str = "",
-    poll_interval_s: float = 5.0,
-    poll_duration_s: float = 900.0,
-    sample_count: int = 181,
+    poll_interval_s: float = _POLL_DEFAULT_INTERVAL_S,
+    poll_duration_s: float = _POLL_DEFAULT_DURATION_S,
+    sample_count: int = _POLL_DEFAULT_SAMPLE_COUNT,
 ) -> str:
     pre_test, per_capture = _user_prompts_flags(user_prompts)
     mode_note = dual_load_mode.strip() or "Dual Load Mode"
@@ -247,9 +254,9 @@ def build_flow_text_for_title(
     capture_timeout_s: float = 10.0,
     dual_load_mode: str = "",
     discharge_pulses: int = 0,
-    poll_interval_s: float = 5.0,
-    poll_duration_s: float = 900.0,
-    sample_count: int = 181,
+    poll_interval_s: float = _POLL_DEFAULT_INTERVAL_S,
+    poll_duration_s: float = _POLL_DEFAULT_DURATION_S,
+    sample_count: int = _POLL_DEFAULT_SAMPLE_COUNT,
 ) -> str | None:
     if title == STEADY_STATE_POLL_WAVEFORM_2PORT_TITLE:
         return build_poll_flow_text(
