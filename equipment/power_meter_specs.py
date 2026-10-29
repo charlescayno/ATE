@@ -115,6 +115,16 @@ class PowerMeterBaseClass(Equipment):
 
     def reset_integration(self):
         self.write('INTEGRATE:RESET')
+
+    def _stop_and_reset_integration(self):
+        try:
+            self.stop_integration()
+        except Exception:
+            pass
+        try:
+            self.reset_integration()
+        except Exception:
+            pass
     
     def check_integration_status(self):
         self._integration_done = False
@@ -126,7 +136,10 @@ class PowerMeterBaseClass(Equipment):
     def _try_check_integration_status(self) -> bool:
         try:
             self.check_integration_status()
-            return bool(self._integration_done)
+            if self._integration_done:
+                self._stop_and_reset_integration()
+                return True
+            return False
         except Exception:
             return False
 
@@ -146,6 +159,7 @@ class PowerMeterBaseClass(Equipment):
                 sleep(min(2.0, max(0.5, deadline - time())))
             self._integration_done = True
             self._integration_status = "TIM"
+            self._stop_and_reset_integration()
         finally:
             if old_timeout is not None:
                 try:
@@ -182,10 +196,7 @@ class PowerMeterBaseClass(Equipment):
         
         # Reset integration if reset flag is true
         if reset:
-            try:
-                self.reset_integration()
-            except Exception:
-                pass
+            self._stop_and_reset_integration()
         
         return power
 
@@ -277,6 +288,7 @@ class PowerMeterBaseClass(Equipment):
         self.write(f'INPUT:VOLTAGE:RANGE MAX')
             
     def auto_range_enable(self, en:bool=True):
+        self._stop_and_reset_integration()
         if en:
             en_str = 'ON'
         else:
@@ -285,6 +297,7 @@ class PowerMeterBaseClass(Equipment):
         self.current_auto_range_enable(en_str)
 
     def current_auto_range_enable(self, en:bool=True):
+        self._stop_and_reset_integration()
         if en:
             en_str = 'ON'
         else:
@@ -308,6 +321,7 @@ class PowerMeterBaseClass(Equipment):
             self.current_auto_range_enable(True)
     
     def voltage_auto_range_enable(self, en:bool=True):
+        self._stop_and_reset_integration()
         if en:
             en_str = 'ON'
         else:
@@ -522,10 +536,7 @@ class PowerMeterWT310(PowerMeterBaseClass):
         
         # Reset integration if reset flag is true
         if reset:
-            try:
-                self.reset_integration()
-            except Exception:
-                pass
+            self._stop_and_reset_integration()
         
         return power
     
@@ -554,7 +565,7 @@ class PowerMeterWT310(PowerMeterBaseClass):
             self._power = parse_float_response(self.write('NUM:NORM:VAL? 3'), 0.0)
         else:
             # Reset the integration before beginning to avoid issues
-            self.reset_integration()
+            self._stop_and_reset_integration()
             self.set_integration_mode('NORMAL')
             self._integration_done = False
 
@@ -884,10 +895,7 @@ class PowerMeterWT500(PowerMeterBaseClass):
         
         # Reset integration if reset flag is true
         if reset:
-            try:
-                self.reset_integration()
-            except Exception:
-                pass
+            self._stop_and_reset_integration()
         
         return power
     
@@ -1249,10 +1257,7 @@ class PowerMeterWT210(PowerMeterBaseClass):
         
         # Reset integration if reset flag is true
         if reset:
-            try:
-                self.reset_integration()
-            except Exception:
-                pass
+            self._stop_and_reset_integration()
         return power
     
     def set_measurement_mode(self,mode=MEASUREMENT_MODE_RMS):

@@ -139,10 +139,9 @@ class PowerMeter(Equipment):
         timer       --      Tuple of (hhhh, mm, ss)
         """
         try:
+            self._stop_and_reset_integration()
             self.set_integration_mode(mode)
             self.set_integration_timer(timer_s)
-            self.stop_integration()
-            self.reset_integration()
             self.get_integration_timer()
         except Exception as e:
             raise e    
@@ -176,6 +175,17 @@ class PowerMeter(Equipment):
         
         time_s = self.power_meter_object.get_integration_timer()
         return time_s
+
+    def _stop_and_reset_integration(self) -> None:
+        """WT500 error 813 if range/AUTO SCPI runs while integration is active."""
+        try:
+            self.stop_integration()
+        except Exception:
+            pass
+        try:
+            self.reset_integration()
+        except Exception:
+            pass
 
     def _integration_interval_s(self) -> float:
         """Configured integration window in seconds (0 = instantaneous power reads)."""
@@ -245,9 +255,11 @@ class PowerMeter(Equipment):
     def get_integrated_power(self, reset = True):
         """Returns the power equivalent of the total integrated energy"""
         power = self.power_meter_object.get_integrated_power(reset)
-        self.voltage_auto_range_enable(self._voltage_auto_range_status)
-        self.current_auto_range_enable(self._current_auto_range_status)
-        self.enable_averaging(self._averaging_status)
+        self._stop_and_reset_integration()
+        if self._integration_interval_s() < 1.0:
+            self.voltage_auto_range_enable(self._voltage_auto_range_status)
+            self.current_auto_range_enable(self._current_auto_range_status)
+            self.enable_averaging(self._averaging_status)
         return power
 
     @property
@@ -345,6 +357,7 @@ class PowerMeter(Equipment):
 
     @visa_io
     def auto_range_enable(self, en:bool=True):
+        self._stop_and_reset_integration()
         self.get_current_range()
         self.get_voltage_range()
         if en:
@@ -360,6 +373,7 @@ class PowerMeter(Equipment):
 
     @visa_io
     def current_auto_range_enable(self, en:bool=True):
+        self._stop_and_reset_integration()
         self.get_current_range()
         if not en:
             self.set_current_range(self._current_range)
@@ -379,6 +393,7 @@ class PowerMeter(Equipment):
 
     @visa_io
     def voltage_auto_range_enable(self, en:bool=True):
+        self._stop_and_reset_integration()
         self.get_voltage_range()
         if not en:
             self.set_voltage_range(self._voltage_range)

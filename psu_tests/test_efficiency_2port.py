@@ -755,8 +755,10 @@ class EfficiencyTest_2Port(BaseTestObject):
 
     def prepare_source_power_meter_for_poll_input(self):
         """Poll tests: stable Pin via integration (effective timer) or averaging."""
-        self.ensure_source_power_meter_auto_range(settle_s=0)
         pm = self.power_meter_source
+        if pm is not None and hasattr(pm, '_stop_and_reset_integration'):
+            pm._stop_and_reset_integration()
+        self.ensure_source_power_meter_auto_range(settle_s=0)
         if pm is None:
             return
         soak_int = float(getattr(self.soak_time, 'integration_time', 0) or 0)
