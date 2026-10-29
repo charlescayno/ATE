@@ -21,7 +21,7 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
     are read again after Poll Interval (idle gap since the previous read finished)
     until Poll Duration has elapsed.
     Each sample is its own Excel row (Sample, Elapsed, Time Start/End, Time Sampled).
-    Default window is 10 s between samples for 15 minutes. Stop at any time keeps the rows
+    Default window is 5 min between samples for 20 min per load point. Stop at any time keeps the rows
     already taken and writes them to the Excel file.
     """
 
@@ -39,9 +39,9 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
     POLL_DATETIME_EXCEL_FMT = "yyyy-mm-dd hh:mm:ss"
     POLL_INTERVAL_PARAM_INDEX = 10
     POLL_DURATION_PARAM_INDEX = 11
-    POLL_INTERVAL_DEFAULT_S = 10.0
+    POLL_INTERVAL_DEFAULT_S = 300.0
     POLL_READ_DURATION_GUESS_S = 0.75
-    POLL_DURATION_DEFAULT_S = 15 * 60.0
+    POLL_DURATION_DEFAULT_S = 20 * 60.0
 
     i2c_ui_definitions = EfficiencyWaveformTest_2Port.i2c_ui_definitions
     tc_default = None

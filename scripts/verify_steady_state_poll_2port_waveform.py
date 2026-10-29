@@ -57,9 +57,14 @@ def test_sample_math(errors):
     check(
         errors, "default interval param",
         len(params) > POLL.POLL_DURATION_PARAM_INDEX
-        and float(params[POLL.POLL_INTERVAL_PARAM_INDEX]) == 10.0
-        and float(params[POLL.POLL_DURATION_PARAM_INDEX]) == 900.0,
+        and float(params[POLL.POLL_INTERVAL_PARAM_INDEX]) == 300.0
+        and float(params[POLL.POLL_DURATION_PARAM_INDEX]) == 1200.0,
         params)
+    check(
+        errors, "samples 300s x 20min",
+        POLL.sample_count_for(300, 1200) == 5,
+        POLL.sample_count_for(300, 1200),
+    )
     check(errors, "registered in TestTypes", POLL in TestTypes)
     check(errors, "does not shift waveform index 0",
           TestTypes[0].title == "Steady-State Waveform 2 Port")
