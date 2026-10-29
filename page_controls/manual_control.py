@@ -100,6 +100,14 @@ def _raise_if_poll_skipped(pm):
     ########################################################################
     #                Equipment Error Handling Wrappers                     #
     ########################################################################
+
+
+def _manual_control_log_error(role: str, func, exc: BaseException) -> None:
+    """Print equipment faults to the terminal (console / app_log when captured)."""
+    fn = getattr(func, "__name__", repr(func))
+    print(f"[MANUAL_CONTROL] {role} ({fn}): {type(exc).__name__}: {exc}", flush=True)
+
+
 def power_meter_load_access(f):
     """Error handling wrapper for accessing load power meter."""
     def wrapper(*args):
@@ -108,12 +116,10 @@ def power_meter_load_access(f):
         if self.power_meter_load_accessible:
             try:
                 return f(*args)
-            except (AttributeError, VisaIOError, TypeError, PowerMeterUnresponsive):
-                # If there is an encountered exception,
-                # Set the equipment as not accessible
+            except (AttributeError, VisaIOError, TypeError, PowerMeterUnresponsive) as exc:
+                _manual_control_log_error("power_meter_load", f, exc)
                 self.ui_power_meter_load_update_fail()
                 self.power_meter_load_accessible = False
-                # Change its frame to red to indicate not accessible
                 self.ui.frame_manual_control_pml.setStyleSheet(Style.red_frame)
                 self.ui.frame_manual_control_pml.setEnabled(False)
     return wrapper
@@ -126,12 +132,10 @@ def power_meter_source_access(f):
         if self.power_meter_source_accessible:
             try:
                 return f(*args)
-            except (AttributeError, VisaIOError, TypeError, PowerMeterUnresponsive):
-                # If there is an encountered exception,
-                # Set the equipment as not accessible
+            except (AttributeError, VisaIOError, TypeError, PowerMeterUnresponsive) as exc:
+                _manual_control_log_error("power_meter_source", f, exc)
                 self.ui_power_meter_source_update_fail()
                 self.power_meter_source_accessible = False
-                # Change its frame to red to indicate not accessible
                 self.ui.frame_manual_control_pms.setStyleSheet(Style.red_frame)
                 self.ui.frame_manual_control_pms.setEnabled(False)
     return wrapper
@@ -144,9 +148,8 @@ def ac_source_access(f):
         if self.ac_source_accessible:
             try:
                 return f(*args)
-            except (AttributeError, VisaIOError, TypeError):
-                # If there is an encountered exception,
-                # Set the equipment as not accessible
+            except (AttributeError, VisaIOError, TypeError) as exc:
+                _manual_control_log_error("line_input_source", f, exc)
                 self.ac_source_accessible = False
                 self.ui.frame_manual_control_ac_source\
                     .setStyleSheet(Style.red_frame)
@@ -162,9 +165,8 @@ def eload_access(f):
         if self.electronic_load_accessible:
             try:
                 return f(*args)
-            except (AttributeError, VisaIOError, TypeError):
-                # If there is an encountered exception,
-                # Set the equipment as not accessible
+            except (AttributeError, VisaIOError, TypeError) as exc:
+                _manual_control_log_error("electronic_load_1", f, exc)
                 self.electronic_load_accessible = False
                 self.ui.frame_manual_control_eload.setStyleSheet(Style.red_frame)
                 self.ui.frame_manual_control_eload.setEnabled(False)
@@ -178,7 +180,8 @@ def power_meter_load_2_access(f):
         if self.power_meter_load_2_accessible:
             try:
                 return f(*args)
-            except Exception:
+            except Exception as exc:
+                _manual_control_log_error("power_meter_load_2", f, exc)
                 self.ui_power_meter_load_2_update_fail()
                 self.power_meter_load_2_accessible = False
     return wrapper
@@ -189,7 +192,8 @@ def eload_2_access(f):
         if self.electronic_load_2_accessible:
             try:
                 return f(*args)
-            except Exception:
+            except Exception as exc:
+                _manual_control_log_error("electronic_load_2", f, exc)
                 self.electronic_load_2_accessible = False
                 self.ui.frame_manual_control_eload_2.setStyleSheet(Style.red_frame)
                 self.ui.frame_manual_control_eload_2.setEnabled(False)
@@ -202,7 +206,8 @@ def power_meter_load_3_access(f):
         if self.power_meter_load_3_accessible:
             try:
                 return f(*args)
-            except Exception:
+            except Exception as exc:
+                _manual_control_log_error("power_meter_load_3", f, exc)
                 self.ui_power_meter_load_3_update_fail()
                 self.power_meter_load_3_accessible = False
     return wrapper
@@ -213,7 +218,8 @@ def eload_3_access(f):
         if self.electronic_load_3_accessible:
             try:
                 return f(*args)
-            except Exception:
+            except Exception as exc:
+                _manual_control_log_error("electronic_load_3", f, exc)
                 self.electronic_load_3_accessible = False
                 self.ui.frame_manual_control_eload_3.setStyleSheet(Style.red_frame)
                 self.ui.frame_manual_control_eload_3.setEnabled(False)
@@ -226,7 +232,8 @@ def power_meter_load_4_access(f):
         if self.power_meter_load_4_accessible:
             try:
                 return f(*args)
-            except Exception:
+            except Exception as exc:
+                _manual_control_log_error("power_meter_load_4", f, exc)
                 self.ui_power_meter_load_4_update_fail()
                 self.power_meter_load_4_accessible = False
     return wrapper
@@ -237,7 +244,8 @@ def eload_4_access(f):
         if self.electronic_load_4_accessible:
             try:
                 return f(*args)
-            except Exception:
+            except Exception as exc:
+                _manual_control_log_error("electronic_load_4", f, exc)
                 self.electronic_load_4_accessible = False
                 self.ui.frame_manual_control_eload_4.setStyleSheet(Style.red_frame)
                 self.ui.frame_manual_control_eload_4.setEnabled(False)
@@ -1558,17 +1566,19 @@ class ManualControlPageHandler():
         ui = self.ui
         frame = ui.frame_manual_control_ac_source
         self.ac_source = self.equipment.ac_source
-        self._apply_manual_line_input_ac_ui()
-
         if self.ac_source is None and getattr(self.equipment, 'dc_source', None) is not None:
             if is_magna_hvdc(self.equipment.dc_source):
                 self.ac_source = self.equipment.dc_source
-                self._apply_manual_line_input_dc_ui()
-                self.ac_source.coupling = AC_SOURCE_COUPLING.DC
 
         if self.ac_source is None:
             self._set_manual_line_input_unassigned()
             return
+
+        if is_magna_hvdc(self.ac_source):
+            self._apply_manual_line_input_dc_ui()
+            setattr(self.ac_source, 'coupling', AC_SOURCE_COUPLING.DC)
+        else:
+            self._apply_manual_line_input_ac_ui()
 
         self.ac_source_accessible = True
         frame.setEnabled(True)

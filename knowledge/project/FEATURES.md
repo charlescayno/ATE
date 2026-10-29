@@ -29,6 +29,8 @@ Many I2C / Transients / Light Load classes exist but are **commented out** of `T
 
 - Live PM poll; integration timer temporarily set to 0 during fast poll (restored after).  
 - Settings persisted (`manual_control_settings.json`).
+- Magna HVDC line input: DC SOURCE UI (ramp, current limit) when primary role is Magna or AC role is unset and DC Source is Magna.  
+- Equipment poll/init faults log to terminal as `[MANUAL_CONTROL] <role> (<fn>): …` (also in `app_log.txt`).
 
 ## USB-PD
 
