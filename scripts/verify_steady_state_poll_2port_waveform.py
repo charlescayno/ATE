@@ -40,6 +40,13 @@ def check(errors, name, ok, detail=""):
         errors.append(f"{name}: {detail}")
 
 
+def test_effective_integration(errors):
+    check(errors, "eff int max soak poll", POLL.effective_integration_s(0, 10) == 10.0)
+    check(errors, "eff int soak larger", POLL.effective_integration_s(300, 10) == 300.0)
+    check(errors, "eff int poll larger", POLL.effective_integration_s(5, 300) == 300.0)
+    check(errors, "eff int both zero", POLL.effective_integration_s(0, 0) == 0.0)
+
+
 def test_sample_math(errors):
     check(errors, "samples 5s x 15min", POLL.sample_count_for(5, 900) == 181, POLL.sample_count_for(5, 900))
     check(errors, "samples 1s x 2s", POLL.sample_count_for(1, 2) == 3, POLL.sample_count_for(1, 2))
@@ -50,9 +57,14 @@ def test_sample_math(errors):
     check(
         errors, "default interval param",
         len(params) > POLL.POLL_DURATION_PARAM_INDEX
-        and float(params[POLL.POLL_INTERVAL_PARAM_INDEX]) == 10.0
-        and float(params[POLL.POLL_DURATION_PARAM_INDEX]) == 900.0,
+        and float(params[POLL.POLL_INTERVAL_PARAM_INDEX]) == 300.0
+        and float(params[POLL.POLL_DURATION_PARAM_INDEX]) == 1200.0,
         params)
+    check(
+        errors, "samples 300s x 20min",
+        POLL.sample_count_for(300, 1200) == 5,
+        POLL.sample_count_for(300, 1200),
+    )
     check(errors, "registered in TestTypes", POLL in TestTypes)
     check(errors, "does not shift waveform index 0",
           TestTypes[0].title == "Steady-State Waveform 2 Port")
@@ -267,6 +279,7 @@ def test_abort_saves_excel(errors):
 
 def main() -> int:
     errors = []
+    test_effective_integration(errors)
     test_sample_math(errors)
     test_dialog(errors)
     test_run(errors)

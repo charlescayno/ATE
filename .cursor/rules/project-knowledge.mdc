@@ -1,0 +1,30 @@
+---
+description: Load knowledge/project docs first; never scan entire PI ATE repo unless user asks. Update knowledge when features change.
+alwaysApply: true
+---
+
+# PI ATE — knowledge-first context
+
+## Before code search
+
+1. Read `knowledge/project/WORKFLOW.md`, then `SUMMARY.md` + `KEY_FILES.md`.
+2. Pull other `knowledge/project/*.md` files only as needed for the task.
+3. **Do not** run broad repo exploration, whole-folder `@`, or full-tree grep unless the user explicitly requests it.
+
+## While implementing
+
+- Read **only** source files listed in KEY_FILES for the affected subsystem, plus direct blockers (imports).
+- Follow `PATTERNS.md` and `ARCHITECTURE.md`.
+
+## After features / behavior changes
+
+Update in the same change set when possible:
+
+- `FEATURES.md`, `DESIGN.md`, `DECISIONS.md`, `KEY_FILES.md`
+- `ARCHITECTURE.md` / `TESTING.md` / `COMMON_TASKS.md` if applicable
+
+Goal: next session understands the change from markdown alone.
+
+## Priority
+
+Knowledge docs → task-related files → one-hop dependencies. Skip unrelated tests, UI generated files, and vendor trees.
