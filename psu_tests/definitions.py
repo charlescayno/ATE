@@ -733,6 +733,12 @@ class TestData():
 
         self.vout_V = 0 if v is None else v
         self.iout_A = 0 if i is None else i
+        if (p is None or p < 0.05) and v is not None and i is not None:
+            if v > 0.05 and abs(i) > 1e-6:
+                vi = v * i
+                if vi > 0.05:
+                    self.pout_W = vi
+                    p = vi
         self.pout_W = 0 if p is None else p
 
     def _source_integration_seconds(self) -> float:
@@ -750,21 +756,37 @@ class TestData():
 
     def _read_stable_source_pin_w(self) -> float:
         """Integrated Pin when timer >= 1 s, else meter averaging + instant P read."""
+        self._apply_stable_source_input_readings()
+        return self.pin_W if self.pin_W is not None else 0.0
+
+    def _apply_stable_source_input_readings(self) -> None:
+        """Poll-test source path: finish integration/averaging, then read Vin/Iin/PF/Pin."""
         pm = self.source_power_meter
         if pm is None:
-            return 0.0
+            self.vin_V = 0.0
+            self.iin_mA = 0.0
+            self.PF = 0.0
+            self.pin_W = 0.0
+            return
         timer_s = self._source_integration_seconds()
         if timer_s >= 1.0:
             pm.start_integration()
             pm.poll_integration_status()
-            pin = pm.get_integrated_power()
-            return pin if pin is not None else pm.power
+            self.pin_W = pm.get_integrated_power()
+        else:
+            try:
+                pm.enable_averaging(True)
+            except Exception:
+                pass
+            self.pin_W = pm.power
+        if self.pin_W is None:
+            self.pin_W = 0.0
+        self.vin_V = pm.voltage
+        self.iin_mA = pm.current
         try:
-            pm.enable_averaging(True)
+            self.PF = pm.pf
         except Exception:
-            pass
-        pin = pm.power
-        return pin if pin is not None else 0.0
+            self.PF = 0.0
 
     def gather_data(self, 
                     integrate: bool = True, 
@@ -773,11 +795,6 @@ class TestData():
                     force_use_eload_data = False,
                     usb_pd: bool = False,
                     stable_source_pin: bool = False):
-        
-        # Source measurement
-        self.vin_V = self.source_power_meter.voltage
-        self.iin_mA = self.source_power_meter.current
-        self.PF = self.source_power_meter.pf
         
         # Determine whether load power meter is present and active
         has_load_pm = (self.load_power_meter is not None) and (not self.use_eload_data) and (not force_use_eload_data)
@@ -788,11 +805,17 @@ class TestData():
         if stable_source_pin:
             integrate = False
             self.pin_W = None
-        elif source_timer == 0 or (has_load_pm and load_timer == 0):
-            integrate = False
-
-        if not stable_source_pin and not integrate:
-            self.pin_W = self.source_power_meter.power
+            self.vin_V = None
+            self.iin_mA = None
+            self.PF = None
+        else:
+            self.vin_V = self.source_power_meter.voltage
+            self.iin_mA = self.source_power_meter.current
+            self.PF = self.source_power_meter.pf
+            if source_timer == 0 or (has_load_pm and load_timer == 0):
+                integrate = False
+            if not integrate:
+                self.pin_W = self.source_power_meter.power
 
         # Load measurement
         if self.use_eload_data or force_use_eload_data or (self.load_power_meter is None):
@@ -825,11 +848,25 @@ class TestData():
                     self.pout_W = self.load_power_meter.power
 
         if stable_source_pin:
-            self.pin_W = self._read_stable_source_pin_w()
+            self._apply_stable_source_input_readings()
                 
         # Fallback for Pin if None
         if self.pin_W is None:
-            self.pin_W = self.source_power_meter.power if self.source_power_meter else 0
+            pm = self.source_power_meter
+            if pm is None:
+                self.pin_W = 0
+            elif self._source_integration_seconds() >= 1.0:
+                vin = _normalize_meter_scalar(self.vin_V)
+                iin_a = _normalize_meter_scalar(self.iin_mA)
+                if iin_a is not None and iin_a > 50:
+                    iin_a = iin_a / 1000.0
+                pf = _normalize_meter_scalar(self.PF) or 1.0
+                if vin and iin_a:
+                    self.pin_W = vin * iin_a * pf
+                else:
+                    self.pin_W = 0
+            else:
+                self.pin_W = pm.power if pm else 0
             
         # Fallback for Pout if None
         if self.pout_W is None:

@@ -37,6 +37,9 @@ class FakePM:
     def power(self):
         return self._p if self._p is not None else 0.0
 
+    def get_integration_timer(self):
+        return 0
+
 
 def test_parse_nan():
     check("parse nan string", parse_float_response("nan", -1.0) == -1.0)
@@ -116,6 +119,60 @@ def test_stable_source_pin_uses_averaging_when_no_timer():
     check('no integration when timer 0', not td.source_power_meter.integration_calls)
 
 
+def test_stable_source_pin_reads_vin_after_integration():
+    from psu_tests.definitions import TestData
+
+    class Src:
+        _integration_time = 60
+        read_order = []
+
+        def get_integration_timer(self):
+            return 60
+
+        @property
+        def voltage(self):
+            self.read_order.append("v")
+            return 750.0
+
+        @property
+        def current(self):
+            self.read_order.append("i")
+            return 0.05
+
+        @property
+        def pf(self):
+            return 0.99
+
+        @property
+        def power(self):
+            return 0.0
+
+        def enable_averaging(self, en=True):
+            pass
+
+        def start_integration(self):
+            self.read_order.append("start")
+
+        def poll_integration_status(self):
+            self.read_order.append("poll_done")
+
+        def get_integrated_power(self, reset=True):
+            self.read_order.append("pin")
+            return 250.0
+
+    td = TestData()
+    td.vout_nom_V = 48.0
+    td.source_power_meter = Src()
+    td.load_power_meter = FakePM(48.0, i=4.5, p=215.0)
+    td.use_eload_data = False
+    td.gather_data(coupling="DC", measure_thd=False, stable_source_pin=True)
+    check("Vin after integration", abs(td.vin_V - 750.0) < 0.01, td.vin_V)
+    check("Pin integrated", abs(td.pin_W - 250.0) < 0.01, td.pin_W)
+    check("Iin mA scaled", abs(td.iin_mA - 50.0) < 0.01, td.iin_mA)
+    order = td.source_power_meter.read_order
+    check("poll before Vin read", order.index("poll_done") < order.index("v"), order)
+
+
 def test_gather_data_load_path():
     td = TestData()
     td.vout_nom_V = 20.0
@@ -133,6 +190,7 @@ if __name__ == "__main__":
     test_p_over_i()
     test_eload_zero_pm_wins()
     test_stable_source_pin_uses_averaging_when_no_timer()
+    test_stable_source_pin_reads_vin_after_integration()
     test_gather_data_load_path()
     if errors:
         print(f"\n{len(errors)} failed")
