@@ -15,12 +15,7 @@ import html
 import datetime
 
 def _minimal_log_line(message: str) -> bool:
-    """High-level lines only in terminal, View Logs, and app_log.txt.
-
-    Set PI_ATE_FULL_LOG=1 for per-instrument chatter ([E_LOAD], [DC_SOURCE], scope, SCPI).
-    """
-    if os.environ.get("PI_ATE_FULL_LOG", "").strip().lower() in ("1", "yes", "true"):
-        return True
+    """Subset of lines for quiet terminal / View Logs (PI_ATE_MINIMAL_LOG=1)."""
     if "[E_LOAD]" in message or "[DC_SOURCE]" in message or "[AC_SOURCE]" in message:
         return False
     if "[SCOPE]" in message or "[SCPI_QUERY]" in message or "[SCPI_WRITE]" in message:
@@ -40,7 +35,26 @@ def _minimal_log_line(message: str) -> bool:
         return True
     if "[ERROR]" in upper or "[POWER_METER]" in message:
         return True
+    if "[INFO]" in message or "[MANUAL_CONTROL]" in message:
+        return True
+    if "Accessible Resource" in message or "Cannot open resource" in message:
+        return True
+    if message.lstrip().startswith(("System:", "Version:", "Height:", "Start ", "End ")):
+        return True
     return False
+
+
+def _echo_log_line(message: str) -> bool:
+    """Mirror stdout to terminal and View Logs. Default: all lines (incl. init/GPIB).
+
+    Set PI_ATE_MINIMAL_LOG=1 for the previous high-level-only console filter.
+    PI_ATE_FULL_LOG=1 is accepted as an alias for full echo (legacy).
+    """
+    if os.environ.get("PI_ATE_MINIMAL_LOG", "").strip().lower() in ("1", "yes", "true"):
+        return _minimal_log_line(message)
+    if os.environ.get("PI_ATE_FULL_LOG", "").strip().lower() in ("0", "no", "false"):
+        return _minimal_log_line(message)
+    return True
 
 
 class DualLogger(object):
@@ -49,18 +63,18 @@ class DualLogger(object):
         self.logfile = open(filepath, "a", encoding="utf-8", buffering=1)
 
     def write(self, message):
-        if not _minimal_log_line(message):
+        try:
+            self.logfile.write(message)
+            self.logfile.flush()
+        except Exception:
+            pass
+        if not _echo_log_line(message):
             return
         if self.terminal:
             try:
                 self.terminal.write(message)
             except Exception:
                 pass
-        try:
-            self.logfile.write(message)
-            self.logfile.flush()
-        except Exception:
-            pass
 
     def flush(self):
         if self.terminal:
@@ -208,7 +222,7 @@ class MainWindow(QMainWindow):
         clean_text = text.strip()
         if not clean_text:
             return # Skip empty lines
-        if not _minimal_log_line(clean_text):
+        if not _echo_log_line(clean_text):
             return
 
         escaped_text = html.escape(clean_text).replace('\n', '<br>')
@@ -465,6 +479,9 @@ class MainWindow(QMainWindow):
     def msg_box_info(self, title, message, message_type):
         """Create a message box with title and message.
         """
+        if os.environ.get("PI_ATE_AUTO_CONFIRM") == "1":
+            print(f"[AUTO_CONFIRM] {title}: {message}", flush=True)
+            return
         match message_type:
             case MessageType.INFO:
                 self.msg_box.setIcon(QMessageBox.Information)

@@ -4,13 +4,11 @@ import os
 import time
 
 from enum import Enum
-from PyQt5.QtCore import QCoreApplication
-
 from misc_functions.misc_functions import RepeatedTimer
 
 from PySide2 import QtGui
 from PySide2.QtGui import QKeySequence, QValidator, QIntValidator, QDoubleValidator
-from PySide2.QtCore import Qt, QTimer
+from PySide2.QtCore import Qt, QTimer, QCoreApplication
 from PySide2.QtWidgets import QShortcut
 
 from pyvisa.errors import VisaIOError
@@ -23,6 +21,18 @@ from equipment.ac_source import *
 from equipment.power_meter import *
 from equipment.gpib_reset import reset_all_gpib
 from equipment.electronic_load import *
+
+
+def _manual_dc_max_v():
+    """Optional cap for manual DC/Magna setpoints (PI_ATE_MANUAL_DC_MAX_V)."""
+    raw = os.environ.get("PI_ATE_MANUAL_DC_MAX_V", "").strip()
+    if not raw:
+        return None
+    try:
+        v = float(raw)
+        return v if v > 0 else None
+    except (TypeError, ValueError):
+        return None
 import inject_ui
 from page_controls import manual_control_theme, pml_grid, eload_grid, pms_panel, manual_pm_range
 from page_controls.apply_feedback import flash_apply_button
@@ -81,11 +91,11 @@ class UI_REQUEST():
     UPDATE_PDO_LIST = 0
     PARAM_TEXT_UPDATE = 1
     
-def _poll_power_meter(pm):
+def _poll_power_meter(pm, include_pf: bool = False):
     """Simulated / fake meters only implement update_basic_params."""
     poll = getattr(pm, 'poll_basic_params', None)
     if poll is not None:
-        poll()
+        poll(include_pf=include_pf)
     else:
         pm.update_basic_params()
 
@@ -95,6 +105,16 @@ def _raise_if_poll_skipped(pm):
         msg = f"{pm.description}: lazy/locked GPIB meter, not polled"
         print(f"[POWER_METER] {msg}")
         raise PowerMeterUnresponsive(msg)
+
+
+def _skip_lazy_power_meter_init(pm) -> bool:
+    """Return True if this meter is lazy-locked and init should not touch GPIB."""
+    if pm is None:
+        return True
+    if getattr(pm, 'is_poll_skipped', lambda: False)():
+        print(f"[POWER_METER] {pm.description}: lazy/locked GPIB — skip init until Detect opens it")
+        return True
+    return False
 
 
     ########################################################################
@@ -309,7 +329,7 @@ class ManualControlPageHandler():
         self.live_poll_enabled = (
             self.chk_live_poll.isChecked()
             if hasattr(self, "chk_live_poll")
-            else False
+            else True
         )
 
     def bind_ui_elements(self):
@@ -559,7 +579,7 @@ class ManualControlPageHandler():
 
         self.chk_live_poll = QCheckBox("Live poll", row)
         self.chk_live_poll.setObjectName("chkbox_manual_control_live_poll")
-        self.chk_live_poll.setChecked(False)
+        self.chk_live_poll.setChecked(True)
         self.chk_live_poll.setToolTip(
             "When off, meters and loads are not polled on a timer (faster page). "
             "Use Refresh for a one-time readout, or enable Live poll for continuous updates."
@@ -764,6 +784,12 @@ class ManualControlPageHandler():
 
     def refresh_equipment_readings(self) -> None:
         """One-shot GPIB read + UI refresh (used when live poll is off)."""
+        if not getattr(self, "_pm_range_synced", False):
+            try:
+                manual_pm_range.sync_from_meters(self)
+            except Exception as exc:
+                print(f"[MANUAL_CONTROL] PM range sync skipped: {exc}")
+            self._pm_range_synced = True
         self.gpib_update()
         self.ui_update()
 
@@ -787,19 +813,26 @@ class ManualControlPageHandler():
     def start(self):
         """ Start the manual control handler
         """
+        from PySide2.QtWidgets import QApplication
 
-        # Use the USB PD sink defined by the handler
-        # self.usbpd_sink:SinkController = self.parent.usbpd_sink
-        # self.equipment.usbpd_sink.find_sink_controller_device()
-        # Use the handler defined equipment roles
-        self.initialize_gpib_equipment()
-        self.initialize_usbpd()
+        self._pm_range_synced = False
+        QApplication.processEvents()
+        try:
+            self.initialize_gpib_equipment()
+            self.initialize_usbpd()
+        except Exception as exc:
+            print(f"[MANUAL_CONTROL] start init error: {type(exc).__name__}: {exc}")
         sleep(0.1)
         if hasattr(self, "chk_live_poll"):
             self.live_poll_enabled = self.chk_live_poll.isChecked()
+        else:
+            self.live_poll_enabled = True
         self._apply_live_poll_timer()
-        if not self.update_timer.isActive():
+        if self.update_timer.isActive():
+            QTimer.singleShot(100, self.refresh_equipment_readings)
+        else:
             self.refresh_equipment_readings()
+        QApplication.processEvents()
 
     
     def reset_all_power_meters_auto_range(self) -> None:
@@ -1246,7 +1279,6 @@ class ManualControlPageHandler():
         self.initialize_eload()
         self.initialize_power_meter_source()
         self.initialize_power_meter_load()
-        manual_pm_range.sync_from_meters(self)
         self._refresh_scope_control_buttons()
         if getattr(self.parent, 'is_simulation_mode', False) and hasattr(self.equipment, 'seed_manual_control_demo'):
             if os.environ.get('PI_ATE_SIM_DEMO', '1') != '0':
@@ -1552,6 +1584,36 @@ class ManualControlPageHandler():
         frame.setStyleSheet(
             "QFrame{border:1px dashed rgb(90,90,90); background-color: rgb(22,22,26);}")
 
+    def _apply_manual_dc_voltage_validator(self) -> None:
+        cap = _manual_dc_max_v()
+        le = self.ui.lineedit_manual_control_ac_source_voltage
+        if cap is None:
+            le.setValidator(self.validator)
+            return
+        le.setValidator(QDoubleValidator(0.0, cap, 6))
+        le.setToolTip(f"DC setpoint capped at {cap:g} V (PI_ATE_MANUAL_DC_MAX_V)")
+
+    def _clamp_manual_line_voltage_v(self, vin_v: float) -> float:
+        cap = _manual_dc_max_v()
+        if cap is None or self.ac_source is None:
+            return vin_v
+        if is_magna_hvdc(self.ac_source):
+            if vin_v > cap:
+                print(
+                    f"[MANUAL_CONTROL] Clamping Magna DC {vin_v:g} V → {cap:g} V "
+                    f"(PI_ATE_MANUAL_DC_MAX_V)"
+                )
+                return cap
+            return vin_v
+        if getattr(self.ac_source, "coupling", None) == AC_SOURCE_COUPLING.DC:
+            if vin_v > cap:
+                print(
+                    f"[MANUAL_CONTROL] Clamping DC coupling {vin_v:g} V → {cap:g} V "
+                    f"(PI_ATE_MANUAL_DC_MAX_V)"
+                )
+                return cap
+        return vin_v
+
     def _apply_manual_line_input_dc_ui(self):
         ui = self.ui
         ui.label_manual_control_ac_source.setText("DC SOURCE")
@@ -1567,6 +1629,7 @@ class ManualControlPageHandler():
         ui.label_manual_control_dc_source_estimated_time.setVisible(True)
         ui.label_manual_control_dc_source_current_limit.setVisible(True)
         ui.lineedit_manual_control_dc_source_current_limit.setVisible(True)
+        self._apply_manual_dc_voltage_validator()
 
     def _apply_manual_line_input_ac_ui(self):
         ui = self.ui
@@ -1649,19 +1712,38 @@ class ManualControlPageHandler():
     @power_meter_source_access
     def initialize_power_meter_source(self):
         pm = self.equipment.power_meter_source
-        _raise_if_poll_skipped(pm)
+        if pm is None:
+            self.power_meter_source = None
+            return
+        if _skip_lazy_power_meter_init(pm):
+            self.power_meter_source = pm
+            self.power_meter_source_accessible = False
+            return
         self.power_meter_source = pm
-        self.power_meter_source_integ_timer = self.power_meter_source.get_integration_timer()
-        self.power_meter_source.set_integration_timer(timer_s=0)
-
+        try:
+            self.power_meter_source_integ_timer = self.power_meter_source.get_integration_timer()
+            self.power_meter_source.set_integration_timer(timer_s=0)
+        except PowerMeterUnresponsive as exc:
+            print(f"[MANUAL_CONTROL] source PM init: {exc}")
+            self.power_meter_source_accessible = False
 
     @power_meter_load_access
     def initialize_power_meter_load(self):
         pm = self.equipment.power_meter_load_1
-        _raise_if_poll_skipped(pm)
+        if pm is None:
+            self.power_meter_load = None
+            return
+        if _skip_lazy_power_meter_init(pm):
+            self.power_meter_load = pm
+            self.power_meter_load_accessible = False
+            return
         self.power_meter_load = pm
-        self.power_meter_load_integ_timer = self.power_meter_load.get_integration_timer()
-        self.power_meter_load.set_integration_timer(timer_s=0)
+        try:
+            self.power_meter_load_integ_timer = self.power_meter_load.get_integration_timer()
+            self.power_meter_load.set_integration_timer(timer_s=0)
+        except PowerMeterUnresponsive as exc:
+            print(f"[MANUAL_CONTROL] load PM init: {exc}")
+            self.power_meter_load_accessible = False
 
 
     ########################################################################
@@ -1673,7 +1755,7 @@ class ManualControlPageHandler():
         
         Wrapped with error handling
         """
-        _poll_power_meter(self.power_meter_load)
+        _poll_power_meter(self.power_meter_load, include_pf=False)
 
     @power_meter_source_access
     def power_meter_source_update(self):
@@ -1681,7 +1763,7 @@ class ManualControlPageHandler():
         
         Wrapped with error handling
         """
-        _poll_power_meter(self.power_meter_source)
+        _poll_power_meter(self.power_meter_source, include_pf=True)
 
     @ac_source_access
     def ac_source_update(self):
@@ -1763,6 +1845,7 @@ class ManualControlPageHandler():
     
         vin_V = rounded_float(self.ui.lineedit_manual_control_ac_source_voltage.text())
         self.update_ac_source_coupling()
+        vin_V = self._clamp_manual_line_voltage_v(vin_V)
         
         if self.ac_source.coupling == AC_SOURCE_COUPLING.AC:    
             if (self.ui.lineedit_manual_control_ac_source_frequency.text() == ''):

@@ -194,8 +194,11 @@ class PowerMeterBaseClass(Equipment):
 
     @property
     def pf(self):
-        self.write('NUMERIC:ITEM4 lambda, 1')
-        self._pf = parse_float_response(self.write('NUM:NORM:VAL? 4'), 0.0)
+        try:
+            self.write('NUMERIC:ITEM4 lambda, 1')
+            self._pf = parse_float_response(self.write('NUM:NORM:VAL? 4'), 0.0)
+        except Exception:
+            pass
         return self._pf
 
     @property
@@ -548,8 +551,11 @@ class PowerMeterWT310(PowerMeterBaseClass):
     @property
     
     def pf(self):
-        self.write('NUMERIC:ITEM4 lambda, 1')
-        self._pf = parse_float_response(self.write('NUM:NORM:VAL? 4'), 0.0)
+        try:
+            self.write('NUMERIC:ITEM4 lambda, 1')
+            self._pf = parse_float_response(self.write('NUM:NORM:VAL? 4'), 0.0)
+        except Exception:
+            pass
         return self._pf
 
     @property
@@ -920,8 +926,11 @@ class PowerMeterWT500(PowerMeterBaseClass):
     @property
     
     def pf(self):
-        self.write('NUMERIC:ITEM4 lambda, 1')
-        self._pf = parse_float_response(self.write('NUM:NORM:VAL? 4'), 0.0)
+        try:
+            self.write('NUMERIC:ITEM4 lambda, 1')
+            self._pf = parse_float_response(self.write('NUM:NORM:VAL? 4'), 0.0)
+        except Exception:
+            pass
         return self._pf
 
     @property

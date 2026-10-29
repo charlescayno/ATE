@@ -100,7 +100,7 @@ class PowerMeter(Equipment):
         """Lazy GPIB meters (locked at Detect) were never opened, so every read fails."""
         return self.assumed_lazy_gpib and self.power_meter_object is None
 
-    def poll_basic_params(self):
+    def poll_basic_params(self, include_pf: bool = True):
         """Manual Control polling: bail out after the first failed read, and raise
         PowerMeterUnresponsive once the meter has failed MAX_FAILED_POLLS cycles in a row."""
         if self.is_poll_skipped():
@@ -118,7 +118,13 @@ class PowerMeter(Equipment):
         self.failed_polls = 0
         _ = self.current
         _ = self.power
-        _ = self.pf
+        if include_pf:
+            try:
+                _ = self.pf
+            except Exception as exc:
+                print(
+                    f"[POWER_METER] {self.description}: PF read skipped ({exc})"
+                )
     
     @visa_io
     def integrate(self, integration_time=60):

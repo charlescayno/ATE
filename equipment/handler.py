@@ -556,6 +556,27 @@ class EquipmentHandler():
         else:
             self.auto_set_equipment_roles()
 
+    @staticmethod
+    def _find_dc_source_by_saved_description(dc_sources, saved_desc: str):
+        """Match a DC source from saved UI text (exact, case-insensitive, or model/serial)."""
+        if not saved_desc or saved_desc == "-":
+            return None
+        saved_norm = saved_desc.strip().upper()
+        for dc in dc_sources or []:
+            if dc is None:
+                continue
+            if dc.description == saved_desc:
+                return dc
+            if dc.description.strip().upper() == saved_norm:
+                return dc
+            model = (getattr(dc, "model", "") or "").upper()
+            serial = (getattr(dc, "serial", "") or "").upper()
+            if model and model in saved_norm:
+                return dc
+            if serial and serial in saved_norm:
+                return dc
+        return None
+
     def apply_saved_equipment_roles(self, saved_config: dict) -> bool:
         """Apply equipment roles based on a saved configuration profile.
         Matches instruments by description, address, or model.
@@ -587,15 +608,12 @@ class EquipmentHandler():
             self.dc_source = self.dc_sources[0]
 
         saved_dc_aux = saved_config.get("dc_source_aux", "")
-        self.dc_source_aux = None
-        if saved_dc_aux == "-":
+        self.dc_source_aux = self._find_dc_source_by_saved_description(
+            self.dc_sources, saved_dc_aux
+        )
+        if self.dc_source_aux is self.dc_source:
             self.dc_source_aux = None
-        elif saved_dc_aux:
-            for dc in self.dc_sources:
-                if dc is not None and dc.description == saved_dc_aux:
-                    self.dc_source_aux = dc
-                    break
-        if self.dc_source_aux is None and saved_dc_aux != "-":
+        if self.dc_source_aux is None:
             if len(self.dc_sources) > 1:
                 self._assign_dc_roles_heuristic(preserve_primary=True)
             self.prefer_hmp_as_aux()

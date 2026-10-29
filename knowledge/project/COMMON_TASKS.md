@@ -8,6 +8,11 @@ run_simulation.bat   REM main.py -s
 conda run -p .\conda_env python main.py
 ```
 
+## Logging
+
+- **Default:** all prints → console + `app_log.txt` (init, GPIB, SCPI, instruments).
+- **Quiet console:** `set PI_ATE_MINIMAL_LOG=1` before launch.
+
 ## Add a test to the dropdown
 
 1. Implement class under `psu_tests/test_*.py` with `title`, `tc_default`.  
