@@ -17,6 +17,9 @@ class PowerMeterUnresponsive(Exception):
     """Raised by poll_basic_params when a meter should no longer be polled."""
 
 class PowerMeter(Equipment):
+    # Bench load PMs (WT310 / WT310E): instant P only on 2-port tests (timer forced 0 at setup).
+    INTEGRATION_DISABLED_MODELS = frozenset({'WT310', 'WT310E'})
+
     def __init__(self, device, device_id, *, defer_hardware_init: bool = False):
         super().__init__(device, device_id)
 
@@ -126,8 +129,13 @@ class PowerMeter(Equipment):
                     f"[POWER_METER] {self.description}: PF read skipped ({exc})"
                 )
     
+    def integration_disabled(self) -> bool:
+        return (self.model or '').upper() in self.INTEGRATION_DISABLED_MODELS
+
     @visa_io
     def integrate(self, integration_time=60):
+        if self.integration_disabled():
+            return
         self.power_meter_object.integrate(integration_time)
 
     def integration_settings(self, mode:str, timer_s:int, reset=True):
@@ -138,6 +146,8 @@ class PowerMeter(Equipment):
         mode        --      Either NORMAL or Continuous
         timer       --      Tuple of (hhhh, mm, ss)
         """
+        if self.integration_disabled():
+            timer_s = 0
         try:
             self._stop_and_reset_integration()
             self.set_integration_mode(mode)
@@ -201,6 +211,8 @@ class PowerMeter(Equipment):
             return 0.0
 
     def start_integration(self):
+        if self.integration_disabled():
+            return
         interval_s = self._integration_interval_s()
         if interval_s >= 1.0:
             interval_txt = f" (interval {interval_s:g} s)"
@@ -379,6 +391,44 @@ class PowerMeter(Equipment):
         i_auto = bool(self.current_auto_range_query())
         v_auto = bool(self.voltage_auto_range_query())
         return i_auto and v_auto
+
+    def ensure_auto_range_on(self, settle_s: float = 1.0) -> bool:
+        """V/I auto-range ON only if currently off.
+
+        Never forces RANGE MAX first: on WT310/WT310E that makes the meter hunt back
+        down through its ranges and miss query timeouts.
+        """
+        obj = self.power_meter_object
+        if obj is None:
+            return False
+        try:
+            v_auto = bool(obj.voltage_auto_range_query())
+            i_auto = bool(obj.current_auto_range_query())
+        except Exception as exc:
+            print(f"[POWER_METER] {self.description}: auto-range readback failed ({exc}); re-enabling")
+            v_auto = i_auto = False
+        if not (v_auto and i_auto):
+            self._stop_and_reset_integration()
+            try:
+                if not v_auto:
+                    obj.voltage_auto_range_enable(True)
+                if not i_auto:
+                    obj.current_auto_range_enable(True)
+            except Exception as exc:
+                print(f"[POWER_METER] {self.description}: auto-range enable failed: {exc}")
+                return False
+            if settle_s:
+                sleep(settle_s)
+            try:
+                v_auto = bool(obj.voltage_auto_range_query())
+                i_auto = bool(obj.current_auto_range_query())
+            except Exception as exc:
+                print(f"[POWER_METER] {self.description}: auto-range confirm failed: {exc}")
+                return False
+            print(f"[POWER_METER] {self.description}: auto-range V={v_auto} I={i_auto}")
+        self._voltage_auto_range_status = v_auto
+        self._current_auto_range_status = i_auto
+        return v_auto and i_auto
 
     @visa_io
     def current_auto_range_enable(self, en:bool=True):

@@ -991,7 +991,12 @@ class TestData():
                          integrate:bool = True, 
                          force_use_eload_data:bool = False,
                          usb_pd:bool = False):
-        
+        if (
+            self.load_power_meter is not None
+            and getattr(self.load_power_meter, 'integration_disabled', lambda: False)()
+        ):
+            integrate = False
+
         # Load measurement
         if self.use_eload_data or force_use_eload_data or (self.load_power_meter is None):
             if self.electronic_load is not None:

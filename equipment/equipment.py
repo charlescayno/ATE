@@ -26,7 +26,8 @@ def visa_io(func):
                     return response
             # Continue retrying if an error happens
             except (TypeError, ValueError, VisaIOError, Exception) as e:
-                print(f'Retry #{i} Waived Exception: {e}')
+                who = getattr(args[0], 'description', '') if args else ''
+                print(f'Retry #{i} Waived Exception in {func.__name__} [{who}]: {e}')
                 if i == 1:
                     return None
             sleep(0.1)

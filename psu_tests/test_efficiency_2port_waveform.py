@@ -704,8 +704,6 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
                 self.update_status_log(f"Setting Loads Ch1 {i1_A:g} A / Ch2 {i2_A:g} A", upcoming="Load Soak")
                 self._set_loads(i1_A, i2_A)
 
-                self.ensure_load_power_meters_auto_range()
-
                 sleep(2)
                 self.correct_source_output()
                 self.update_status_log("Load Soak...", upcoming="Efficiency Measurement")
@@ -713,9 +711,6 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
                 sleep(self.settle_time)
 
                 self._acquire_operating_point(vin_set, i1_A, i2_A)
-
-                self.ensure_load_power_meters_auto_range()
-                self.ensure_source_power_meter_auto_range(settle_s=0)
 
                 sleep(self.post_capture_delay)
 
@@ -789,7 +784,6 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
                 self.electronic_load_2.turn_off()
 
     def _measure_efficiency(self, i2_A):
-        self.ensure_load_power_meters_auto_range()
         self.prepare_source_power_meter_for_measurement()
 
         self.test_data.gather_data(coupling=self.coupling, usb_pd=self.usbpd_test)

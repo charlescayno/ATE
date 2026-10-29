@@ -255,44 +255,61 @@ class EquipmentHandler():
                 key=SaveFileKeys.OSCILLOSCOPE_ADDRESS,
                 default_value='')
         
-        # Check if equipment can be accessed
-        try:
-            device = self.rm.open_resource(f'TCPIP::{address}', timeout=2100)
-            device_id  = device.query("*IDN?")
-        
-        # Ignore the exception if the equipment cannot be accessed
-        except pyvisa.VisaIOError as e:
+        if not (address or '').strip():
+            print('Cannot open oscilloscope: no LAN address in Equipment Setup.')
+            return False
+
+        # Check if equipment can be accessed (try common VISA resource forms)
+        device = None
+        device_id = ''
+        resource_templates = (
+            f'TCPIP0::{address}::inst0::INSTR',
+            f'TCPIP::{address}::INSTR',
+            f'TCPIP::{address}',
+        )
+        for resource_name in resource_templates:
+            try:
+                device = self.rm.open_resource(resource_name, timeout=2100)
+                device_id = device.query("*IDN?")
+                break
+            except pyvisa.VisaIOError:
+                if device is not None:
+                    try:
+                        device.close()
+                    except Exception:
+                        pass
+                device = None
+                continue
+        if device is None:
             print(f'Cannot open oscilloscope at: {address}')
             return False
-        # If equipment is accessible 
-        else:
-            print(f'Accessible Resource: {device_id}')
 
-            # Check if response has header
-            # Trim that header if it does
-            if "*IDN" in device_id:
-                device_id = device_id[5:]
+        print(f'Accessible Resource: {device_id}')
 
-            # Use that information along with the visa resource to create a new Equipment object
-            self.oscilloscopes.clear()
+        # Check if response has header
+        # Trim that header if it does
+        if "*IDN" in device_id:
+            device_id = device_id[5:]
 
-            manufacturer = device_id[:device_id.find(',')].upper()
-            if manufacturer == 'ROHDE&SCHWARZ':
-                self.oscilloscopes.append(RohdeSchwarzOscilloscope(device, device_id))
-            
-            # LeCroy uses pyvisa internally but it has to be defined through the 
-            # LeCroyVISA to work properly
-            elif manufacturer == 'LECROY':
-                transport = LeCroyVISA(f'TCPIP0::{address}::inst0::INSTR')
-                dso = LeCroyDSO(transport)
-                self.oscilloscopes.append(LeCroyOscilloscope(dso, device_id))
-                
-            if len(self.oscilloscopes):
-                self.oscilloscope = self.oscilloscopes[0]
-                return True
-            else:
-                self.oscilloscope = None
-                return False
+        # Use that information along with the visa resource to create a new Equipment object
+        self.oscilloscopes.clear()
+
+        manufacturer = device_id[:device_id.find(',')].upper()
+        if manufacturer == 'ROHDE&SCHWARZ':
+            self.oscilloscopes.append(RohdeSchwarzOscilloscope(device, device_id))
+
+        # LeCroy uses pyvisa internally but it has to be defined through the
+        # LeCroyVISA to work properly
+        elif manufacturer == 'LECROY':
+            transport = LeCroyVISA(f'TCPIP0::{address}::inst0::INSTR')
+            dso = LeCroyDSO(transport)
+            self.oscilloscopes.append(LeCroyOscilloscope(dso, device_id))
+
+        if len(self.oscilloscopes):
+            self.oscilloscope = self.oscilloscopes[0]
+            return True
+        self.oscilloscope = None
+        return False
 
 
     def new_gpib_equipment(self, device:Resource, device_id:str, addr:str)->None:

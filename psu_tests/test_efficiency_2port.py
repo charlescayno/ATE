@@ -700,17 +700,13 @@ class EfficiencyTest_2Port(BaseTestObject):
         self.usbpd_sink = self.equipment.usbpd_sink
         self.oscilloscope = self.equipment.oscilloscope
 
-        if self.power_meter_load is not None:
-            self.power_meter_load.integration_settings(
-                mode="NORMAL", timer_s=self.soak_time.integration_time)
-            self.power_meter_load.stop_integration()
-            self.power_meter_load.reset_integration()
-
-        if self.power_meter_load_2 is not None:
-            self.power_meter_load_2.integration_settings(
-                mode="NORMAL", timer_s=self.soak_time.integration_time)
-            self.power_meter_load_2.stop_integration()
-            self.power_meter_load_2.reset_integration()
+        # Load PM Ch1/Ch2: instant P only (source PM integrates when configured).
+        for pm in (self.power_meter_load, self.power_meter_load_2):
+            if pm is None:
+                continue
+            pm.integration_settings(mode="NORMAL", timer_s=0)
+            pm.stop_integration()
+            pm.reset_integration()
 
         if self.power_meter_source is not None:
             self.power_meter_source.integration_settings(
@@ -729,10 +725,13 @@ class EfficiencyTest_2Port(BaseTestObject):
 
     def ensure_load_power_meters_auto_range(self):
         """Load PMs stay on V/I auto-range so readings are not clipped on a fixed range."""
-        if self.power_meter_load is not None:
-            self.power_meter_load.auto_range_enable(True)
-        if self.power_meter_load_2 is not None:
-            self.power_meter_load_2.auto_range_enable(True)
+        for pm in (self.power_meter_load, self.power_meter_load_2):
+            if pm is None:
+                continue
+            if hasattr(pm, 'ensure_auto_range_on'):
+                pm.ensure_auto_range_on()
+            else:
+                pm.auto_range_enable(True)
 
     def ensure_source_power_meter_auto_range(self, settle_s: float = 0.5):
         """WT500 source often stays on manual I range (e.g. 500 mA) -> --OL-- at HV Pin; force V+I AUTO."""

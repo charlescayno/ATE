@@ -67,6 +67,13 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
             params.append(0.0)
         params[cls.POLL_INTERVAL_PARAM_INDEX] = cls.POLL_INTERVAL_DEFAULT_S
         params[cls.POLL_DURATION_PARAM_INDEX] = cls.POLL_DURATION_DEFAULT_S
+        cbx = list(getattr(i2c, 'cbx_param', []) or [])
+        while len(cbx) < 4:
+            cbx.append('')
+        if not str(cbx[0]).strip():
+            cbx[0] = "Option C: Fixed Aux / Swept Main (Port 2 Fixed Load)"
+        cbx[2] = "None (Fully Automated)"
+        cbx[3] = "No"
         return TestConditions(
             name=cls.title,
             nominal_output_voltage_V=tc.nominal_output_voltage_V,
@@ -80,7 +87,7 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
             line_ramp_settings=tc.line_ramp_settings,
             i2c_test_parameters=I2CTestParameters(
                 params=params,
-                cbx_params=list(getattr(i2c, 'cbx_param', []) or []),
+                cbx_params=cbx,
             ),
             unit_id=tc.unit_id,
             ambient_temp=tc.ambient_temp,
@@ -127,14 +134,17 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
 
     def _configure_poll_power_meter_integration(self):
         timer_s = self._effective_integration_s()
-        for pm in (
-            self.power_meter_source,
-            self.power_meter_load,
-            self.power_meter_load_2,
+        for pm, use_poll_timer in (
+            (self.power_meter_source, True),
+            (self.power_meter_load, False),
+            (self.power_meter_load_2, False),
         ):
             if pm is None:
                 continue
-            pm.integration_settings(mode="NORMAL", timer_s=timer_s)
+            t = timer_s if use_poll_timer else 0
+            if not use_poll_timer and getattr(pm, 'integration_disabled', lambda: False)():
+                t = 0
+            pm.integration_settings(mode="NORMAL", timer_s=t)
             pm.stop_integration()
             pm.reset_integration()
 
@@ -394,7 +404,6 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
         self._poll_repeat_read_duration_s = self.POLL_READ_DURATION_GUESS_S
         trig_level = None
         img_path = ""
-        self.ensure_load_power_meters_auto_range()
         self.prepare_load_power_meters_for_poll_output()
         self.prepare_source_power_meter_for_poll_input()
         try:

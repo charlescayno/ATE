@@ -30,9 +30,12 @@ class PowerMeterBaseClass(Equipment):
     MEASUREMENT_MODE_RMS = 'RMS'
     MEASUREMENT_MODE_MEAN = 'VMEan'
     MEASUREMENT_MODE_DC = 'DC'
+    # Yokogawa meters hold the GPIB handshake >500 ms while ranging/integrating.
+    POWER_METER_TIMEOUT_MS = 3000
     
     def __init__(self, device, device_id):
         super().__init__(device, device_id)
+        self.device.timeout = self.POWER_METER_TIMEOUT_MS
         self._voltage = 0
         self._current = 0
         self._power = 0
@@ -101,7 +104,8 @@ class PowerMeterBaseClass(Equipment):
                 else:
                     time_s = components[0]
             else:
-                time_s = int(float(time_str))
+                # Not h,m,s: stale reply from an earlier timed-out query (e.g. a voltage).
+                return self._integration_time
             self._integration_time = time_s
             return time_s
         except Exception:
@@ -111,10 +115,21 @@ class PowerMeterBaseClass(Equipment):
         self.write('INTEGRATE:START')
     
     def stop_integration(self):
-        self.write('INTEGRATION:STOP')
+        self.write('INTEGRATE:STOP')
 
     def reset_integration(self):
         self.write('INTEGRATE:RESET')
+
+    RANGE_QUERY_TIMEOUT_MS = 3000
+
+    def query_slow(self, command: str, timeout_ms: int | None = None):
+        """Query with a longer VISA timeout; meters answer slowly while re-ranging."""
+        old_timeout = self.device.timeout
+        self.device.timeout = int(timeout_ms or self.RANGE_QUERY_TIMEOUT_MS)
+        try:
+            return self.write(command)
+        finally:
+            self.device.timeout = old_timeout
 
     def _stop_and_reset_integration(self):
         try:
@@ -250,7 +265,7 @@ class PowerMeterBaseClass(Equipment):
     
     def get_current_range(self):
         try:
-            self._current_range = parse_float_response(self.write('INPUT:CURRENT:RANGE?'), 0.0)
+            self._current_range = parse_float_response(self.query_slow('INPUT:CURRENT:RANGE?'), 0.0)
         except Exception as e:
             self._current_range = 0
         return self._current_range
@@ -266,7 +281,7 @@ class PowerMeterBaseClass(Equipment):
         
     def get_voltage_range(self):
         try:
-            self._voltage_range = parse_float_response(self.write('INPUT:VOLTAGE:RANGE?'), 0.0)
+            self._voltage_range = parse_float_response(self.query_slow('INPUT:VOLTAGE:RANGE?'), 0.0)
         except Exception as e:
             self._voltage_range = 0
         return self._voltage_range
@@ -495,7 +510,8 @@ class PowerMeterWT310(PowerMeterBaseClass):
                 else:
                     time_s = components[0]
             else:
-                time_s = int(float(time_str))
+                # Not h,m,s: stale reply from an earlier timed-out query (e.g. a voltage).
+                return self._integration_time
             self._integration_time = time_s
             return time_s
         except Exception:
@@ -505,7 +521,7 @@ class PowerMeterWT310(PowerMeterBaseClass):
         self.write('INTEGRATE:START')
     
     def stop_integration(self):
-        self.write('INTEGRATION:STOP')
+        self.write('INTEGRATE:STOP')
 
     def reset_integration(self):
         self.write('INTEGRATE:RESET')
@@ -585,7 +601,7 @@ class PowerMeterWT310(PowerMeterBaseClass):
 
     def get_current_range(self):
         try:
-            self._current_range = parse_float_response(self.write('INPUT:CURRENT:RANGE?'), 0.0)
+            self._current_range = parse_float_response(self.query_slow('INPUT:CURRENT:RANGE?'), 0.0)
         except Exception as e:
             self._current_range = 0
         return self._current_range
@@ -601,7 +617,7 @@ class PowerMeterWT310(PowerMeterBaseClass):
             
     def get_voltage_range(self):
         try:
-            self._voltage_range = parse_float_response(self.write('INPUT:VOLTAGE:RANGE?'), 0.0)
+            self._voltage_range = parse_float_response(self.query_slow('INPUT:VOLTAGE:RANGE?'), 0.0)
         except Exception as e:
             self._voltage_range = 0
         return self._voltage_range
@@ -631,9 +647,9 @@ class PowerMeterWT310(PowerMeterBaseClass):
         self.write(f'INPUT:CURRENT:AUTO {en_str}')
     
     def current_auto_range_query(self):
-        status = self.write('INPUT:CURRENT:AUTO?')
+        status = self.query_slow('INPUT:CURRENT:AUTO?')
         
-        if status[-1] == '1':
+        if status and status[-1] == '1':
             self._current_auto_range_status = True
         else:
             self._current_auto_range_status = False
@@ -654,9 +670,9 @@ class PowerMeterWT310(PowerMeterBaseClass):
         self.write(f'INPUT:VOLTAGE:AUTO {en_str}')
 
     def voltage_auto_range_query(self):
-        status = self.write('INPUT:VOLTAGE:AUTO?')
+        status = self.query_slow('INPUT:VOLTAGE:AUTO?')
         
-        if status[-1] == '1':
+        if status and status[-1] == '1':
             self._voltage_auto_range_status = True
         else:
             self._voltage_auto_range_status = False
@@ -844,7 +860,8 @@ class PowerMeterWT500(PowerMeterBaseClass):
                 else:
                     time_s = components[0]
             else:
-                time_s = int(float(time_str))
+                # Not h,m,s: stale reply from an earlier timed-out query (e.g. a voltage).
+                return self._integration_time
             self._integration_time = time_s
             return time_s
         except Exception:
@@ -854,7 +871,7 @@ class PowerMeterWT500(PowerMeterBaseClass):
         self.write('INTEGRATE:START')
     
     def stop_integration(self):
-        self.write('INTEGRATION:STOP')
+        self.write('INTEGRATE:STOP')
 
     def reset_integration(self):
         self.write('INTEGRATE:RESET')
@@ -939,7 +956,7 @@ class PowerMeterWT500(PowerMeterBaseClass):
 
     def get_current_range(self):
         try:
-            self._current_range = parse_float_response(self.write('INPUT:CURRENT:RANGE?'), 0.0)
+            self._current_range = parse_float_response(self.query_slow('INPUT:CURRENT:RANGE?'), 0.0)
         except Exception as e:
             self._current_range = 0
         return self._current_range
@@ -955,7 +972,7 @@ class PowerMeterWT500(PowerMeterBaseClass):
             
     def get_voltage_range(self):
         try:
-            self._voltage_range = parse_float_response(self.write('INPUT:VOLTAGE:RANGE?'), 0.0)
+            self._voltage_range = parse_float_response(self.query_slow('INPUT:VOLTAGE:RANGE?'), 0.0)
         except Exception as e:
             self._voltage_range = 0
         return self._voltage_range
@@ -1168,7 +1185,8 @@ class PowerMeterWT210(PowerMeterBaseClass):
                 else:
                     time_s = components[0]
             else:
-                time_s = int(float(time_str))
+                # Not h,m,s: stale reply from an earlier timed-out query (e.g. a voltage).
+                return self._integration_time
             self._integration_time = time_s
             return time_s
         except Exception:
@@ -1180,7 +1198,7 @@ class PowerMeterWT210(PowerMeterBaseClass):
         self._integration_status = "START"
     
     def stop_integration(self):
-        self.write('INTEGRATION:STOP')
+        self.write('INTEGRATE:STOP')
         self._integration_status = "STOP"
 
     def reset_integration(self):

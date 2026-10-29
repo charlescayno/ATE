@@ -46,6 +46,10 @@ class LazyGPIBDevice:
     def read(self):
         return self._ensure_open().read()
 
+    def clear(self):
+        if self._dev is not None:
+            self._dev.clear()
+
     def close(self):
         if self._dev is not None:
             try:
