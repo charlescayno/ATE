@@ -39,6 +39,18 @@ Follow **`WORKFLOW.md`**. Summary:
 2. Edit only files KEY_FILES points to for that subsystem.  
 3. Before merge: update FEATURES, DESIGN, DECISIONS, KEY_FILES (+ ARCHITECTURE/TESTING if needed).
 
+## Git sync (cursor feature branch)
+
+Cloud agents may commit locally but fail HTTPS push. On your PC (GitHub auth required):
+
+```bat
+scripts\git_sync_cursor_branch.bat
+```
+
+Or manually: `git fetch origin` → `git checkout cursor/poll-effective-integration-ccf6` → `git pull --rebase origin cursor/poll-effective-integration-ccf6` → `git push -u origin cursor/poll-effective-integration-ccf6`
+
+Then merge PR #3 on GitHub or continue on the branch.
+
 ## Docs for agents
 
 - Knowledge is source of truth for **context**; code is source of truth for **behavior** — sync docs when behavior changes.  
