@@ -28,7 +28,7 @@ Many I2C / Transients / Light Load classes exist but are **commented out** of `T
 
 ## Manual control
 
-- **Live poll** (header checkbox, **on by default**): periodic GPIB meter/load refresh (~500 ms); uncheck to reduce bus load and use **Refresh** for one-shot readout; timer also runs during software DC ramp. On page entry, first full read is **deferred 100 ms** when the timer is active so the UI paints before GPIB work. Integration timer set to 0 during page visit for fast reads (restored on leave).  
+- **Live poll** (header checkbox, **on by default**): GPIB refresh uses **round-robin** (~500 ms per instrument slice) so the window stays responsive; uncheck to stop periodic polls and use **Refresh** (queues a full pass over several ticks). Heavy init runs **after first paint** (`QTimer.singleShot(0)`). Timer also runs during software DC ramp. Integration timer set to 0 during page visit for fast reads (restored on leave).  
 - Settings persisted (`manual_control_settings.json`).
 - Magna HVDC line input: DC SOURCE UI (ramp, current limit) when primary role is Magna or AC role is unset and DC Source is Magna.
 - **Equipment Setup → Aux DC:** defaults to the bench **HMP** (e.g. HMP2030) when present and not primary; saved `-` or empty still auto-assigns HMP. Use **Save as Default Setup** to persist your exact instrument line (e.g. `ROHDE&SCHWARZ HMP2030 …`).  

@@ -331,6 +331,9 @@ class ManualControlPageHandler():
             if hasattr(self, "chk_live_poll")
             else True
         )
+        self._gpib_init_ready = True
+        self._gpib_round_robin_step = 0
+        self._gpib_full_refresh_steps = 0
 
     def bind_ui_elements(self):
         from PySide2.QtGui import QDoubleValidator
@@ -783,15 +786,52 @@ class ManualControlPageHandler():
         self.update_timer.timeout.connect(self.update_service)
 
     def refresh_equipment_readings(self) -> None:
-        """One-shot GPIB read + UI refresh (used when live poll is off)."""
+        """Queue a full readout spread across timer ticks (keeps UI responsive)."""
         if not getattr(self, "_pm_range_synced", False):
             try:
                 manual_pm_range.sync_from_meters(self)
             except Exception as exc:
                 print(f"[MANUAL_CONTROL] PM range sync skipped: {exc}")
             self._pm_range_synced = True
-        self.gpib_update()
+        self._queue_full_gpib_refresh()
         self.ui_update()
+
+    def _manual_gpib_step_count(self) -> int:
+        return max(len(self._manual_gpib_steps()), 1)
+
+    def _queue_full_gpib_refresh(self) -> None:
+        self._gpib_full_refresh_steps = self._manual_gpib_step_count()
+
+    def _manual_gpib_steps(self):
+        """One instrument slice per timer tick — avoids multi-second UI freezes on GPIB."""
+        if getattr(self, "is_ramping", False):
+            return [self.ac_source_update, self.power_meter_source_update]
+        steps = [self.ac_source_update]
+        for fn in (
+            self.power_meter_load_update,
+            self.power_meter_load_2_update,
+            self.power_meter_load_3_update,
+            self.power_meter_load_4_update,
+            self.power_meter_source_update,
+            self.eload_update,
+        ):
+            steps.append(fn)
+        for name in ("eload_2_update", "eload_3_update", "eload_4_update"):
+            fn = getattr(self, name, None)
+            if fn is not None:
+                steps.append(fn)
+        return steps
+
+    def _gpib_round_robin_once(self) -> None:
+        steps = self._manual_gpib_steps()
+        if not steps:
+            return
+        idx = self._gpib_round_robin_step % len(steps)
+        self._gpib_round_robin_step += 1
+        try:
+            steps[idx]()
+        except Exception as exc:
+            print(f"[MANUAL_CONTROL] GPIB step {idx}: {type(exc).__name__}: {exc}")
 
     def _on_live_poll_toggled(self, checked: bool) -> None:
         self.live_poll_enabled = bool(checked)
@@ -816,22 +856,29 @@ class ManualControlPageHandler():
         from PySide2.QtWidgets import QApplication
 
         self._pm_range_synced = False
+        self._gpib_init_ready = False
+        self._gpib_round_robin_step = 0
+        self._gpib_full_refresh_steps = 0
+        if hasattr(self, "chk_live_poll"):
+            self.live_poll_enabled = self.chk_live_poll.isChecked()
+        else:
+            self.live_poll_enabled = True
+        self._apply_live_poll_timer()
+        QApplication.processEvents()
+        QTimer.singleShot(0, self._deferred_start_gpib_init)
+
+    def _deferred_start_gpib_init(self) -> None:
+        """Heavy GPIB init off the first paint — prevents 'Python is not responding'."""
+        from PySide2.QtWidgets import QApplication
+
         QApplication.processEvents()
         try:
             self.initialize_gpib_equipment()
             self.initialize_usbpd()
         except Exception as exc:
             print(f"[MANUAL_CONTROL] start init error: {type(exc).__name__}: {exc}")
-        sleep(0.1)
-        if hasattr(self, "chk_live_poll"):
-            self.live_poll_enabled = self.chk_live_poll.isChecked()
-        else:
-            self.live_poll_enabled = True
-        self._apply_live_poll_timer()
-        if self.update_timer.isActive():
-            QTimer.singleShot(100, self.refresh_equipment_readings)
-        else:
-            self.refresh_equipment_readings()
+        self._gpib_init_ready = True
+        self._queue_full_gpib_refresh()
         QApplication.processEvents()
 
     
@@ -872,7 +919,15 @@ class ManualControlPageHandler():
 
     def update_service(self):
         self.usbpd_update()
-        self.gpib_update()
+        if not getattr(self, "_gpib_init_ready", True):
+            self.ui_update()
+            return
+        pending = int(getattr(self, "_gpib_full_refresh_steps", 0) or 0)
+        if pending > 0:
+            self._gpib_round_robin_once()
+            self._gpib_full_refresh_steps = pending - 1
+        elif self.live_poll_enabled or getattr(self, "is_ramping", False):
+            self._gpib_round_robin_once()
         self.ui_update()
 
     ########################################################################
@@ -1473,26 +1528,12 @@ class ManualControlPageHandler():
 
     
     def gpib_update(self):
-        # Update the AC source (which handles DC software ramping as well)
-        self.ac_source_update()
-        
-        # If we are actively software-ramping the DC source, skip polling other
-        # equipment on the GPIB bus to avoid VisaIOError timeouts from bus flooding.
-        if getattr(self, 'is_ramping', False):
-            self.power_meter_source_update()
-            return
-
-        self.power_meter_load_update()
-        self.power_meter_load_2_update()
-        self.power_meter_load_3_update()
-        self.power_meter_load_4_update()
-        
-        self.power_meter_source_update()
-        
-        self.eload_update()
-        if hasattr(self, 'eload_2_update'): self.eload_2_update()
-        if hasattr(self, 'eload_3_update'): self.eload_3_update()
-        if hasattr(self, 'eload_4_update'): self.eload_4_update()
+        """Poll every GPIB slice in one call (tests / legacy); UI uses round-robin."""
+        for fn in self._manual_gpib_steps():
+            try:
+                fn()
+            except Exception as exc:
+                print(f"[MANUAL_CONTROL] gpib_update: {type(exc).__name__}: {exc}")
 
     def refresh_pml_assignment(self):
         """Grey out load power meter tiles that have no meter assigned in Equipment Setup."""
@@ -1513,15 +1554,15 @@ class ManualControlPageHandler():
 
     @power_meter_load_2_access
     def power_meter_load_2_update(self):
-        _poll_power_meter(self.equipment.power_meter_load_2)
+        _poll_power_meter(self.equipment.power_meter_load_2, include_pf=False)
 
     @power_meter_load_3_access
     def power_meter_load_3_update(self):
-        _poll_power_meter(self.equipment.power_meter_load_3)
+        _poll_power_meter(self.equipment.power_meter_load_3, include_pf=False)
 
     @power_meter_load_4_access
     def power_meter_load_4_update(self):
-        _poll_power_meter(self.equipment.power_meter_load_4)
+        _poll_power_meter(self.equipment.power_meter_load_4, include_pf=False)
 
     def get_discharge_loads(self):
         loads = []
