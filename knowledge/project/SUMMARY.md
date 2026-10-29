@@ -15,8 +15,9 @@
 
 ## Authority docs in repo
 
+- **`knowledge/project/WORKFLOW.md`** — how agents devs work (docs first, no full-repo scan)  
 - `README.md` — features, instruments, quick start  
-- `architecture.md`, `threading_architecture.md` — extended architecture  
+- `architecture.md`, `threading_architecture.md` — extended architecture (read only when WORKFLOW/ARCHITECTURE point here)  
 - `knowledge/project/*` — agent-optimized index (this tree)
 
 ## Session memory (agent store)
