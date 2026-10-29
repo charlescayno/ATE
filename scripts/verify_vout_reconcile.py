@@ -40,6 +40,9 @@ class FakePM:
     def get_integration_timer(self):
         return 0
 
+    def read_instant_power_w(self):
+        return self.power
+
 
 def test_parse_nan():
     check("parse nan string", parse_float_response("nan", -1.0) == -1.0)
