@@ -201,9 +201,10 @@ class PowerMeter(Equipment):
             f"{interval_txt}..."
         )
         try:
-            self.query_averaging_state()
-            self.current_auto_range_query()
-            self.voltage_auto_range_query()
+            if interval_s < 1.0:
+                self.query_averaging_state()
+                self.current_auto_range_query()
+                self.voltage_auto_range_query()
             self.reset_integration()
             self.power_meter_object.start_integration()
         except Exception as e:

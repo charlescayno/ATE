@@ -119,11 +119,45 @@ class PowerMeterBaseClass(Equipment):
     def check_integration_status(self):
         self._integration_done = False
         self._integration_status = self.write("INTEGRATE:STATE?")
-            
-        if self._integration_status in ["TIM", "RES"]:
+        status = (self._integration_status or "").strip().upper()
+        if status in ("TIM", "RES", "STOP"):
             self._integration_done = True
         
+    def _try_check_integration_status(self) -> bool:
+        try:
+            self.check_integration_status()
+            return bool(self._integration_done)
+        except Exception:
+            return False
+
+    def _wait_integration_timer_s(self, timer_s: float) -> None:
+        """Wait out a configured integration window without hammering GPIB."""
+        deadline = time() + max(0.0, float(timer_s))
+        old_timeout = None
+        try:
+            old_timeout = self.device.timeout
+            self.device.timeout = max(int(old_timeout or 500), 8000)
+        except Exception:
+            pass
+        try:
+            while time() < deadline:
+                if self._try_check_integration_status():
+                    return
+                sleep(min(2.0, max(0.5, deadline - time())))
+            self._integration_done = True
+            self._integration_status = "TIM"
+        finally:
+            if old_timeout is not None:
+                try:
+                    self.device.timeout = old_timeout
+                except Exception:
+                    pass
+
     def poll_integration_status(self):
+        timer_s = float(self._integration_time or 0)
+        if timer_s >= 1.0:
+            self._wait_integration_timer_s(timer_s)
+            return
         self.check_integration_status()
         while not self._integration_done:
             sleep(0.5)
@@ -469,19 +503,6 @@ class PowerMeterWT310(PowerMeterBaseClass):
     def reset_integration(self):
         self.write('INTEGRATE:RESET')
     
-    def check_integration_status(self):
-        self._integration_done = False
-        self._integration_status = self.write("INTEGRATE:STATE?")
-            
-        if self._integration_status in ["TIM", "RES"]:
-            self._integration_done = True
-
-    def poll_integration_status(self):
-        self.check_integration_status()
-        while not self._integration_done:
-            sleep(0.5)
-            self.check_integration_status()
-            
     def get_integrated_power(self, reset = True):
         """Returns the power equivalent of the total integrated energy"""
         try:
@@ -844,19 +865,6 @@ class PowerMeterWT500(PowerMeterBaseClass):
     def reset_integration(self):
         self.write('INTEGRATE:RESET')
     
-    def check_integration_status(self):
-        self._integration_done = False
-        self._integration_status = self.write("INTEGRATE:STATE?")
-            
-        if self._integration_status in ["TIM", "RES"]:
-            self._integration_done = True
-
-    def poll_integration_status(self):
-        self.check_integration_status()
-        while not self._integration_done:
-            sleep(0.5)
-            self.check_integration_status()
-            
     def get_integrated_power(self, reset = True):
         """Returns the power equivalent of the total integrated energy"""
         try:
@@ -1210,6 +1218,10 @@ class PowerMeterWT210(PowerMeterBaseClass):
             pass
     
     def poll_integration_status(self):
+        timer_s = float(self._integration_time or 0)
+        if timer_s >= 1.0:
+            self._wait_integration_timer_s(timer_s)
+            return
         self.check_integration_status()
         while not self._integration_done:
             sleep(0.5)
