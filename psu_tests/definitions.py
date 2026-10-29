@@ -772,6 +772,13 @@ class TestData():
         if timer_s >= 1.0:
             pm.start_integration()
             pm.poll_integration_status()
+            # V/I/PF while integrate window is complete but Wh not yet reset.
+            self.vin_V = pm.voltage
+            self.iin_mA = pm.current
+            try:
+                self.PF = pm.pf
+            except Exception:
+                self.PF = 0.0
             self.pin_W = pm.get_integrated_power()
         else:
             try:
@@ -779,14 +786,28 @@ class TestData():
             except Exception:
                 pass
             self.pin_W = pm.power
+            self.vin_V = pm.voltage
+            self.iin_mA = pm.current
+            try:
+                self.PF = pm.pf
+            except Exception:
+                self.PF = 0.0
         if self.pin_W is None:
             self.pin_W = 0.0
-        self.vin_V = pm.voltage
-        self.iin_mA = pm.current
-        try:
-            self.PF = pm.pf
-        except Exception:
+        if self.vin_V is None:
+            self.vin_V = 0.0
+        if self.iin_mA is None:
+            self.iin_mA = 0.0
+        if self.PF is None:
             self.PF = 0.0
+        pin_n = _normalize_meter_scalar(self.pin_W)
+        vin_n = _normalize_meter_scalar(self.vin_V)
+        iin_a = _normalize_meter_scalar(self.iin_mA)
+        pf_n = _normalize_meter_scalar(self.PF) or 0.0
+        if pin_n and pin_n > 0.05 and vin_n and vin_n > 0.05 and (iin_a is None or iin_a < 1e-9):
+            denom = vin_n * (pf_n if pf_n > 1e-6 else 1.0)
+            if denom > 1e-9:
+                self.iin_mA = pin_n / denom
 
     def gather_data(self, 
                     integrate: bool = True, 

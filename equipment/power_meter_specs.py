@@ -172,7 +172,7 @@ class PowerMeterBaseClass(Equipment):
                 sleep(wait_s)
             self._integration_done = True
             self._integration_status = "TIM"
-            self._stop_and_reset_integration()
+            # Wh must be read in get_integrated_power() before INTEGRATE:RESET.
         finally:
             if old_timeout is not None:
                 try:

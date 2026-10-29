@@ -174,6 +174,49 @@ def test_stable_source_pin_reads_vin_after_integration():
     check("Iin mA scaled", abs(td.iin_mA - 50.0) < 0.01, td.iin_mA)
     order = td.source_power_meter.read_order
     check("poll before Vin read", order.index("poll_done") < order.index("v"), order)
+    check("Vin/I before Pin Wh read", order.index("pin") > order.index("v"), order)
+
+
+def test_iin_fallback_from_pin_when_current_zero():
+    class Src:
+        _integration_time = 60
+
+        def get_integration_timer(self):
+            return 60
+
+        @property
+        def voltage(self):
+            return 750.0
+
+        @property
+        def current(self):
+            return 0.0
+
+        @property
+        def pf(self):
+            return 0.0
+
+        def start_integration(self):
+            pass
+
+        def poll_integration_status(self):
+            pass
+
+        def get_integrated_power(self, reset=True):
+            return 300.0
+
+        def enable_averaging(self, en=True):
+            pass
+
+    td = TestData()
+    td.vout_nom_V = 48.0
+    td.source_power_meter = Src()
+    td.load_power_meter = None
+    td.use_eload_data = True
+    td.electronic_load = type("E", (), {"voltage": 48.0, "current": 1.0})()
+    td.gather_data(coupling="DC", measure_thd=False, stable_source_pin=True)
+    check("Pin from Wh", abs(td.pin_W - 300.0) < 0.01, td.pin_W)
+    check("Iin derived from Pin/Vin (mA)", abs(td.iin_mA - 400.0) < 1.0, td.iin_mA)
 
 
 def test_gather_data_load_path():
@@ -194,6 +237,7 @@ if __name__ == "__main__":
     test_eload_zero_pm_wins()
     test_stable_source_pin_uses_averaging_when_no_timer()
     test_stable_source_pin_reads_vin_after_integration()
+    test_iin_fallback_from_pin_when_current_zero()
     test_gather_data_load_path()
     if errors:
         print(f"\n{len(errors)} failed")
