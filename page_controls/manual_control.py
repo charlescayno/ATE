@@ -778,8 +778,19 @@ class ManualControlPageHandler():
             case UI_REQUEST.UPDATE_PDO_LIST:
                 self.update_pdo_list_flag = True
         
-    def set_acsource_flags (self, flag_code:int):
+    def set_acsource_flags(self, flag_code: int):
         self.ac_source_request = flag_code
+        if flag_code == AC_SOURCE_REQUEST.NO_REQUEST:
+            return
+        # ON/OFF must run even when Live poll is off (timer otherwise stopped).
+        if getattr(self, "_gpib_init_ready", False):
+            self.ac_source_update()
+        else:
+            QTimer.singleShot(200, self._service_pending_ac_source_request)
+
+    def _service_pending_ac_source_request(self) -> None:
+        if self.ac_source_request != AC_SOURCE_REQUEST.NO_REQUEST:
+            self.ac_source_update()
 
     def setup_update_timer(self):
         self.update_timer = QTimer(self.parent)
@@ -843,6 +854,9 @@ class ManualControlPageHandler():
         """Periodic updates only when Live poll is on or a software DC ramp is active."""
         need_timer = bool(self.live_poll_enabled) or bool(
             getattr(self, "is_ramping", False)
+        ) or (
+            getattr(self, "ac_source_request", AC_SOURCE_REQUEST.NO_REQUEST)
+            != AC_SOURCE_REQUEST.NO_REQUEST
         )
         if need_timer:
             if not self.update_timer.isActive():
