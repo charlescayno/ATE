@@ -42,6 +42,18 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
     POLL_INTERVAL_DEFAULT_S = 300.0
     POLL_READ_DURATION_GUESS_S = 0.75
     POLL_DURATION_DEFAULT_S = 20 * 60.0
+    POLL_DEFAULT_SCOPE_CHANNELS = {
+        1: {
+            'enabled': True,
+            'name': 'VDS_PRI',
+            'measurements': ['MAXimum'],
+            'derating': 1700.0,
+            'cursor': {'enabled': False, 'type': 'VERTical'},
+        },
+        2: {'enabled': False, 'name': '', 'measurements': [], 'derating': None, 'cursor': {}},
+        3: {'enabled': False, 'name': '', 'measurements': [], 'derating': None, 'cursor': {}},
+        4: {'enabled': False, 'name': '', 'measurements': [], 'derating': None, 'cursor': {}},
+    }
 
     i2c_ui_definitions = EfficiencyWaveformTest_2Port.i2c_ui_definitions
     tc_default = None
@@ -72,7 +84,7 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
             ),
             unit_id=tc.unit_id,
             ambient_temp=tc.ambient_temp,
-            scope_channels=deepcopy(tc.scope_channels),
+            scope_channels=deepcopy(cls.POLL_DEFAULT_SCOPE_CHANNELS),
         )
 
     @staticmethod

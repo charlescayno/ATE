@@ -64,12 +64,21 @@ def main() -> int:
 
     flow = FLOW_PY.read_text(encoding="utf-8")
     check("flow imports poll class", "SteadyStatePollWaveformTest_2Port" in flow)
-    check("verify expects 300/1200", "300.0" in (ROOT / "scripts/verify_steady_state_poll_2port_waveform.py").read_text())
+    check("verify expects 300/1200", "300.0" in (ROOT / "scripts" / "verify_steady_state_poll_2port_waveform.py").read_text())
+
+    scope = _class_constant(
+        POLL_PY, "SteadyStatePollWaveformTest_2Port", "POLL_DEFAULT_SCOPE_CHANNELS",
+    )
+    ch1 = scope[1]
+    check("scope CH1 enabled", ch1.get("enabled") is True)
+    check("scope CH1 VDS_PRI", ch1.get("name") == "VDS_PRI")
+    check("scope CH1 derating 1700 V", ch1.get("derating") == 1700.0)
+    check("scope CH1 MAXimum", ch1.get("measurements") == ["MAXimum"])
 
     if errors:
         print(f"\n{len(errors)} failed")
         return 1
-    print("\nPASS poll timing + integration (headless, AST)")
+    print("\nPASS poll timing + scope defaults (headless, AST)")
     return 0
 
 

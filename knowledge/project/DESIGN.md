@@ -13,6 +13,8 @@ Location: `psu_tests/definitions.py`.
 
 Class: `SteadyStatePollWaveformTest_2Port` extends `EfficiencyWaveformTest_2Port`.
 
+Default scope (Add Test → new poll item): **CH1** `VDS_PRI`, **MAXimum**, derating **1700 V**; CH2–4 off (`POLL_DEFAULT_SCOPE_CHANNELS` in `test_steady_state_poll_2port_waveform.py`).
+
 Per load point:
 
 1. Sample 1: `_measure_poll_readings()` then scope capture.  
