@@ -7,6 +7,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+sys.path[:] = [str(ROOT)] + [
+    p for p in sys.path[1:]
+    if p and "PI_ATE_Marketing_Release" not in p.replace("/", os.sep)
+]
 os.chdir(ROOT)
 os.environ['PI_ATE_AUTO_CONFIRM'] = '1'
 time.sleep = lambda _s: None

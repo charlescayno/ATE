@@ -438,6 +438,13 @@ class SimulatedPowerMeter:
         self._current_auto_range_status = True
         self._voltage_auto_range_status = True
         self._averaging_status = False
+        self._integration_time = 0
+
+    def read_instant_power_w(self):
+        return self.power
+
+    def _stop_and_reset_integration(self):
+        pass
 
     @property
     def _ch(self):
@@ -511,12 +518,16 @@ class SimulatedPowerMeter:
     def get_current_range(self): return 5.0
     def set_current_range_max(self): pass
     def set_voltage_range_max(self): pass
-    def integration_settings(self, mode="NORMAL", timer_s=0, reset=True): pass
+    def integration_settings(self, mode="NORMAL", timer_s=0, reset=True):
+        self._integration_time = int(timer_s or 0)
+
     def start_integration(self): pass
     def stop_integration(self): pass
     def reset_integration(self): pass
-    def get_integration_timer(self): return "0:00:00"
-    def set_integration_timer(self, timer_s: int): pass
+    def get_integration_timer(self):
+        return int(getattr(self, "_integration_time", 0) or 0)
+    def set_integration_timer(self, timer_s: int):
+        self._integration_time = int(timer_s or 0)
     def poll_integration_status(self): return "STOP"
     def get_integrated_power(self, reset=True): return self.power
     def get_integrated_energy(self): return 0.0

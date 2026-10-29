@@ -846,7 +846,8 @@ class TestData():
             if has_load_pm:
                 if not integrate:
                     if stable_source_pin:
-                        self.pout_W = self.load_power_meter.read_instant_power_w()
+                        read = getattr(self.load_power_meter, 'read_instant_power_w', None)
+                        self.pout_W = read() if read else self.load_power_meter.power
                     else:
                         self.pout_W = self.load_power_meter.power
 
