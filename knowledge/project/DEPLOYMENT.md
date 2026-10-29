@@ -30,4 +30,7 @@ Cloud Agent VMs may lack conda/GPIB; use simulation or headless scripts only.
 
 ## Environment builds (Cursor Cloud Agent)
 
-- `.cursor/environment.json` / Builds page for agent VM snapshots; optional for local dev.
+- **`.cursor/environment.json`** — `install` runs `.cursor/cloud/install-deps.sh` (openpyxl, pandas, pyvisa, numpy for headless scripts).
+- **No PySide2 / GPIB** on Linux cloud agents; use `scripts/test_poll_timing_headless.py` or Windows conda for full UI.
+- **Git push** from cloud agents requires GitHub auth on your machine (`scripts/git_sync_cursor_branch.bat`) or a configured `GITHUB_TOKEN` secret (optional).
+- Team environment builds: Cursor dashboard → Cloud Agents → Environments; save proposed JSON after validation.
