@@ -1,8 +1,12 @@
 # Project knowledge (agent index)
 
-Load these **before** deep code search on PI ATE questions. Repo root overview: **`/README.md`**.
+**Start with [WORKFLOW.md](WORKFLOW.md)** — knowledge-first rules (no whole-repo scan).
+
+Load these **before** opening source on PI ATE questions. Repo root overview: **`README.md`** (repository root).
 
 | File | Purpose |
+|------|---------|
+| [WORKFLOW.md](WORKFLOW.md) | Session / feature / bug / refactor; context priority |
 |------|---------|
 | [SUMMARY.md](SUMMARY.md) | Purpose, stack, scope |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Layers, threading, flow |

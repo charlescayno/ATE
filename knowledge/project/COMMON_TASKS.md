@@ -31,7 +31,15 @@ python scripts\test_poll_timing_headless.py
 python scripts\verify_steady_state_poll_2port_waveform.py
 ```
 
+## Add a feature (knowledge-first)
+
+Follow **`WORKFLOW.md`**. Summary:
+
+1. Read SUMMARY, KEY_FILES, FEATURES, PATTERNS (no repo-wide search).  
+2. Edit only files KEY_FILES points to for that subsystem.  
+3. Before merge: update FEATURES, DESIGN, DECISIONS, KEY_FILES (+ ARCHITECTURE/TESTING if needed).
+
 ## Docs for agents
 
-- Refresh `knowledge/project/*.md` when architecture or defaults change.  
-- Append session notes to agent store + `DECISIONS.md` for durable rationale.
+- Knowledge is source of truth for **context**; code is source of truth for **behavior** — sync docs when behavior changes.  
+- Session handoff: agent store `pi-ate-*.md` + `DECISIONS.md`.
