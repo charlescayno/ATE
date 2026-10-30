@@ -25,6 +25,7 @@ Many I2C / Transients / Light Load classes exist but are **commented out** of `T
 - Defaults: **30 s** wait, **3** samples/point.  
 - Default scope: **CH1** `VDS_PRI`, MAXimum, **1700 V** derating (CH2–4 off).  
 - **One scope PNG per sample** (`_S1`, `_S2`, …). Pin integration uses **soak integration time only** (decoupled from poll wait).
+- Optional **Enable Fan Cooling (HMP2030 CH2: 12 V / 4 A)** on Add Test (I2C param **12**): ON before the run, OFF after cleanup; unchecked forces CH2 OFF before the run only.
 
 ## Manual control
 

@@ -7,7 +7,7 @@ from time import sleep
 import openpyxl
 from openpyxl.styles import Font as CellFont
 
-from psu_tests.definitions import TestConditions, I2CTestParameters, test_control_flags
+from psu_tests.definitions import TestConditions, I2CTestParameters, test_control_flags, TestFailed
 from psu_tests.test_object_imports import TestStopped, TestSkipped
 from psu_tests.test_efficiency_2port_waveform import EfficiencyWaveformTest_2Port
 
@@ -37,6 +37,10 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
     POLL_INTERVAL_PARAM_INDEX = 10
     POLL_SAMPLES_PARAM_INDEX = 11
     POLL_DURATION_PARAM_INDEX = 11  # legacy alias (stored value is sample count)
+    FAN_COOLING_PARAM_INDEX = 12
+    FAN_COOLING_VOLTAGE_V = 12.0
+    FAN_COOLING_CURRENT_A = 4.0
+    HMP_FAN_CHANNEL = 2
     POLL_INTERVAL_DEFAULT_S = 30.0
     POLL_READ_DURATION_GUESS_S = 0.75
     POLL_SAMPLES_DEFAULT = 3
@@ -68,6 +72,9 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
             params.append(0.0)
         params[cls.POLL_INTERVAL_PARAM_INDEX] = cls.POLL_INTERVAL_DEFAULT_S
         params[cls.POLL_SAMPLES_PARAM_INDEX] = float(cls.POLL_SAMPLES_DEFAULT)
+        while len(params) <= cls.FAN_COOLING_PARAM_INDEX:
+            params.append(0.0)
+        params[cls.FAN_COOLING_PARAM_INDEX] = 0.0
         cbx = list(getattr(i2c, 'cbx_param', []) or [])
         while len(cbx) < 4:
             cbx.append('')
@@ -155,8 +162,75 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
             pm.stop_integration()
             pm.reset_integration()
 
+    @classmethod
+    def fan_cooling_enabled_from_params(cls, params) -> bool:
+        raw = cls._read_poll_param(params, cls.FAN_COOLING_PARAM_INDEX, 0.0)
+        return raw >= 0.5
+
+    def _hmp_for_fan_cooling(self):
+        eq = self.equipment
+        if hasattr(eq, 'prefer_hmp_as_aux'):
+            eq.prefer_hmp_as_aux()
+        aux = getattr(eq, 'dc_source_aux', None)
+        if aux is not None and aux.is_hmp_series():
+            return aux
+        primary = getattr(eq, 'dc_source', None)
+        input_supply = getattr(self, 'input_supply', None)
+        for dc in getattr(eq, 'dc_sources', []) or []:
+            if dc is None or not dc.is_hmp_series():
+                continue
+            if dc is input_supply or dc is primary:
+                continue
+            return dc
+        return None
+
+    def _apply_hmp_fan_cooling_preflight(self):
+        """Before test loop: fan ON when enabled, else ensure HMP CH2 is OFF."""
+        self._fan_cooling_active = False
+        hmp = self._hmp_for_fan_cooling()
+        ch = self.HMP_FAN_CHANNEL
+        if self.enable_fan_cooling:
+            if hmp is None:
+                raise TestFailed(
+                    "Enable Fan Cooling is checked but no HMP aux DC is assigned "
+                    "(Equipment Setup → Aux DC → HMP2030)."
+                )
+            v, a = self.FAN_COOLING_VOLTAGE_V, self.FAN_COOLING_CURRENT_A
+            self.update_status_log(
+                f"HMP CH{ch} fan cooling: {v:g} V, {a:g} A limit, output ON",
+                upcoming="Prepare test",
+            )
+            hmp.channel_set_voltage(ch, v)
+            hmp.channel_set_current_limit(ch, a)
+            hmp.channel_turn_on(ch)
+            self._fan_cooling_active = True
+            print(
+                f"[POLL] Fan cooling ON — {getattr(hmp, 'description', hmp)} "
+                f"CH{ch} {v:g} V / {a:g} A"
+            )
+        elif hmp is not None:
+            hmp.channel_turn_off(ch)
+            print(f"[POLL] Fan cooling disabled — HMP CH{ch} output OFF")
+
+    def _shutdown_hmp_fan_cooling(self):
+        hmp = self._hmp_for_fan_cooling()
+        if hmp is None:
+            return
+        ch = self.HMP_FAN_CHANNEL
+        hmp.channel_turn_off(ch)
+        self._fan_cooling_active = False
+        print(f"[POLL] Fan cooling OFF — HMP CH{ch} output OFF")
+
+    def run(self):
+        try:
+            super().run()
+        finally:
+            if getattr(self, '_fan_cooling_active', False):
+                self._shutdown_hmp_fan_cooling()
+
     def setup_equipment(self):
         super().setup_equipment()
+        self._apply_hmp_fan_cooling_preflight()
         self._configure_poll_power_meter_integration()
         eff = self._effective_integration_s()
         if eff > 0:
@@ -193,6 +267,8 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
         self.poll_row_sampled_dt = None
         self.poll_prev_sampled_dt = None
         self._poll_repeat_read_duration_s = self.POLL_READ_DURATION_GUESS_S
+        self.enable_fan_cooling = self.fan_cooling_enabled_from_params(params)
+        self._fan_cooling_active = False
 
     def build_detailed_output_basename(self) -> str:
         return (
@@ -247,6 +323,7 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
             (3, "Samples per load point", self._sample_count()),
             (4, "Integration time (s)", self._effective_integration_s()),
             (5, "Est. poll window (s)", round(self._estimated_poll_point_duration_s(), 1)),
+            (6, "Fan cooling (HMP CH2)", "Yes" if self.enable_fan_cooling else "No"),
         )
         for row, label, value in rows:
             ws[f"D{row}"] = label
@@ -488,12 +565,19 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
 
     def update_test_list_text(self):
         super().update_test_list_text()
+        fan = (
+            f"HMP CH{self.HMP_FAN_CHANNEL} fan {self.FAN_COOLING_VOLTAGE_V:g} V / "
+            f"{self.FAN_COOLING_CURRENT_A:g} A."
+            if self.enable_fan_cooling
+            else ""
+        )
         note = (
             f"Poll: {self._sample_count()} samples/load point, "
             f"{self._effective_integration_s():g} s Pin integration, "
             f"{self.poll_interval_s:g} s wait between samples. "
+            f"{fan} "
             "Stop keeps rows already saved to Excel."
-        )
+        ).replace("  ", " ")
         if note not in self.test_list_text:
             self.test_list_text += "\n" + note
 

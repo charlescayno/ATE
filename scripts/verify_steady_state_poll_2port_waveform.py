@@ -52,6 +52,46 @@ def test_effective_integration(errors):
     check(errors, "eff int zero soak", POLL.effective_integration_s(0, 300) == 0.0)
 
 
+def test_fan_cooling(errors):
+    check(errors, "fan param default off", not POLL.fan_cooling_enabled_from_params(
+        list(POLL.tc_default.i2c_test_parameters.param)))
+    check(errors, "fan param on", POLL.fan_cooling_enabled_from_params(
+        [0.0] * POLL.FAN_COOLING_PARAM_INDEX + [1.0]))
+    soak = SoakTime(name="TST", initial=0, line=0, load=0, integration=0, custom=False)
+    params = [12.0, 2.0, 0.0, 0, 1.0, 0, 0, 25.0, 0, 1, 1.0, 3.0, 1.0]
+    conditions = TestConditions(
+        name=POLL.title,
+        nominal_output_voltage_V=5,
+        nominal_load_current_A=5,
+        max_load_current_A=5,
+        line_range=LineRange(name="115", vin_freq=[[115, 60]], custom=True),
+        load_range=LoadRange(name="100", load_range_pct=[100], custom=True),
+        soak_time=soak,
+        general_options=GeneralOptions(),
+        usbpd_options=USBPDOptions(),
+        i2c_test_parameters=I2CTestParameters(
+            params=params,
+            cbx_params=[OPTION_C, 'Yes', 'None (Fully Automated)', 'No']),
+        unit_id='P1', ambient_temp=25.0,
+        scope_channels={
+            1: {'enabled': True, 'name': 'Primary Vds', 'derating': 650, 'measurements': ['MAXimum']},
+            2: {'enabled': True, 'name': 'Ids', 'measurements': ['MAXimum']},
+            3: {'enabled': False, 'name': ''},
+            4: {'enabled': False, 'name': ''},
+        })
+    parent = FakeParent()
+    hmp = parent.equipment.dc_source_aux
+    hmp._hmp_channels[2]['on'] = 0
+    test = POLL(FakeItem(parent, conditions))
+    test.setup_equipment()
+    ch2 = hmp._hmp_channels[2]
+    check(errors, "fan ch2 on at start", ch2['on'] == 1, ch2)
+    check(errors, "fan ch2 voltage", ch2['v'] == POLL.FAN_COOLING_VOLTAGE_V, ch2['v'])
+    check(errors, "fan ch2 current", ch2['i'] == POLL.FAN_COOLING_CURRENT_A, ch2['i'])
+    test._shutdown_hmp_fan_cooling()
+    check(errors, "fan off after teardown", ch2['on'] == 0, ch2)
+
+
 def test_sample_math(errors):
     check(errors, "legacy duration migration", POLL.read_samples_per_point(
         [0.0] * 10 + [30.0, 1200.0], 30.0) == 41)
@@ -295,6 +335,7 @@ def main():
     errors = []
     test_effective_integration(errors)
     test_sample_math(errors)
+    test_fan_cooling(errors)
     test_dialog(errors)
     test_run_complete(errors)
     test_abort_saves_excel(errors)

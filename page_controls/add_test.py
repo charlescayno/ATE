@@ -1951,12 +1951,17 @@ class AddTestPageHandler(QObject):
                 img_label.setPixmap(pix)
                 img_layout.addWidget(img_label)
             else:
+                fan_cooling = (
+                    getattr(self, 'chk_poll_fan_cooling', None) is not None
+                    and self.chk_poll_fan_cooling.isChecked()
+                )
                 fallback = build_flow_text_for_title(
                     test_class.title,
                     user_prompts=user_prompts,
                     dual_load_mode=dual_load_mode,
                     poll_interval_s=poll_interval_s,
                     sample_count=poll_samples_n,
+                    fan_cooling=fan_cooling,
                 )
                 editor = QTextEdit(img_host)
                 editor.setReadOnly(True)
@@ -2060,8 +2065,19 @@ class AddTestPageHandler(QObject):
         )
         hint.setWordWrap(True)
         hint.setStyleSheet("color: rgb(150, 170, 190); font-size: 11px;")
+        cb_style = (
+            "QCheckBox { color: rgb(210, 210, 210); font-weight: bold; } "
+            "QCheckBox:disabled { color: rgb(71, 71, 71); }"
+        )
+        self.chk_poll_fan_cooling = QCheckBox(
+            "Enable Fan Cooling (HMP2030 CH2: 12V / 4A)",
+            self.frame_poll_timing,
+        )
+        self.chk_poll_fan_cooling.setStyleSheet(cb_style)
+        self.chk_poll_fan_cooling.setChecked(False)
         form.addRow("Poll wait between samples (s):", interval_le)
         form.addRow("Samples per load point:", duration_le)
+        form.addRow(self.chk_poll_fan_cooling)
         form.addRow(hint)
         interval_le.show()
         duration_le.show()
@@ -2097,6 +2113,9 @@ class AddTestPageHandler(QObject):
 
         _set(interval_le, cls.POLL_INTERVAL_PARAM_INDEX, cls.POLL_INTERVAL_DEFAULT_S)
         _set(duration_le, cls.POLL_SAMPLES_PARAM_INDEX, float(cls.POLL_SAMPLES_DEFAULT))
+        if hasattr(self, 'chk_poll_fan_cooling'):
+            enabled = cls.fan_cooling_enabled_from_params(params)
+            self.chk_poll_fan_cooling.setChecked(enabled)
 
     def _sync_startup_capture_timeout_from_i2c(self, i2c_params):
         if not i2c_params:
@@ -3767,6 +3786,11 @@ class AddTestPageHandler(QObject):
                 params.append(float(duration_le.text()))
             else:
                 params.append(float(SteadyStatePollWaveformTest_2Port.POLL_SAMPLES_DEFAULT))
+            fan_on = (
+                getattr(self, 'chk_poll_fan_cooling', None) is not None
+                and self.chk_poll_fan_cooling.isChecked()
+            )
+            params.append(1.0 if fan_on else 0.0)
 
         i2c_test_parameters = I2CTestParameters(params, cbx_params)
         return i2c_test_parameters
