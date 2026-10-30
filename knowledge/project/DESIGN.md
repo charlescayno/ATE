@@ -22,6 +22,8 @@ Per load point (each sample):
 3. **`capture_waveform_at_point()`** (unique `_S{n}` PNG).  
 4. Excel row → repeat for **N** samples (no idle wait between samples).
 
+**Timed Poll** Excel columns (after meter data): Sample, Elapsed, Time Start/End (load-point window), Time Sampled, **Time Integration Start/End** (Pin integrate window per sample), Interval (s).
+
 I2C param indices: **10** Pin integration per sample (s), **11** samples per load point (legacy: values ≥ 60 treated as old duration in s), **12** fan cooling (1 = HMP aux CH2 12 V / 4 A ON for the test).
 
 Fan path uses `dc_source_aux` HMP (`prefer_hmp_as_aux()`), same as startup/smoke scripts; `setup_equipment()` applies preflight; `run()` `finally` turns CH2 OFF when fan was enabled.

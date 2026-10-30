@@ -37,6 +37,10 @@ OPTION_C = "Option C: Fixed Aux / Swept Main (Port 2 Fixed Load)"
 POLL = SteadyStatePollWaveformTest_2Port
 
 
+def _poll_col(test, header: str) -> int:
+    return test._poll_first_excel_col() + list(POLL.POLL_COLUMNS).index(header)
+
+
 def check(errors, name, ok, detail=""):
     if ok:
         print(f"OK  {name}")
@@ -202,51 +206,78 @@ def test_run_complete(errors):
               (ws['D2'].value, ws['E2'].value, ws['D3'].value, ws['E3'].value))
         check(errors, "section title", ws['T14'].value == 'Timed Poll', ws['T14'].value)
         hdr = test.excel_first_data_row
-        poll_headers = [ws.cell(row=hdr, column=c).value for c in range(20, 26)]
+        poll_first = test._poll_first_excel_col()
+        poll_last = poll_first + len(POLL.POLL_COLUMNS) - 1
+        poll_headers = [
+            ws.cell(row=hdr, column=c).value for c in range(poll_first, poll_last + 1)
+        ]
         check(errors, "poll headers",
               poll_headers == list(POLL.POLL_COLUMNS), poll_headers)
         scope_col = test.scope_excel_col()
-        check(errors, "scope starts after poll columns", scope_col == 26 and ws.cell(row=hdr, column=scope_col).value == 'Trig Ch',
-              (scope_col, ws.cell(row=hdr, column=scope_col).value))
+        check(errors, "scope starts after poll columns",
+              scope_col == poll_last + 1 and ws.cell(row=hdr, column=scope_col).value == 'Trig Ch',
+              (scope_col, poll_last, ws.cell(row=hdr, column=scope_col).value))
+        c_sample = _poll_col(test, 'Sample')
+        c_elapsed = _poll_col(test, 'Elapsed (s)')
+        c_t_start = _poll_col(test, 'Time Start')
+        c_t_end = _poll_col(test, 'Time End')
+        c_t_sampled = _poll_col(test, 'Time Sampled')
+        c_t_int_start = _poll_col(test, 'Time Integration Start')
+        c_t_int_end = _poll_col(test, 'Time Integration End')
+        c_interval = _poll_col(test, 'Interval (s)')
         for i, (sample, elapsed) in enumerate(((1, 0), (2, 1), (3, 2)), start=1):
             row = hdr + i
-            got_s = ws.cell(row=row, column=20).value
-            got_e = ws.cell(row=row, column=21).value
-            t_start = ws.cell(row=row, column=22).value
-            t_end = ws.cell(row=row, column=23).value
-            t_sampled = ws.cell(row=row, column=24).value
+            got_s = ws.cell(row=row, column=c_sample).value
+            got_e = ws.cell(row=row, column=c_elapsed).value
+            t_start = ws.cell(row=row, column=c_t_start).value
+            t_end = ws.cell(row=row, column=c_t_end).value
+            t_sampled = ws.cell(row=row, column=c_t_sampled).value
+            t_int_start = ws.cell(row=row, column=c_t_int_start).value
+            t_int_end = ws.cell(row=row, column=c_t_int_end).value
             eff = ws.cell(row=row, column=19).value
             vds = ws.cell(row=row, column=scope_col + 2).value
+            integ_s = (t_int_end - t_int_start).total_seconds() if (
+                isinstance(t_int_start, datetime.datetime)
+                and isinstance(t_int_end, datetime.datetime)
+            ) else -1.0
             times_ok = (
                 isinstance(t_start, datetime.datetime)
                 and isinstance(t_end, datetime.datetime)
                 and isinstance(t_sampled, datetime.datetime)
+                and isinstance(t_int_start, datetime.datetime)
+                and isinstance(t_int_end, datetime.datetime)
                 and t_end >= t_start
                 and t_sampled >= t_start
+                and t_int_end >= t_int_start
+                and t_int_end <= t_sampled
+                and 0.05 <= integ_s <= 2.0
             )
             check(errors, f"row {row} sample",
                   got_s == sample and float(got_e) == float(elapsed)
                   and times_ok
                   and isinstance(eff, (int, float)) and isinstance(vds, (int, float)),
-                  (got_s, got_e, t_start, t_end, t_sampled, eff, vds))
-        row1_start = ws.cell(row=hdr + 1, column=22).value
-        row1_end = ws.cell(row=hdr + 1, column=23).value
-        row3_start = ws.cell(row=hdr + 3, column=22).value
-        row3_end = ws.cell(row=hdr + 3, column=23).value
+                  (got_s, got_e, t_start, t_end, t_sampled, t_int_start, t_int_end, eff, vds))
+        row1_start = ws.cell(row=hdr + 1, column=c_t_start).value
+        row1_end = ws.cell(row=hdr + 1, column=c_t_end).value
+        row3_start = ws.cell(row=hdr + 3, column=c_t_start).value
+        row3_end = ws.cell(row=hdr + 3, column=c_t_end).value
         check(errors, "time window same per load point",
               row1_start == row3_start and row1_end == row3_end,
               (row1_start, row3_start, row1_end, row3_end))
         window_s = (row1_end - row1_start).total_seconds()
         check(errors, "time end after time start",
               window_s > 0, window_s)
-        sampled = [ws.cell(row=hdr + i, column=24).value for i in (1, 2, 3)]
+        sampled = [ws.cell(row=hdr + i, column=c_t_sampled).value for i in (1, 2, 3)]
         check(errors, "time sampled monotonic",
               sampled[0] <= sampled[1] <= sampled[2], sampled)
-        fmt = ws.cell(row=hdr + 1, column=22).number_format
+        fmt = ws.cell(row=hdr + 1, column=c_t_start).number_format
         check(errors, "time start excel format",
               fmt == POLL.POLL_DATETIME_EXCEL_FMT, fmt)
-        iv1 = ws.cell(row=hdr + 1, column=25).value
-        iv2 = ws.cell(row=hdr + 2, column=25).value
+        fmt_int = ws.cell(row=hdr + 1, column=c_t_int_start).number_format
+        check(errors, "time integration start excel format",
+              fmt_int == POLL.POLL_DATETIME_EXCEL_FMT, fmt_int)
+        iv1 = ws.cell(row=hdr + 1, column=c_interval).value
+        iv2 = ws.cell(row=hdr + 2, column=c_interval).value
         check(errors, "interval sample1 zero", float(iv1) == 0.0, iv1)
         check(errors, "interval sample2 non-negative", float(iv2) >= 0.0, iv2)
         if sampled[1] and sampled[0]:
@@ -306,21 +337,32 @@ def test_abort_saves_excel(errors):
             wb = openpyxl.load_workbook(test.data_file_path)
             ws = wb[test.sheet_name]
             hdr = test.excel_first_data_row
-            samples = [ws.cell(row=hdr + i, column=20).value for i in (1, 2, 3)]
-            elapsed = [ws.cell(row=hdr + i, column=21).value for i in (1, 2, 3)]
+            c_sample = _poll_col(test, 'Sample')
+            c_elapsed = _poll_col(test, 'Elapsed (s)')
+            c_t_start = _poll_col(test, 'Time Start')
+            c_t_end = _poll_col(test, 'Time End')
+            c_t_sampled = _poll_col(test, 'Time Sampled')
+            c_t_int_start = _poll_col(test, 'Time Integration Start')
+            c_t_int_end = _poll_col(test, 'Time Integration End')
+            samples = [ws.cell(row=hdr + i, column=c_sample).value for i in (1, 2, 3)]
+            elapsed = [ws.cell(row=hdr + i, column=c_elapsed).value for i in (1, 2, 3)]
             check(errors, "abort kept two samples",
                   samples[:2] == [1, 2] and [float(x) for x in elapsed[:2]] == [0.0, 5.0]
                   and samples[2] in (None, ""),
                   (samples, elapsed))
-            t0 = ws.cell(row=hdr + 1, column=24).value
-            t1 = ws.cell(row=hdr + 2, column=24).value
-            abort_end = ws.cell(row=hdr + 2, column=23).value
-            abort_start = ws.cell(row=hdr + 2, column=22).value
+            t0 = ws.cell(row=hdr + 1, column=c_t_sampled).value
+            t1 = ws.cell(row=hdr + 2, column=c_t_sampled).value
+            abort_end = ws.cell(row=hdr + 2, column=c_t_end).value
+            abort_start = ws.cell(row=hdr + 2, column=c_t_start).value
+            integ0 = ws.cell(row=hdr + 1, column=c_t_int_start).value
+            integ1 = ws.cell(row=hdr + 2, column=c_t_int_end).value
             check(errors, "abort rows have timestamps",
                   isinstance(t0, datetime.datetime) and isinstance(t1, datetime.datetime)
                   and isinstance(abort_start, datetime.datetime)
-                  and isinstance(abort_end, datetime.datetime),
-                  (t0, t1, abort_start, abort_end))
+                  and isinstance(abort_end, datetime.datetime)
+                  and isinstance(integ0, datetime.datetime)
+                  and isinstance(integ1, datetime.datetime),
+                  (t0, t1, abort_start, abort_end, integ0, integ1))
             check(errors, "abort capture per sample",
                   len(test.captured_records) == 2
                   and test.captured_records[0]['path'].endswith('_SSP_S1.png')

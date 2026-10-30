@@ -31,6 +31,8 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
         "Time Start",
         "Time End",
         "Time Sampled",
+        "Time Integration Start",
+        "Time Integration End",
         "Interval (s)",
     )
     POLL_DATETIME_EXCEL_FMT = "yyyy-mm-dd hh:mm:ss"
@@ -263,6 +265,8 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
         self.poll_point_start_dt = None
         self.poll_point_end_dt = None
         self.poll_row_sampled_dt = None
+        self.poll_integ_start_dt = None
+        self.poll_integ_end_dt = None
         self.poll_prev_sampled_dt = None
         self._poll_repeat_read_duration_s = self.POLL_READ_DURATION_GUESS_S
         self.enable_fan_cooling = self.fan_cooling_enabled_from_params(params)
@@ -298,6 +302,8 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
             self.poll_point_start_dt,
             self.poll_point_end_dt,
             self.poll_row_sampled_dt,
+            self.poll_integ_start_dt,
+            self.poll_integ_end_dt,
             interval_s,
         ]
 
@@ -310,7 +316,13 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
             return '0'
         if header in ('Elapsed (s)', 'Interval (s)'):
             return '#,##0.00'
-        if header in ('Time Start', 'Time End', 'Time Sampled'):
+        if header in (
+            'Time Start',
+            'Time End',
+            'Time Sampled',
+            'Time Integration Start',
+            'Time Integration End',
+        ):
             return SteadyStatePollWaveformTest_2Port.POLL_DATETIME_EXCEL_FMT
         return EfficiencyWaveformTest_2Port._excel_num_format_for_header(header)
 
@@ -464,6 +476,8 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
 
     def _integrate_source_pin_before_read(self, records_before, rows_at_start):
         """Integrate Pin for T_int before meter read; honors Stop in 0.25 s slices."""
+        self.poll_integ_start_dt = None
+        self.poll_integ_end_dt = None
         integ = self._effective_integration_s()
         if integ < 1.0:
             return
@@ -471,6 +485,7 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
         if pm is None:
             return
         self._raise_if_abort(records_before, rows_at_start)
+        self.poll_integ_start_dt = datetime.datetime.now()
         pm.start_integration()
         deadline = time.time() + float(integ)
         pmo = getattr(pm, 'power_meter_object', None)
@@ -482,11 +497,13 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
                 except Exception:
                     pass
                 if getattr(pmo, '_integration_done', False):
+                    self.poll_integ_end_dt = datetime.datetime.now()
                     return
             remaining = deadline - time.time()
             if remaining <= 0:
                 break
             sleep(min(0.25, remaining))
+        self.poll_integ_end_dt = datetime.datetime.now()
 
     def _measure_poll_readings(self, i2_A):
         """PM reads for poll samples without re-sending AUTO range every tick."""
