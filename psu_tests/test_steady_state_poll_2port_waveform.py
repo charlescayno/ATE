@@ -161,8 +161,6 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
             if not use_poll_timer and getattr(pm, 'integration_disabled', lambda: False)():
                 t = 0
             pm.integration_settings(mode="NORMAL", timer_s=t)
-            pm.stop_integration()
-            pm.reset_integration()
 
     @classmethod
     def fan_cooling_enabled_from_params(cls, params) -> bool:

@@ -1,5 +1,11 @@
 # Design decisions
 
+## WT500 error 844: guarded INTEGRATE:STOP (2026-10-30)
+
+**Decision:** Yokogawa drivers query `INTEGRATE:STATE?` before `INTEGRATE:STOP`; skip STOP when state is STOP/TIM/RES/RESET/OFF. Poll setup no longer calls stop/reset after `integration_settings()`.
+
+**Rationale:** Idle or post-TimeUp STOP caused front-panel error 844 during Steady-State Poll Waveform 2 Port setup and between samples.
+
 ## Poll test: Pin integration per sample (2026-10 v3)
 
 **Decision:** For `SteadyStatePollWaveformTest_2Port`, WT500 **Pin integration = I2C param 10** (`Pin integration per sample (s)`). Soak integration is **not** used for poll Pin. Each sample: **integrate → read → scope → Excel**; sample **k+1** integration starts after sample **k** scope (next loop iteration). No separate idle poll wait. Param **11** = samples per load point (legacy ≥ 60 s = old duration).

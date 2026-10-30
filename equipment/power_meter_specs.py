@@ -27,6 +27,9 @@ def parse_float_response(val, default=0.0):
         return default
 
 class PowerMeterBaseClass(Equipment):
+    # WT500 error 844 if INTEGRATE:STOP while not integrating (STOP/TIM/RES/RESET).
+    _INTEGRATION_IDLE_FOR_STOP = frozenset({"STOP", "TIM", "RES", "RESET", "OFF"})
+
     MEASUREMENT_MODE_RMS = 'RMS'
     MEASUREMENT_MODE_MEAN = 'VMEan'
     MEASUREMENT_MODE_DC = 'DC'
@@ -113,8 +116,20 @@ class PowerMeterBaseClass(Equipment):
  
     def start_integration(self):
         self.write('INTEGRATE:START')
-    
+
+    def _integration_idle_for_stop(self) -> bool:
+        """True when INTEGRATE:STOP would raise WT500 error 844."""
+        try:
+            status = (self.write("INTEGRATE:STATE?") or "").strip().upper()
+        except Exception:
+            return True
+        if not status:
+            return True
+        return status in self._INTEGRATION_IDLE_FOR_STOP
+
     def stop_integration(self):
+        if self._integration_idle_for_stop():
+            return
         self.write('INTEGRATE:STOP')
 
     def reset_integration(self):
@@ -519,13 +534,7 @@ class PowerMeterWT310(PowerMeterBaseClass):
  
     def start_integration(self):
         self.write('INTEGRATE:START')
-    
-    def stop_integration(self):
-        self.write('INTEGRATE:STOP')
 
-    def reset_integration(self):
-        self.write('INTEGRATE:RESET')
-    
     def get_integrated_power(self, reset = True):
         """Returns the power equivalent of the total integrated energy"""
         try:
@@ -869,13 +878,7 @@ class PowerMeterWT500(PowerMeterBaseClass):
  
     def start_integration(self):
         self.write('INTEGRATE:START')
-    
-    def stop_integration(self):
-        self.write('INTEGRATE:STOP')
 
-    def reset_integration(self):
-        self.write('INTEGRATE:RESET')
-    
     def get_integrated_power(self, reset = True):
         """Returns the power equivalent of the total integrated energy"""
         try:
@@ -1198,7 +1201,7 @@ class PowerMeterWT210(PowerMeterBaseClass):
         self._integration_status = "START"
     
     def stop_integration(self):
-        self.write('INTEGRATE:STOP')
+        super().stop_integration()
         self._integration_status = "STOP"
 
     def reset_integration(self):
