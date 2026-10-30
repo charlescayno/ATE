@@ -46,10 +46,10 @@ def check(errors, name, ok, detail=""):
 
 
 def test_effective_integration(errors):
-    check(errors, "eff int from soak only", POLL.effective_integration_s(10, 300) == 10.0)
-    check(errors, "eff int soak larger", POLL.effective_integration_s(300, 10) == 300.0)
-    check(errors, "eff int ignores poll wait", POLL.effective_integration_s(5, 300) == 5.0)
-    check(errors, "eff int zero soak", POLL.effective_integration_s(0, 300) == 0.0)
+    check(errors, "eff int from poll param", POLL.effective_integration_s(10, 300) == 300.0)
+    check(errors, "eff int ignores soak", POLL.effective_integration_s(300, 10) == 10.0)
+    check(errors, "eff int poll only", POLL.effective_integration_s(5, 300) == 300.0)
+    check(errors, "eff int zero poll", POLL.effective_integration_s(600, 0) == 0.0)
 
 
 def test_fan_cooling(errors):
@@ -197,7 +197,7 @@ def test_run_complete(errors):
               test.sheet_name)
         ws = wb[test.sheet_name]
         check(errors, "poll metadata",
-              ws['D2'].value == 'Poll wait between samples (s)' and ws['E2'].value == 1
+              ws['D2'].value == 'Pin integration per sample (s)' and ws['E2'].value == 1
               and ws['E3'].value == 3 and ws['D3'].value == 'Samples per load point',
               (ws['D2'].value, ws['E2'].value, ws['D3'].value, ws['E3'].value))
         check(errors, "section title", ws['T14'].value == 'Timed Poll', ws['T14'].value)

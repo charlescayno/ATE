@@ -247,10 +247,10 @@ def render_poll_sequence_diagram_png(
     ax.tick_params(axis="x", labelbottom=False)
 
     leg = [
-        mpatches.Patch(fc="#4C78A8", label="T_int (soak integration)"),
+        mpatches.Patch(fc="#4C78A8", label="T_int (Pin integration per sample)"),
         mpatches.Patch(fc="#7986CB", label="Meter read (PM)"),
         mpatches.Patch(fc="#F58518", label="Scope capture"),
-        mpatches.Patch(fc="#EECA3B", label="T_wait (poll wait)"),
+        mpatches.Patch(fc="#EECA3B", label="(no separate idle wait)"),
         mpatches.Patch(fc="#00695C", label="Excel row"),
     ]
     fig.legend(
@@ -274,7 +274,7 @@ def render_poll_sequence_diagram_png(
     )
 
     meta_lines = [
-        "T_int = soak integration time   ·   T_wait = poll wait between samples   ·   "
+        "T_int = Pin integration per sample (param 10)   ·   "
         "N = samples per load point (Add Test)",
     ]
     mode = _short_dual_load_mode(dual_load_mode)

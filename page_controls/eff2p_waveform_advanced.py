@@ -100,7 +100,7 @@ class Eff2PWaveformAdvancedDialog(QDialog):
             self.le_poll_duration = QLineEdit(self)
             self.le_poll_interval.setValidator(validator)
             self.le_poll_duration.setValidator(validator)
-            form.addRow("Poll wait between samples (s):", self.le_poll_interval)
+            form.addRow("Pin integration per sample (s):", self.le_poll_interval)
             form.addRow("Samples per load point:", self.le_poll_duration)
 
         hint = QLabel(

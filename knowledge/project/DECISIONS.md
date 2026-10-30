@@ -1,12 +1,12 @@
 # Design decisions
 
-## Poll test: effective integration (2026 → 2026-10 v2)
+## Poll test: Pin integration per sample (2026-10 v3)
 
-**Decision:** For `SteadyStatePollWaveformTest_2Port`, WT500 Pin integration = **soak integration time only** (poll wait does not extend integration). Param **11** = samples per load point; param **10** = wait between samples. Legacy sequences with param 11 ≥ 60 s still map to sample count via old duration ÷ interval formula.
+**Decision:** For `SteadyStatePollWaveformTest_2Port`, WT500 **Pin integration = I2C param 10** (`Pin integration per sample (s)`). Soak integration is **not** used for poll Pin. Each sample: **integrate → read → scope → Excel**; sample **k+1** integration starts after sample **k** scope (next loop iteration). No separate idle poll wait. Param **11** = samples per load point (legacy ≥ 60 s = old duration).
 
-**Rationale:** TST-326 soak integration defaults to 0; poll interval alone should still enable integrated Pin. Avoids mismatch when operators set 5 min poll but forget soak integration field.
+**Rationale:** One UI knob for TST-326; avoids idle wait with no integration.
 
-**Tradeoffs:** Only **source** PM uses the poll timer in `_configure_poll_power_meter_integration()`; load PMs stay at timer 0 (instant P). Stop does not interrupt `poll_integration_status()` mid-window.
+**Tradeoffs:** Load PMs stay timer 0. Long integrate windows use chunked wait + Stop checks in `_integrate_source_pin_before_read()`; read uses `source_pin_integration_done=True` to avoid double integration.
 
 ## 2-port load PMs: no integration (2026-10)
 

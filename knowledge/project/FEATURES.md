@@ -21,10 +21,10 @@ Many I2C / Transients / Light Load classes exist but are **commented out** of `T
 
 ## Poll test (feature summary)
 
-- Params: **poll wait between samples** (s), **samples per load point** on I2C slots 10–11 (legacy: slot 11 ≥ 60 s interpreted as old duration).  
-- Defaults: **30 s** wait, **3** samples/point.  
+- Params: **Pin integration per sample** (s), **samples per load point** on I2C slots 10–11 (legacy: slot 11 ≥ 60 s interpreted as old duration).  
+- Defaults: **30 s** integration/sample, **3** samples/point.  
 - Default scope: **CH1** `VDS_PRI`, MAXimum, **1700 V** derating (CH2–4 off).  
-- **One scope PNG per sample** (`_S1`, `_S2`, …). Pin integration uses **soak integration time only** (decoupled from poll wait).
+- **One scope PNG per sample** (`_S1`, `_S2`, …). Integrate → read → scope → row; next integrate after previous scope.
 - Optional **Enable Fan Cooling (HMP2030 CH2: 12 V / 4 A)** on Add Test (I2C param **12**): ON before the run, OFF after cleanup; unchecked forces CH2 OFF before the run only.
 
 ## Manual control

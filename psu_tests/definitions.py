@@ -759,7 +759,8 @@ class TestData():
         self._apply_stable_source_input_readings()
         return self.pin_W if self.pin_W is not None else 0.0
 
-    def _apply_stable_source_input_readings(self) -> None:
+    def _apply_stable_source_input_readings(
+            self, *, integration_done: bool = False) -> None:
         """Poll-test source path: finish integration/averaging, then read Vin/Iin/PF/Pin."""
         pm = self.source_power_meter
         if pm is None:
@@ -769,7 +770,15 @@ class TestData():
             self.pin_W = 0.0
             return
         timer_s = self._source_integration_seconds()
-        if timer_s >= 1.0:
+        if timer_s >= 1.0 and integration_done:
+            self.vin_V = pm.voltage
+            self.iin_mA = pm.current
+            try:
+                self.PF = pm.pf
+            except Exception:
+                self.PF = 0.0
+            self.pin_W = pm.get_integrated_power(reset=True)
+        elif timer_s >= 1.0:
             pm.start_integration()
             pm.poll_integration_status()
             # V/I/PF while integrate window is complete but Wh not yet reset.
@@ -815,7 +824,8 @@ class TestData():
                     coupling:str = 'AC',
                     force_use_eload_data = False,
                     usb_pd: bool = False,
-                    stable_source_pin: bool = False):
+                    stable_source_pin: bool = False,
+                    source_pin_integration_done: bool = False):
         
         # Determine whether load power meter is present and active
         has_load_pm = (self.load_power_meter is not None) and (not self.use_eload_data) and (not force_use_eload_data)
@@ -873,7 +883,8 @@ class TestData():
                         self.pout_W = self.load_power_meter.power
 
         if stable_source_pin:
-            self._apply_stable_source_input_readings()
+            self._apply_stable_source_input_readings(
+                integration_done=source_pin_integration_done)
                 
         # Fallback for Pin if None
         if self.pin_W is None:

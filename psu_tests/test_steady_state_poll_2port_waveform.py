@@ -1,6 +1,7 @@
 """Steady-state 2-port waveform test that polls meters for a timed window."""
 import datetime
 import math
+import time
 from copy import deepcopy
 from time import sleep
 
@@ -17,9 +18,8 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
     Steady-State Poll Waveform 2 Port.
 
     Same line/load sweep and one scope screenshot per point as Steady-State
-    Waveform 2 Port.     Each sample: integrate Pin (soak integration time) → meters → scope capture (PNG)
-    → Excel row → optional wait (Poll Interval) → repeat for N samples per load point.
-    Poll Interval is wait-only between samples; it does not set integration length.
+    Waveform 2 Port. Each sample: integrate Pin (param 10) → meters → scope capture (PNG)
+    → Excel row → repeat for N samples. Next sample integration starts after previous scope finishes.
     """
 
     title = "Steady-State Poll Waveform 2 Port"
@@ -132,18 +132,20 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
 
     @staticmethod
     def effective_integration_s(soak_integration_s, poll_interval_s=None) -> float:
-        """Pin integration window = soak integration time only (poll interval is wait-only)."""
+        """Pin integration window = poll param 10 (soak integration ignored for poll Pin)."""
+        del soak_integration_s
         try:
-            soak = float(soak_integration_s or 0)
+            t = float(poll_interval_s or 0)
         except (TypeError, ValueError):
-            soak = 0.0
-        if soak < 0:
-            soak = 0.0
-        return soak
+            t = 0.0
+        if t < 0:
+            t = 0.0
+        return t
 
     def _effective_integration_s(self) -> float:
         return self.effective_integration_s(
-            getattr(self.soak_time, 'integration_time', 0),
+            0,
+            getattr(self, 'poll_interval_s', self.POLL_INTERVAL_DEFAULT_S),
         )
 
     def _configure_poll_power_meter_integration(self):
@@ -234,11 +236,9 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
         self._configure_poll_power_meter_integration()
         eff = self._effective_integration_s()
         if eff > 0:
-            soak = float(getattr(self.soak_time, 'integration_time', 0) or 0)
             print(
-                f"[POLL] Power meter integration: {eff:g} s "
-                f"(soak integration {soak:g} s; "
-                f"poll wait between samples {float(self.poll_interval_s):g} s)"
+                f"[POLL] Pin integration per sample: {eff:g} s "
+                f"(I2C param {self.POLL_INTERVAL_PARAM_INDEX})"
             )
 
     @classmethod
@@ -319,9 +319,9 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
     def _write_run_metadata_rows(self, ws):
         super()._write_run_metadata_rows(ws)
         rows = (
-            (2, "Poll wait between samples (s)", self.poll_interval_s),
+            (2, "Pin integration per sample (s)", self.poll_interval_s),
             (3, "Samples per load point", self._sample_count()),
-            (4, "Integration time (s)", self._effective_integration_s()),
+            (4, "Pin integration (s)", self._effective_integration_s()),
             (5, "Est. poll window (s)", round(self._estimated_poll_point_duration_s(), 1)),
             (6, "Fan cooling (HMP CH2)", "Yes" if self.enable_fan_cooling else "No"),
         )
@@ -425,7 +425,7 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
                                records_before, rows_at_start)
 
     def prepare_source_power_meter_for_poll_input(self):
-        """Poll: integration timer from soak only (not poll wait interval)."""
+        """Once per load point: set source timer from Pin integration per sample (param 10)."""
         pm = self.power_meter_source
         if pm is not None and hasattr(pm, '_stop_and_reset_integration'):
             pm._stop_and_reset_integration()
@@ -461,16 +461,43 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
         if n <= 0:
             return 0.0
         integ = max(self._effective_integration_s(), 0.0)
-        wait = float(self.poll_interval_s or 0) if n > 1 else 0.0
         per = integ + self._poll_per_sample_overhead_s()
-        return n * per + (n - 1) * wait
+        return n * per
+
+    def _integrate_source_pin_before_read(self, records_before, rows_at_start):
+        """Integrate Pin for T_int before meter read; honors Stop in 0.25 s slices."""
+        integ = self._effective_integration_s()
+        if integ < 1.0:
+            return
+        pm = self.power_meter_source
+        if pm is None:
+            return
+        self._raise_if_abort(records_before, rows_at_start)
+        pm.start_integration()
+        deadline = time.time() + float(integ)
+        pmo = getattr(pm, 'power_meter_object', None)
+        while time.time() < deadline:
+            self._raise_if_abort(records_before, rows_at_start)
+            if pmo is not None and hasattr(pmo, 'check_integration_status'):
+                try:
+                    pmo.check_integration_status()
+                except Exception:
+                    pass
+                if getattr(pmo, '_integration_done', False):
+                    return
+            remaining = deadline - time.time()
+            if remaining <= 0:
+                break
+            sleep(min(0.25, remaining))
 
     def _measure_poll_readings(self, i2_A):
         """PM reads for poll samples without re-sending AUTO range every tick."""
+        pin_done = self._effective_integration_s() >= 1.0
         self.test_data.gather_data(
             coupling=self.coupling,
             usb_pd=self.usbpd_test,
             stable_source_pin=True,
+            source_pin_integration_done=pin_done,
         )
         if self.power_meter_load_2 or self.electronic_load_2:
             self.test_data_2.gather_data_load(
@@ -512,7 +539,7 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
 
     def _acquire_operating_point(self, vin_set, i1_A, i2_A):
         n = self._sample_count()
-        interval = float(self.poll_interval_s) if n > 1 else 0.0
+        t_int = float(self.poll_interval_s or 0)
         records_before = len(self.captured_records)
         rows_at_start = len(self.output_dataframe)
         self.poll_prev_sampled_dt = None
@@ -523,20 +550,19 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
             for sample in range(n):
                 self._raise_if_abort(records_before, rows_at_start)
                 self.poll_sample_index = sample + 1
-                self.poll_elapsed_s = sample * interval
+                self.poll_elapsed_s = sample * t_int
                 if sample == 0:
                     self.poll_point_start_dt = datetime.datetime.now()
                     self.poll_point_end_dt = (
                         self.poll_point_start_dt
                         + datetime.timedelta(seconds=self._estimated_poll_point_duration_s())
                     )
-                else:
-                    self.update_status_log(
-                        f"Poll sample {sample + 1}/{n} "
-                        f"(wait {interval:g} s after previous sample)",
-                        upcoming="Read meters")
-                    self._wait_for_scheduled_poll_sample(
-                        interval, records_before, rows_at_start)
+                self.update_status_log(
+                    f"Poll sample {self.poll_sample_index}/{n} "
+                    f"(Pin integrate {self._effective_integration_s():g} s)",
+                    upcoming="Read meters")
+                self._integrate_source_pin_before_read(
+                    records_before, rows_at_start)
                 read_t0 = datetime.datetime.now()
                 self.update_status_log(
                     f"Poll sample {self.poll_sample_index}/{n}",
@@ -573,8 +599,8 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
         )
         note = (
             f"Poll: {self._sample_count()} samples/load point, "
-            f"{self._effective_integration_s():g} s Pin integration, "
-            f"{self.poll_interval_s:g} s wait between samples. "
+            f"{self.poll_interval_s:g} s Pin integration per sample "
+            f"(integrate, read, scope, row). "
             f"{fan} "
             "Stop keeps rows already saved to Excel."
         ).replace("  ", " ")

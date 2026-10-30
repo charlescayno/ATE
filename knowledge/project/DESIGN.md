@@ -17,11 +17,12 @@ Default scope (Add Test → new poll item): **CH1** `VDS_PRI`, **MAXimum**, dera
 
 Per load point (each sample):
 
-1. Integrate Pin for **soak integration time** (not poll wait).  
-2. `_measure_poll_readings()` → **`capture_waveform_at_point()`** (unique `_S{n}` PNG).  
-3. Excel row → wait **`poll_interval_s`** → repeat for **N** samples.
+1. **`_integrate_source_pin_before_read()`** for **param 10** (seconds).  
+2. `_measure_poll_readings()` (`source_pin_integration_done=True` when T_int ≥ 1).  
+3. **`capture_waveform_at_point()`** (unique `_S{n}` PNG).  
+4. Excel row → repeat for **N** samples (no idle wait between samples).
 
-I2C param indices: **10** poll wait between samples (s), **11** samples per load point (legacy: values ≥ 60 treated as old duration in s), **12** fan cooling (1 = HMP aux CH2 12 V / 4 A ON for the test).
+I2C param indices: **10** Pin integration per sample (s), **11** samples per load point (legacy: values ≥ 60 treated as old duration in s), **12** fan cooling (1 = HMP aux CH2 12 V / 4 A ON for the test).
 
 Fan path uses `dc_source_aux` HMP (`prefer_hmp_as_aux()`), same as startup/smoke scripts; `setup_equipment()` applies preflight; `run()` `finally` turns CH2 OFF when fan was enabled.
 

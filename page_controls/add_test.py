@@ -1923,18 +1923,11 @@ class AddTestPageHandler(QObject):
             "QPushButton { color: white; background-color: rgb(52, 59, 72); padding: 6px 16px; }")
         layout = QVBoxLayout(dlg)
         if is_poll:
-            integration_s = 600.0
-            soak = getattr(self, "selected_soaktime", None)
-            if soak is not None:
-                try:
-                    integration_s = float(soak.integration_time)
-                except (TypeError, ValueError):
-                    pass
             pix = poll_sequence_diagram_pixmap(
                 dlg,
                 n_samples=int(poll_samples_n),
                 poll_wait_s=poll_interval_s,
-                integration_s=integration_s,
+                integration_s=float(poll_interval_s),
                 dual_load_mode=dual_load_mode,
                 user_prompts=user_prompts,
             )
@@ -2060,8 +2053,8 @@ class AddTestPageHandler(QObject):
         form = QFormLayout(self.frame_poll_timing)
         form.setContentsMargins(0, 4, 0, 4)
         hint = QLabel(
-            "Each sample: Pin integration (soak profile) → meters → scope PNG → Excel row. "
-            "Then wait the interval below before the next sample, for the sample count shown."
+            "Each sample: integrate Pin for the time below → meters → scope PNG → Excel row. "
+            "Next sample starts integrating after the previous scope capture finishes."
         )
         hint.setWordWrap(True)
         hint.setStyleSheet("color: rgb(150, 170, 190); font-size: 11px;")
@@ -2075,7 +2068,7 @@ class AddTestPageHandler(QObject):
         )
         self.chk_poll_fan_cooling.setStyleSheet(cb_style)
         self.chk_poll_fan_cooling.setChecked(False)
-        form.addRow("Poll wait between samples (s):", interval_le)
+        form.addRow("Pin integration per sample (s):", interval_le)
         form.addRow("Samples per load point:", duration_le)
         form.addRow(self.chk_poll_fan_cooling)
         form.addRow(hint)
