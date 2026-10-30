@@ -752,12 +752,16 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
             return f'{float(value):.2f}'
         return str(value)
 
-    def _log_excel_row_to_terminal(self, data_row) -> None:
-        """One terminal line per Excel main-sheet row (matches View Data / export)."""
-        headers = getattr(self, 'header_list', None) or self.define_data_header()
-        n = min(len(headers), len(data_row))
+    def _log_excel_row_to_terminal(self, data_row, scope_row=None) -> None:
+        """One terminal line per Excel row: meter/poll fields + scope (incl. derating %)."""
+        headers = list(getattr(self, 'header_list', None) or self.define_data_header())
+        row = list(data_row)
+        if scope_row is not None:
+            headers.extend(getattr(self, 'scope_header_list', None) or [])
+            row.extend(scope_row)
+        n = min(len(headers), len(row))
         parts = [
-            f'{headers[i]}={self._terminal_cell_text(headers[i], data_row[i])}'
+            f'{headers[i]}={self._terminal_cell_text(headers[i], row[i])}'
             for i in range(n)
         ]
         print('[DATA_ROW] ' + ' | '.join(parts))
@@ -767,7 +771,7 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
         self.output_dataframe.loc[len(self.output_dataframe)] = data_row
         self.scope_dataframe.loc[len(self.scope_dataframe)] = scope_row
         self.current_scope_row = scope_row
-        self._log_excel_row_to_terminal(data_row)
+        self._log_excel_row_to_terminal(data_row, scope_row)
         self.update_output_data()
 
     def _set_loads(self, i1_A, i2_A):
