@@ -22,6 +22,7 @@ from psu_tests.test_vds_ids_steady_state import VdsIdsSteadyStateTest, SteadySta
 from psu_tests.test_efficiency_modern import ModernEfficiencyTest
 from psu_tests.test_efficiency_2port_waveform import EfficiencyWaveformTest_2Port
 from psu_tests.test_steady_state_poll_2port_waveform import SteadyStatePollWaveformTest_2Port
+from psu_tests.test_rdson_measurements import RdsonMeasurementTest_2Port
 from psu_tests.test_startup_2port_waveform import StartupWaveformTest_2Port
 from psu_tests.test_startup_ac_turnon_waveform import StartupWaveformTest_ACTurnOn
 
@@ -53,6 +54,7 @@ TestTypes = [
     # Dual-output / 2-port tests (grouped at top of Add Tests dropdown)
     EfficiencyWaveformTest_2Port,
     SteadyStatePollWaveformTest_2Port,
+    RdsonMeasurementTest_2Port,
     StartupWaveformTest_2Port,
     StartupWaveformTest_ACTurnOn,
     EfficiencyTest_2Port,

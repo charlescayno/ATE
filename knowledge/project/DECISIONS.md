@@ -45,3 +45,15 @@
 ---
 
 When adding decisions: date, decision, rationale, affected files.
+
+## Rdson Measurements test type (2026-11)
+
+**Decision:** New test type Rdson Measurements (RdsonMeasurementTest_2Port, psu_tests/test_rdson_measurements.py) subclasses SteadyStatePollWaveformTest_2Port and reuses its poll flow/params (10/11/12). Per sample it additionally reads RTO6 **Cursor 1..4** via oscilloscope.get_cursor(n) and writes **Cursor Result n Y1/Y2/dX/dY** columns (off cursors = N/A). No Rdson math; cursors are set up by the operator on the scope (Vds = CH1, Ids = CH2).
+
+**Affected:** psu_tests/test_rdson_measurements.py, psu_tests/test_type.py, page_controls/add_test.py (POLL_WAVEFORM_TITLES), page_controls/test_sequence_flow_text.py, scripts/verify_rdson_measurements.py.
+
+
+## Rdson Measurements: cursor assignment + Rds math (2026-11)
+
+**Decision:** Cursors are assigned C1 = VDS #1, C2 = IDS #1, C3 = VDS #2, C4 = IDS #2 (pairs 1+2, 3+4). Per sample: Rds1 = C1.Y1/C2.Y1, Rds2 = C1.Y2/C2.Y2, Rds3 = C3.Y1/C4.Y1, Rds4 = C3.Y2/C4.Y2, Rds_avg = mean of the four (ohm, V/A). Any missing cursor or Ids ~ 0 gives N/A for that term and for Rds_avg. Supersedes the earlier 'no Rdson math' decision. Workbook name prefix is `OUTPUT_PREFIX` (RDSON; poll stays SSP).
+

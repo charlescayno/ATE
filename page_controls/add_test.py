@@ -45,6 +45,11 @@ from misc_functions.misc_functions import *
 
 STEADY_STATE_WAVEFORM_2PORT_TITLE = "Steady-State Waveform 2 Port"
 STEADY_STATE_POLL_WAVEFORM_2PORT_TITLE = "Steady-State Poll Waveform 2 Port"
+RDSON_MEASUREMENTS_TITLE = "Rdson Measurements"
+POLL_WAVEFORM_TITLES = (
+    STEADY_STATE_POLL_WAVEFORM_2PORT_TITLE,
+    RDSON_MEASUREMENTS_TITLE,
+)
 STARTUP_WAVEFORM_2PORT_TITLE = "Startup Waveform 2 Port"
 STARTUP_WAVEFORM_AC_TURNON_TITLE = "Startup Waveform AC Turn-On (DER-1113)"
 STARTUP_WAVEFORM_TITLES = (
@@ -56,6 +61,7 @@ EFFICIENCY_2PORT_WAVEFORM_LEGACY_TITLE = "Efficiency 2 Port (Waveform)"
 WAVEFORM_2PORT_TITLES = (
     EFFICIENCY_2PORT_WAVEFORM_TITLE,
     STEADY_STATE_POLL_WAVEFORM_2PORT_TITLE,
+    RDSON_MEASUREMENTS_TITLE,
     EFFICIENCY_2PORT_WAVEFORM_LEGACY_TITLE,
     STARTUP_WAVEFORM_2PORT_TITLE,
     STARTUP_WAVEFORM_AC_TURNON_TITLE,
@@ -64,6 +70,7 @@ EFFICIENCY_2PORT_TITLES = (
     "Efficiency 2 Port",
     STEADY_STATE_WAVEFORM_2PORT_TITLE,
     STEADY_STATE_POLL_WAVEFORM_2PORT_TITLE,
+    RDSON_MEASUREMENTS_TITLE,
     EFFICIENCY_2PORT_WAVEFORM_LEGACY_TITLE,
     STARTUP_WAVEFORM_2PORT_TITLE,
     STARTUP_WAVEFORM_AC_TURNON_TITLE,
@@ -1888,7 +1895,7 @@ class AddTestPageHandler(QObject):
 
         poll_interval_s = SteadyStatePollWaveformTest_2Port.POLL_INTERVAL_DEFAULT_S
         poll_samples_n = SteadyStatePollWaveformTest_2Port.POLL_SAMPLES_DEFAULT
-        if test_class.title == STEADY_STATE_POLL_WAVEFORM_2PORT_TITLE:
+        if test_class.title in POLL_WAVEFORM_TITLES:
             interval_le, samples_le = self._poll_timing_storage()
             if is_numeric(interval_le.text()):
                 poll_interval_s = float(interval_le.text())
@@ -1898,7 +1905,7 @@ class AddTestPageHandler(QObject):
                     poll_interval_s,
                 )
 
-        is_poll = test_class.title == STEADY_STATE_POLL_WAVEFORM_2PORT_TITLE
+        is_poll = test_class.title in POLL_WAVEFORM_TITLES
         body = None if is_poll else build_flow_text_for_title(
             test_class.title,
             user_prompts=user_prompts,
@@ -2007,6 +2014,19 @@ class AddTestPageHandler(QObject):
                 self.btn_eff2p_test_flow.setCursor(Qt.PointingHandCursor)
                 self.btn_eff2p_test_flow.clicked.connect(self.show_test_sequence_flow)
             hl.addWidget(self.btn_eff2p_test_flow)
+            self.label_total_pout_calc = QLabel("")
+            self.label_total_pout_calc.setStyleSheet(
+                "color: rgb(0, 190, 255); font-size: 11px; padding-left: 10px;")
+            self.label_total_pout_calc.setToolTip(
+                "Total output power at full load = Vout1 x Iout1 + Vout2 x Iout2 "
+                "(Iout2 = Fixed Aux Load in Option C)")
+            hl.addWidget(self.label_total_pout_calc)
+            for le in (ui.lineedit_add_tests_nominal_output_voltage,
+                       ui.lineedit_add_tests_nominal_output_current,
+                       *self.i2c_ui_lineedits[:3]):
+                le.textChanged.connect(self._update_total_pout_label)
+            ui.cbx_add_tests_i2c_cbxparam_1.currentIndexChanged.connect(
+                self._update_total_pout_label)
             hl.addStretch()
             if not hasattr(self, 'btn_eff2p_scope_faq'):
                 self.btn_eff2p_scope_faq = QPushButton("i", self.frame_eff2p_advanced_gear)
@@ -2017,6 +2037,35 @@ class AddTestPageHandler(QObject):
                 self.btn_eff2p_scope_faq.setToolTip("Scope & trigger terminology")
                 self.btn_eff2p_scope_faq.clicked.connect(self.show_scope_faq)
                 hl.addWidget(self.btn_eff2p_scope_faq)
+
+    def _update_total_pout_label(self, *_args):
+        """Show Total Output Power (computed) = V1*I1 + V2*I2 next to the Scope & timing row."""
+        lbl = getattr(self, 'label_total_pout_calc', None)
+        if lbl is None:
+            return
+
+        def _num(le):
+            try:
+                return float(le.text().strip())
+            except (TypeError, ValueError):
+                return None
+
+        ui = self.ui
+        v1 = _num(ui.lineedit_add_tests_nominal_output_voltage)
+        i1 = _num(ui.lineedit_add_tests_nominal_output_current)
+        v2 = _num(self.i2c_ui_lineedits[0])
+        i2 = _num(self.i2c_ui_lineedits[1])
+        aux = _num(self.i2c_ui_lineedits[2])
+        mode = ui.cbx_add_tests_i2c_cbxparam_1.currentText()
+        if "Option C" in mode:
+            i2 = aux
+        if None in (v1, i1, v2, i2):
+            lbl.setText("Total Pout: --")
+            return
+        p1 = v1 * i1
+        p2 = v2 * i2
+        lbl.setText(
+            f"Total Pout: {p1 + p2:g} W  ({p1:g} + {p2:g})")
 
     def _startup_capture_timeout_storage(self):
         if not hasattr(self, '_startup_capture_timeout_lineedit'):
@@ -2129,7 +2178,7 @@ class AddTestPageHandler(QObject):
         selected = getattr(self, 'selected_test_class', None)
         title = selected.title if selected is not None else ""
         is_startup = title == STARTUP_WAVEFORM_2PORT_TITLE
-        is_poll = title == STEADY_STATE_POLL_WAVEFORM_2PORT_TITLE
+        is_poll = title in POLL_WAVEFORM_TITLES
         poll_interval_le = poll_duration_le = None
         if is_poll:
             poll_interval_le, poll_duration_le = self._poll_timing_storage()
@@ -2150,7 +2199,7 @@ class AddTestPageHandler(QObject):
     def _apply_eff2p_waveform_i2c_visibility(self):
         selected = getattr(self, 'selected_test_class', None)
         is_wf = selected is not None and selected.title in WAVEFORM_2PORT_TITLES
-        is_poll = selected is not None and selected.title == STEADY_STATE_POLL_WAVEFORM_2PORT_TITLE
+        is_poll = selected is not None and selected.title in POLL_WAVEFORM_TITLES
         if is_wf:
             for i in range(4, 10):
                 self.i2c_ui_lineedit_frames[i].setVisible(False)
@@ -2160,6 +2209,7 @@ class AddTestPageHandler(QObject):
             ui.gridLayout_12.removeWidget(self.frame_eff2p_advanced_gear)
             ui.gridLayout_12.addWidget(self.frame_eff2p_advanced_gear, 2, 0, 1, 2)
             self._apply_poll_timing_visibility(is_poll)
+            self._update_total_pout_label()
             scope_row = 4 if is_poll else 3
             dual_row = 5 if is_poll else 4
             if hasattr(self, 'frame_scope_channels'):
@@ -3091,7 +3141,7 @@ class AddTestPageHandler(QObject):
                     if test_type.title == STARTUP_WAVEFORM_2PORT_TITLE:
                         self._sync_startup_capture_timeout_from_i2c(
                             selected_test_conditions.i2c_test_parameters)
-                    if test_type.title == STEADY_STATE_POLL_WAVEFORM_2PORT_TITLE:
+                    if test_type.title in POLL_WAVEFORM_TITLES:
                         self._sync_poll_timing_from_i2c(
                             selected_test_conditions.i2c_test_parameters)
 
@@ -3339,7 +3389,7 @@ class AddTestPageHandler(QObject):
                                 cbx.setCurrentIndex(cbx_names.index(cbx_item))
                     if self.selected_test_class.title == STARTUP_WAVEFORM_2PORT_TITLE:
                         self._sync_startup_capture_timeout_from_i2c(default_i2c)
-                    if self.selected_test_class.title == STEADY_STATE_POLL_WAVEFORM_2PORT_TITLE:
+                    if self.selected_test_class.title in POLL_WAVEFORM_TITLES:
                         self._sync_poll_timing_from_i2c(default_i2c)
                 else:
                     for line in self.i2c_ui_lineedits:
@@ -3768,7 +3818,7 @@ class AddTestPageHandler(QObject):
 
         if (
             getattr(self, 'selected_test_class', None) is not None
-            and self.selected_test_class.title == STEADY_STATE_POLL_WAVEFORM_2PORT_TITLE
+            and self.selected_test_class.title in POLL_WAVEFORM_TITLES
         ):
             interval_le, duration_le = self._poll_timing_storage()
             if is_numeric(interval_le.text()):

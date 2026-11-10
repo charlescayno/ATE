@@ -36,3 +36,6 @@
 |------|------|
 | `scripts/test_poll_timing_headless.py` | No Qt; defaults + AST checks |
 | `scripts/verify_steady_state_poll_2port_waveform.py` | Simulated poll test run |
+
+| `psu_tests/test_rdson_measurements.py` | Rdson Measurements: poll test + Cursor Result 1-4 columns |
+| `scripts/verify_rdson_measurements.py` | Headless check (fake scope) for Rdson columns/registration; run with conda_env python |

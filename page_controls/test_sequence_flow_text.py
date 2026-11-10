@@ -8,6 +8,7 @@ _POLL_DEFAULT_SAMPLE_COUNT = SteadyStatePollWaveformTest_2Port.POLL_SAMPLES_DEFA
 
 STEADY_STATE_WAVEFORM_2PORT_TITLE = "Steady-State Waveform 2 Port"
 STEADY_STATE_POLL_WAVEFORM_2PORT_TITLE = "Steady-State Poll Waveform 2 Port"
+RDSON_MEASUREMENTS_TITLE = "Rdson Measurements"
 STARTUP_WAVEFORM_2PORT_TITLE = "Startup Waveform 2 Port"
 STARTUP_WAVEFORM_AC_TURNON_TITLE = "Startup Waveform AC Turn-On (DER-1113)"
 EFFICIENCY_2PORT_WAVEFORM_LEGACY_TITLE = "Efficiency 2 Port (Waveform)"
@@ -15,6 +16,7 @@ EFFICIENCY_2PORT_WAVEFORM_LEGACY_TITLE = "Efficiency 2 Port (Waveform)"
 FLOW_TITLES = (
     STEADY_STATE_WAVEFORM_2PORT_TITLE,
     STEADY_STATE_POLL_WAVEFORM_2PORT_TITLE,
+    RDSON_MEASUREMENTS_TITLE,
     EFFICIENCY_2PORT_WAVEFORM_LEGACY_TITLE,
     STARTUP_WAVEFORM_2PORT_TITLE,
     STARTUP_WAVEFORM_AC_TURNON_TITLE,
@@ -268,8 +270,8 @@ def build_flow_text_for_title(
     sample_count: int = _POLL_DEFAULT_SAMPLE_COUNT,
     fan_cooling: bool = False,
 ) -> str | None:
-    if title == STEADY_STATE_POLL_WAVEFORM_2PORT_TITLE:
-        return build_poll_flow_text(
+    if title in (STEADY_STATE_POLL_WAVEFORM_2PORT_TITLE, RDSON_MEASUREMENTS_TITLE):
+        text = build_poll_flow_text(
             user_prompts=user_prompts,
             dual_load_mode=dual_load_mode,
             poll_interval_s=poll_interval_s,
@@ -277,6 +279,18 @@ def build_flow_text_for_title(
             sample_count=sample_count,
             fan_cooling=fan_cooling,
         )
+        if title == RDSON_MEASUREMENTS_TITLE and text:
+            text += (
+                "\n\n⚠ Cursor Assignment Required for RDS(on) Measurement:\n"
+                "Cursor 1 = Sampled VDS Voltage #1, Cursor 2 = Sampled IDS Current #1,\n"
+                "Cursor 3 = Sampled VDS Voltage #2, Cursor 4 = Sampled IDS Current #2.\n"
+                "Pair #1 = Cursor 1 + 2, Pair #2 = Cursor 3 + 4.\n"
+                "Rds1 = C1.Y1/C2.Y1, Rds2 = C1.Y2/C2.Y2, Rds3 = C3.Y1/C4.Y1, Rds4 = C3.Y2/C4.Y2\n"
+                "Rds_avg = (Rds1 + Rds2 + Rds3 + Rds4) / 4\n"
+                "Place the cursors at valid VDS and IDS sampling points within the conduction interval; "
+                "incorrect assignment or placement may give inaccurate RDS(on)."
+            )
+        return text
     if title == STARTUP_WAVEFORM_2PORT_TITLE:
         return build_startup_flow_text(
             user_prompts=user_prompts,

@@ -25,6 +25,7 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
     title = "Steady-State Poll Waveform 2 Port"
     short_title = "SS_POLL_2P"
     PNG_SUFFIX = "_SSP"
+    OUTPUT_PREFIX = "SSP"  # leading token of the detailed output file name
     POLL_COLUMNS = (
         "Sample",
         "Elapsed (s)",
@@ -274,7 +275,7 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
 
     def build_detailed_output_basename(self) -> str:
         return (
-            f"SSP {self._line_vin_filename_part()} {self.vout_V:g}V "
+            f"{self.OUTPUT_PREFIX} {self._line_vin_filename_part()} {self.vout_V:g}V "
             f"{self._dual_port_power_filename_part()} {self._scope_names_filename_part()}"
         )
 
