@@ -848,7 +848,9 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
         """Trigger, prompt, and screenshot at the current point.
         Returns the scope row aligned with self.scope_header_list."""
         n_meas = len(self.scope_measurement_labels)
+        from time import perf_counter as _pc0
         while True:
+            _step_t0 = _pc0()
             if self.auto_find_trigger:
                 self.update_status_log("Sweeping Trigger Level...", upcoming="Capture Waveform")
                 trig_level = self.find_trigger(channel=self.trigger_channel, trigger_delta=self.trigger_delta)
@@ -858,10 +860,17 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
             self.update_status_log("Capturing waveform...", upcoming="Save Screenshot")
             if self.reapply_scope_before_capture:
                 self.apply_scope_setup()
+            from time import perf_counter as _pc
+            _t = {'start': _step_t0}
+            _t['trigger'] = _pc()
             self.oscilloscope.run_single()
+            _t['run_single'] = _pc()
             self._wait_for_single_acquisition()
+            _t['wait'] = _pc()
             self.oscilloscope.stop()
+            _t['stop'] = _pc()
             meas = self.query_active_scope_measurements()
+            _t['measure'] = _pc()
 
             if self.prompt_before_capture:
                 meas_str = "".join(f"{k}: {v}<br>" for k, v in meas.items()) or "No active measurements found.<br>"
@@ -903,7 +912,17 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
                 self.oscilloscope.get_screenshot(img_filename, self.waveform_filepath)
             except Exception as e:
                 print(f"[Warning] Failed to capture oscilloscope screenshot {img_filename}: {e}")
+            _t['screenshot'] = _pc()
             self.oscilloscope.run()
+            _t['run'] = _pc()
+            print("[TIMING] capture steps: "
+                  f"trigger_read {_t['trigger'] - _t['start']:.2f} s | "
+                  f"run_single {_t['run_single'] - _t['trigger']:.2f} s | "
+                  f"acq_wait {_t['wait'] - _t['run_single']:.2f} s | "
+                  f"stop {_t['stop'] - _t['wait']:.2f} s | "
+                  f"measure+cursors {_t['measure'] - _t['stop']:.2f} s | "
+                  f"screenshot {_t['screenshot'] - _t['measure']:.2f} s | "
+                  f"run {_t['run'] - _t['screenshot']:.2f} s")
 
             self.captured_records.append({
                 'vin': vin_set, 'i1': i1_A, 'i2': i2_A,
