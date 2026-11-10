@@ -384,6 +384,24 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
             scope_cols.append('Waveform File')
         return scope_cols
 
+    def _allocate_unique_output_paths(self):
+        """Pick workbook name and waveforms folder; never reuse another test's in this run.
+
+        Several tests in one test list can share the same settings (same file name):
+        the 2nd gets " (2)" on the workbook and waveforms folder, the 3rd " (3)", ...
+        """
+        base_name = self.build_detailed_output_basename()
+        run_no = 1
+        self.data_filename = base_name
+        while os.path.exists(f'{self.output_folder_path}/{self.data_filename}.xlsx'):
+            run_no += 1
+            self.data_filename = f"{base_name} ({run_no})"
+        if not self.waveform_filepath:
+            suffix = f" ({run_no})" if run_no > 1 else ""
+            self.waveform_filepath = f"{self.output_folder_path}/waveforms{suffix}"
+        os.makedirs(self.waveform_filepath, exist_ok=True)
+        self.data_file_path = f'{self.output_folder_path}/{self.data_filename}.xlsx'
+
     def setup_data_file(self):
         self.test_data = TestData()
         self.test_data.vout_nom_V = self.vout_V
@@ -411,12 +429,7 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
 
         if not os.path.exists(self.output_folder_path):
             os.makedirs(self.output_folder_path, exist_ok=True)
-        if not self.waveform_filepath:
-            self.waveform_filepath = f"{self.output_folder_path}/waveforms"
-        os.makedirs(self.waveform_filepath, exist_ok=True)
-
-        self.data_filename = self.build_detailed_output_basename()
-        self.data_file_path = f'{self.output_folder_path}/{self.data_filename}.xlsx'
+        self._allocate_unique_output_paths()
         if not os.path.exists(self.data_file_path):
             wb = openpyxl.Workbook()
             wb.save(self.data_file_path)

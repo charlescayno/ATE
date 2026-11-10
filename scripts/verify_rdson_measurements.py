@@ -187,6 +187,16 @@ def main():
         assert rows[0]["spacing_s"] == "" and rows[1]["spacing_s"] == "30.1"
         assert rows[0]["screenshot_s"] == "3.9" and rows[0]["cursor_read_s"] == "11.0"
         assert rows[1]["sample"] == "2" and rows[0]["capture_total_s"] == "17.7"
+    # compact terminal block
+    hdr = ["VDC (rms)", "Po_Total (W)", "Vo1 (V)", "Io1 (A)", "Vo2 (V)", "Io2 (A)",
+           "Efficiency (%)", "Rds1 (ohm)", "Rds2 (ohm)", "Rds3 (ohm)", "Rds4 (ohm)",
+           "Rds_avg (ohm)", "VDS Max", "IDS Max"]
+    vals = [860, 97.66, 47.93, 2.0, 20.19, 0.11, 86.42, .67, .68, .67, .67, .67, 4.01, 3.28]
+    blk = T.format_terminal_block(hdr, vals).split("\n")
+    assert blk[0] == "[RDSON][860V][97.7W]", blk[0]
+    assert "OUT:   47.93V/2.00A + 20.19V/0.11A" in blk and "EFF:   86.42%" in blk
+    assert "RDS:   0.67ohm, 0.68ohm, 0.67ohm, 0.67ohm (Avg=0.67ohm)" in blk
+    assert "PEAKS: Vds=4.01V, Ids=3.28A" in blk
     # minimum interval warning (warn only, 30 s)
     assert T.MIN_INTERVAL_S == 5.0
     assert T.interval_warning(6) == "" and T.interval_warning(30) == ""

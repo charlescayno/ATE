@@ -15,6 +15,8 @@ Pair #1 = Cursor 1 + 2, Pair #2 = Cursor 3 + 4.
     Rds4 = Cursor3.Y2 / Cursor4.Y2
     Rds_avg = (Rds1 + Rds2 + Rds3 + Rds4) / 4      (ohms: V / A)
 """
+import sys
+import os
 from copy import deepcopy
 
 from psu_tests.test_steady_state_poll_2port_waveform import SteadyStatePollWaveformTest_2Port
@@ -155,6 +157,65 @@ class RdsonMeasurementTest_2Port(SteadyStatePollWaveformTest_2Port):
         if self.CURSOR_NOTE not in self.test_list_text:
             self.test_list_text += "\n" + self.CURSOR_NOTE
 
+    # ---- compact terminal output (replaces the one-line [DATA_ROW] blob) ----
+    @staticmethod
+    def _tnum(row, key, nd=2, default="N/A"):
+        try:
+            return f"{float(row[key]):.{nd}f}"
+        except (KeyError, TypeError, ValueError):
+            return default
+
+    @classmethod
+    def format_terminal_block(cls, headers, values, ohm="ohm") -> str:
+        """Multi-line summary of one sample for the terminal / View Logs."""
+        n = min(len(headers), len(values))
+        row = {headers[i]: values[i] for i in range(n)}
+        t = cls._tnum
+        lines = [
+            f"[RDSON][{t(row, 'VDC (rms)', 0)}V][{t(row, 'Po_Total (W)', 1)}W]",
+            f"IN:    Vin={t(row, 'Vin (rms)', 1)}V  Iin={t(row, 'Iin (mA)', 1)}mA  "
+            f"Pin={t(row, 'Pin (W)', 1)}W  PF={t(row, 'PF')}",
+            f"OUT:   {t(row, 'Vo1 (V)')}V/{t(row, 'Io1 (A)')}A + "
+            f"{t(row, 'Vo2 (V)')}V/{t(row, 'Io2 (A)')}A",
+            f"EFF:   {t(row, 'Efficiency (%)')}%",
+        ]
+        rds = [t(row, f"Rds{i} (ohm)") for i in (1, 2, 3, 4)]
+        lines.append(f"RDS:   {', '.join(r + ohm for r in rds)} "
+                     f"(Avg={t(row, 'Rds_avg (ohm)')}{ohm})")
+        peaks = []
+        for key in headers:
+            if key.endswith(" Max") and key in row:
+                name = key[:-4].strip()
+                unit = "V" if name[:1].upper() == "V" else "A"
+                peaks.append(f"{name[:1].upper()}{name[1:].lower()}={t(row, key)}{unit}")
+        if peaks:
+            lines.append(f"PEAKS: {', '.join(peaks)}")
+        curs = [f"C{i}: {t(row, f'Cursor Result {i} Y1')}->{t(row, f'Cursor Result {i} Y2')} "
+                f"(dY={t(row, f'Cursor Result {i} dY')})" for i in (1, 2, 3, 4)]
+        lines.append("CURS:  " + " | ".join(curs))
+        sampled = str(row.get("Time Sampled", ""))[-8:]
+        lines.append(f"TIME:  Sample {t(row, 'Sample', 0)} @ {sampled} | "
+                     f"+{t(row, 'Interval (s)')}s | elapsed {t(row, 'Elapsed (s)')}s")
+        wf = str(row.get("Waveform File", "") or "")
+        if wf:
+            lines.append("FILE:  " + wf.replace("\\", "/").rsplit("/", 1)[-1])
+        return "\n".join(lines)
+
+    def _log_excel_row_to_terminal(self, data_row, scope_row=None) -> None:
+        if os.environ.get("PI_ATE_DATA_ROW_RAW", "").strip().lower() in ("1", "yes", "true"):
+            return super()._log_excel_row_to_terminal(data_row, scope_row)
+        headers = list(getattr(self, 'header_list', None) or self.define_data_header())
+        row = list(data_row)
+        if scope_row is not None:
+            headers.extend(getattr(self, 'scope_header_list', None) or [])
+            row.extend(scope_row)
+        enc = getattr(sys.__stdout__, 'encoding', None) or 'ascii'
+        try:
+            "\u03a9".encode(enc)
+            ohm = "\u03a9"
+        except (UnicodeError, LookupError):
+            ohm = "ohm"
+        print(self.format_terminal_block(headers, row, ohm))
     def define_scope_header(self):
         super().define_scope_header()
         labels = list(self.scope_measurement_labels)

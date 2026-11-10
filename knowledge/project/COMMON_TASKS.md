@@ -11,7 +11,7 @@ conda run -p .\conda_env python main.py
 ## Logging
 
 - **Default:** all prints → console + `app_log.txt` (init, GPIB, SCPI, instruments).
-- **Quiet console:** `set PI_ATE_MINIMAL_LOG=1` before launch.
+- **Console log level:** `set PI_ATE_LOG_LEVEL=quiet|normal|verbose` before launch (default `normal`: no raw SCPI, short de-duplicated `[E_LOAD]`/`[DC_SOURCE]`/`[AC_SOURCE]` ON/OFF lines; `quiet`: high-level only; `verbose`: everything). `app_log.txt` always keeps every line. Legacy `PI_ATE_MINIMAL_LOG=1` = quiet.
 
 ## Add a test to the dropdown
 

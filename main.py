@@ -13,6 +13,7 @@ import time
 import traceback
 import html
 import datetime
+import re
 
 def _minimal_log_line(message: str) -> bool:
     """Subset of lines for quiet terminal / View Logs (PI_ATE_MINIMAL_LOG=1)."""
@@ -22,7 +23,7 @@ def _minimal_log_line(message: str) -> bool:
         return False
     if "[TEST_STEP]" in message or "[SOAK]" in message:
         return True
-    if "[DATA_ROW]" in message:
+    if "[DATA_ROW]" in message or "[RDSON]" in message:
         return True
     if "[POLL]" in message or "[DISCHARGE]" in message:
         return True
@@ -44,23 +45,76 @@ def _minimal_log_line(message: str) -> bool:
     return False
 
 
-def _echo_log_line(message: str) -> bool:
-    """Mirror stdout to terminal and View Logs. Default: all lines (incl. init/GPIB).
+_EQUIP_STATE_RE = re.compile(r"\[(E_LOAD|DC_SOURCE|AC_SOURCE)\] (.+?)(?: \(CH (\d+)\))?: Output (ON|OFF)")
 
-    Set PI_ATE_MINIMAL_LOG=1 for the previous high-level-only console filter.
-    PI_ATE_FULL_LOG=1 is accepted as an alias for full echo (legacy).
-    """
+
+def _short_equipment_name(ident: str) -> str:
+    """'Electronic Load Chroma,6314A,SN,...' -> 'Chroma 6314A'; 'Magna-Power ...  TSD2000-2.5  S/N:..' -> 'Magna TSD2000-2.5'."""
+    ident = ident.replace("Electronic Load ", "").strip()
+    parts = [p.strip() for p in re.split(r",|\s{2,}", ident) if p.strip()]
+    if len(parts) >= 2:
+        return f"{parts[0].split('-')[0].split()[0]} {parts[1]}"
+    return parts[0] if parts else ident
+
+
+def _log_level() -> str:
+    """quiet | normal (default) | verbose. app_log.txt always keeps every line."""
+    lvl = os.environ.get("PI_ATE_LOG_LEVEL", "").strip().lower()
+    if lvl in ("quiet", "normal", "verbose"):
+        return lvl
     if os.environ.get("PI_ATE_MINIMAL_LOG", "").strip().lower() in ("1", "yes", "true"):
-        return _minimal_log_line(message)
-    if os.environ.get("PI_ATE_FULL_LOG", "").strip().lower() in ("0", "no", "false"):
-        return _minimal_log_line(message)
-    return True
+        return "quiet"
+    legacy = os.environ.get("PI_ATE_FULL_LOG", "").strip().lower()
+    if legacy in ("0", "no", "false"):
+        return "quiet"
+    if legacy in ("1", "yes", "true"):
+        return "verbose"
+    return "normal"
 
+
+class LogFilter:
+    """Console/View Logs filter. One instance per consumer (it remembers equipment states).
+
+    quiet:   high-level lines only (test steps, data, warnings, errors, [RDSON]).
+    normal:  everything except raw SCPI traffic; equipment ON/OFF lines are shortened
+             (``[E_LOAD] Chroma 6314A CH5 ON``) and repeated identical states are skipped.
+    verbose: every line unchanged.
+    """
+
+    def __init__(self, level=None):
+        self.level = level or _log_level()
+        self._state = {}
+
+    def apply(self, message: str):
+        """Return the text to show, or None to hide it."""
+        if self.level == "verbose":
+            return message
+        if self.level == "quiet":
+            return message if _minimal_log_line(message) else None
+        if "[SCPI_QUERY]" in message or "[SCPI_WRITE]" in message:
+            return None
+        return _EQUIP_STATE_RE.sub(self._equipment_line, message)
+
+    def _equipment_line(self, m):
+        tag, ident, ch, state = m.group(1), m.group(2), m.group(3), m.group(4)
+        name = _short_equipment_name(ident)
+        key = (tag, name, ch)
+        if self._state.get(key) == state:
+            return ""  # unchanged; skipped
+        self._state[key] = state
+        return f"[{tag}] {name}{' CH' + ch if ch else ''} {state}"
+
+
+def _echo_log_line(message: str) -> bool:
+    """Back-compat helper: True when the message would be shown at the current level."""
+    return LogFilter().apply(message) not in (None, "")
 
 class DualLogger(object):
     def __init__(self, filepath="app_log.txt"):
         self.terminal = sys.stdout
         self.logfile = open(filepath, "a", encoding="utf-8", buffering=1)
+        self._filter = LogFilter()
+        self._last_shown = True
 
     def write(self, message):
         try:
@@ -68,8 +122,14 @@ class DualLogger(object):
             self.logfile.flush()
         except Exception:
             pass
-        if not _echo_log_line(message):
-            return
+        if message.strip():
+            shown = self._filter.apply(message)
+            self._last_shown = shown is not None and shown != ""
+            if not self._last_shown:
+                return
+            message = shown
+        elif not self._last_shown:
+            return  # newline that belonged to a hidden line
         if self.terminal:
             try:
                 self.terminal.write(message)
@@ -222,8 +282,12 @@ class MainWindow(QMainWindow):
         clean_text = text.strip()
         if not clean_text:
             return # Skip empty lines
-        if not _echo_log_line(clean_text):
+        if not hasattr(self, '_log_filter'):
+            self._log_filter = LogFilter()
+        shown = self._log_filter.apply(clean_text)
+        if shown is None or not shown.strip():
             return
+        clean_text = shown.strip()
 
         if '[DATA_ROW]' in clean_text and ' | ' in clean_text:
             try:
@@ -245,7 +309,7 @@ class MainWindow(QMainWindow):
         if '[TEST_STEP]' in clean_text:
             color = '#00ff00' # Green
             font_weight = 'bold'
-        elif '[DATA_ROW]' in clean_text:
+        elif '[DATA_ROW]' in clean_text or clean_text.startswith('[RDSON]'):
             color = '#98fb98' # Pale green
             font_weight = 'normal'
         elif '[AC_SOURCE]' in clean_text:
