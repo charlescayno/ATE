@@ -2135,8 +2135,16 @@ class AddTestPageHandler(QObject):
             timing_hl.addWidget(lbl_row)
             timing_hl.addWidget(le)
             timing_hl.addSpacing(12)
+        self.label_poll_estimate = QLabel("", timing_row)
+        self.label_poll_estimate.setStyleSheet("color: rgb(0, 190, 255); font-size: 11px;")
+        self.label_poll_estimate.setToolTip(
+            "Estimated time per load point (samples x [integration or interval] "
+            "+ meter read + scope capture). Excludes soak and load changes.")
+        timing_hl.addWidget(self.label_poll_estimate)
         timing_hl.addStretch()
         form.addRow(timing_row)
+        interval_le.textChanged.connect(self._update_poll_estimate_label)
+        duration_le.textChanged.connect(self._update_poll_estimate_label)
         self.chk_poll_no_integration = QCheckBox(
             "No integration (instantaneous Pin; time interval per sample)",
             self.frame_poll_timing,
@@ -2149,12 +2157,40 @@ class AddTestPageHandler(QObject):
         form.addRow(hint)
         interval_le.show()
         duration_le.show()
+        self._update_poll_estimate_label()
+
+    @staticmethod
+    def _format_duration(seconds: float) -> str:
+        total = int(round(max(seconds, 0)))
+        h, rem = divmod(total, 3600)
+        m, s = divmod(rem, 60)
+        if h:
+            return f"{h}h {m:02d}m {s:02d}s"
+        if m:
+            return f"{m}m {s:02d}s"
+        return f"{s}s"
+
+    def _update_poll_estimate_label(self, *_args):
+        lbl = getattr(self, 'label_poll_estimate', None)
+        if lbl is None:
+            return
+        interval_le, samples_le = self._poll_timing_storage()
+        if not (is_numeric(interval_le.text()) and is_numeric(samples_le.text())):
+            lbl.setText("Est: --")
+            return
+        interval = float(interval_le.text())
+        samples = SteadyStatePollWaveformTest_2Port.read_samples_per_point(
+            [0.0] * 10 + [interval, float(samples_le.text())], interval)
+        est = SteadyStatePollWaveformTest_2Port.estimate_point_duration_s(
+            interval, samples, self._poll_no_integration_checked())
+        lbl.setText(f"Est. per load point: ~{self._format_duration(est)}")
 
     def _on_poll_no_integration_toggled(self, checked: bool):
         lbl = getattr(self, 'label_poll_interval', None)
         if lbl is not None:
             lbl.setText("Time interval per sample (s):" if checked
                         else "Pin integration per sample (s):")
+        self._update_poll_estimate_label()
 
     def _poll_no_integration_checked(self) -> bool:
         chk = getattr(self, 'chk_poll_no_integration', None)
@@ -2198,6 +2234,7 @@ class AddTestPageHandler(QObject):
         if hasattr(self, 'chk_poll_no_integration'):
             self.chk_poll_no_integration.setChecked(
                 cls.no_integration_from_params(params))
+        self._update_poll_estimate_label()
 
     def _sync_startup_capture_timeout_from_i2c(self, i2c_params):
         if not i2c_params:

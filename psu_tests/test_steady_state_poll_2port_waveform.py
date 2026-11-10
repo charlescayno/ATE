@@ -487,15 +487,30 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
         ) + self.POLL_SCOPE_CAPTURE_GUESS_S
 
     def _estimated_poll_point_duration_s(self) -> float:
-        n = self._sample_count()
+        return self.estimate_point_duration_s(
+            self.poll_interval_s,
+            self._sample_count(),
+            getattr(self, 'no_integration', False),
+            read_s=getattr(self, '_poll_repeat_read_duration_s', None),
+        )
+
+    @classmethod
+    def estimate_point_duration_s(cls, interval_s, samples_n, no_integration=False,
+                                  read_s=None) -> float:
+        """Estimated seconds per load point (also used by the Add Test GUI)."""
+        try:
+            n = int(samples_n)
+            interval = max(float(interval_s or 0), 0.0)
+        except (TypeError, ValueError):
+            return 0.0
         if n <= 0:
             return 0.0
-        integ = max(self._effective_integration_s(), 0.0)
-        per = integ + self._poll_per_sample_overhead_s()
-        total = n * per
-        if getattr(self, 'no_integration', False):
+        integ = 0.0 if no_integration else interval
+        read = max(float(read_s or 0), cls.POLL_READ_DURATION_GUESS_S)
+        total = n * (integ + read + cls.POLL_SCOPE_CAPTURE_GUESS_S)
+        if no_integration:
             # idle gap between samples (not before the first)
-            total += max(n - 1, 0) * max(float(self.poll_interval_s or 0), 0.0)
+            total += max(n - 1, 0) * interval
         return total
 
     def _integrate_source_pin_before_read(self, records_before, rows_at_start):
