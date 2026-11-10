@@ -1816,7 +1816,7 @@ class AddTestPageHandler(QObject):
                 self.label_dual_load_mode_desc.setStyleSheet("color: rgb(0, 190, 255); font-size: 11px; padding-left: 5px;")
                 self.label_dual_load_mode_desc.setWordWrap(True)
             self.ui.gridLayout_12.removeWidget(self.label_dual_load_mode_desc)
-            self.ui.gridLayout_12.addWidget(self.label_dual_load_mode_desc, 7 if is_waveform_variant else 6, 0, 1, 2)
+            self.ui.gridLayout_12.addWidget(self.label_dual_load_mode_desc, 2 if is_waveform_variant else 6, 0, 1, 2)
             self.label_dual_load_mode_desc.setVisible(True)
 
             def on_dual_mode_change(index):
@@ -2014,19 +2014,6 @@ class AddTestPageHandler(QObject):
                 self.btn_eff2p_test_flow.setCursor(Qt.PointingHandCursor)
                 self.btn_eff2p_test_flow.clicked.connect(self.show_test_sequence_flow)
             hl.addWidget(self.btn_eff2p_test_flow)
-            self.label_total_pout_calc = QLabel("")
-            self.label_total_pout_calc.setStyleSheet(
-                "color: rgb(0, 190, 255); font-size: 11px; padding-left: 10px;")
-            self.label_total_pout_calc.setToolTip(
-                "Total output power at full load = Vout1 x Iout1 + Vout2 x Iout2 "
-                "(Iout2 = Fixed Aux Load in Option C)")
-            hl.addWidget(self.label_total_pout_calc)
-            for le in (ui.lineedit_add_tests_nominal_output_voltage,
-                       ui.lineedit_add_tests_nominal_output_current,
-                       *self.i2c_ui_lineedits[:3]):
-                le.textChanged.connect(self._update_total_pout_label)
-            ui.cbx_add_tests_i2c_cbxparam_1.currentIndexChanged.connect(
-                self._update_total_pout_label)
             hl.addStretch()
             if not hasattr(self, 'btn_eff2p_scope_faq'):
                 self.btn_eff2p_scope_faq = QPushButton("i", self.frame_eff2p_advanced_gear)
@@ -2037,6 +2024,22 @@ class AddTestPageHandler(QObject):
                 self.btn_eff2p_scope_faq.setToolTip("Scope & trigger terminology")
                 self.btn_eff2p_scope_faq.clicked.connect(self.show_scope_faq)
                 hl.addWidget(self.btn_eff2p_scope_faq)
+
+    def _align_output_settings_rows(self):
+        """Consistent spacing / alignment for Output 1 and Output 2 rows (2-port tests)."""
+        ui = self.ui
+        if hasattr(self, 'frame_port1_header_row'):
+            self.frame_port1_header_row.setMaximumHeight(22)
+        ui.verticalLayout_94.setSpacing(4)
+        ui.gridLayout_12.setVerticalSpacing(6)
+        for frame, le in zip(self.i2c_ui_lineedit_frames[:4], self.i2c_ui_lineedits[:4]):
+            lay = frame.layout()
+            if lay is not None:
+                # Same left edge as the Output 1 labels; no extra row padding
+                lay.setContentsMargins(0, 0, 0, 0)
+            frame.setMaximumHeight(35)
+            # Same input width as the Output 1 fields so the right column lines up
+            le.setFixedSize(100, 30)
 
     def _update_total_pout_label(self, *_args):
         """Show Total Output Power (computed) = V1*I1 + V2*I2 next to the Scope & timing row."""
@@ -2117,8 +2120,20 @@ class AddTestPageHandler(QObject):
         )
         self.chk_poll_fan_cooling.setStyleSheet(cb_style)
         self.chk_poll_fan_cooling.setChecked(False)
-        form.addRow("Pin integration per sample (s):", interval_le)
-        form.addRow("Samples per load point:", duration_le)
+        # Pin integration and sample count on a single line
+        timing_row = QWidget(self.frame_poll_timing)
+        timing_hl = QHBoxLayout(timing_row)
+        timing_hl.setContentsMargins(0, 0, 0, 0)
+        for text, le in (("Pin integration per sample (s):", interval_le),
+                         ("Samples per load point:", duration_le)):
+            lbl_row = QLabel(text, timing_row)
+            le.setParent(timing_row)
+            le.setMaximumWidth(70)
+            timing_hl.addWidget(lbl_row)
+            timing_hl.addWidget(le)
+            timing_hl.addSpacing(12)
+        timing_hl.addStretch()
+        form.addRow(timing_row)
         form.addRow(self.chk_poll_fan_cooling)
         form.addRow(hint)
         interval_le.show()
@@ -2137,7 +2152,8 @@ class AddTestPageHandler(QObject):
             ui.gridLayout_12.addWidget(self.frame_scope_channels, 4, 0, 1, 2)
         if hasattr(self, 'label_dual_load_mode_desc'):
             ui.gridLayout_12.removeWidget(self.label_dual_load_mode_desc)
-            ui.gridLayout_12.addWidget(self.label_dual_load_mode_desc, 5, 0, 1, 2)
+            # Directly below Fixed Aux Load (row 1)
+            ui.gridLayout_12.addWidget(self.label_dual_load_mode_desc, 2, 0, 1, 2)
 
     def _sync_poll_timing_from_i2c(self, i2c_params):
         interval_le, duration_le = self._poll_timing_storage()
@@ -2204,7 +2220,8 @@ class AddTestPageHandler(QObject):
             for i in range(4, 10):
                 self.i2c_ui_lineedit_frames[i].setVisible(False)
             self._ensure_eff2p_waveform_gear_row()
-            self.frame_eff2p_advanced_gear.setVisible(True)
+            # "Scope & timing (advanced)" row removed from the UI by request (widgets kept, hidden)
+            self.frame_eff2p_advanced_gear.setVisible(False)
             ui = self.ui
             ui.gridLayout_12.removeWidget(self.frame_eff2p_advanced_gear)
             ui.gridLayout_12.addWidget(self.frame_eff2p_advanced_gear, 2, 0, 1, 2)
@@ -2217,7 +2234,8 @@ class AddTestPageHandler(QObject):
                 ui.gridLayout_12.addWidget(self.frame_scope_channels, scope_row, 0, 1, 2)
             if hasattr(self, 'label_dual_load_mode_desc'):
                 ui.gridLayout_12.removeWidget(self.label_dual_load_mode_desc)
-                ui.gridLayout_12.addWidget(self.label_dual_load_mode_desc, dual_row, 0, 1, 2)
+                # Directly below Fixed Aux Load (row 1)
+                ui.gridLayout_12.addWidget(self.label_dual_load_mode_desc, 2, 0, 1, 2)
         else:
             if hasattr(self, 'frame_eff2p_advanced_gear'):
                 self.frame_eff2p_advanced_gear.setVisible(False)
@@ -2285,7 +2303,7 @@ class AddTestPageHandler(QObject):
             ui.label_add_tests_nominal_output_voltage.setText("Nominal Vout 1 (V)")
             ui.label_add_tests_nominal_output_current.setText("Nominal Iout 1 (A)")
             if test_class.title in WAVEFORM_2PORT_TITLES:
-                ui.label_add_tests_i2c_settings.setText("Output 2 / Scope & Trigger Settings")
+                ui.label_add_tests_i2c_settings.setText("Output 2 Settings")
                 self._ensure_scope_channels_frame()
                 self.frame_scope_channels.setVisible(True)
                 self._apply_eff2p_waveform_i2c_visibility()
@@ -2303,9 +2321,37 @@ class AddTestPageHandler(QObject):
                 self.label_port1_header = QLabel("Output 1 Settings")
                 self.label_port1_header.setFont(ui.label_add_tests_i2c_settings.font())
                 self.label_port1_header.setMaximumSize(QSize(16777215, 20))
-                ui.verticalLayout_94.insertWidget(0, self.label_port1_header)
+                # Header row: "Output 1 Settings" on the left, computed Total Pout on the right
+                self.frame_port1_header_row = QFrame(ui.frame_add_tests_i2c)
+                hl_hdr = QHBoxLayout(self.frame_port1_header_row)
+                hl_hdr.setContentsMargins(0, 0, 0, 0)
+                hl_hdr.addWidget(self.label_port1_header)
+                hl_hdr.addStretch()
+                self.label_total_pout_calc = QLabel("")
+                self.label_total_pout_calc.setStyleSheet(
+                    "color: rgb(0, 190, 255); font-size: 11px;")
+                self.label_total_pout_calc.setToolTip(
+                    "Total output power at full load = Vout1 x Iout1 + Vout2 x Iout2 "
+                    "(Iout2 = Fixed Aux Load in Option C)")
+                hl_hdr.addWidget(self.label_total_pout_calc)
+                ui.verticalLayout_94.insertWidget(0, self.frame_port1_header_row)
+                for le in (ui.lineedit_add_tests_nominal_output_voltage,
+                           ui.lineedit_add_tests_nominal_output_current,
+                           *self.i2c_ui_lineedits[:3]):
+                    le.textChanged.connect(self._update_total_pout_label)
+                ui.cbx_add_tests_i2c_cbxparam_1.currentIndexChanged.connect(
+                    self._update_total_pout_label)
             self.label_port1_header.setText("Output 1 Settings")
+            self.frame_port1_header_row.setVisible(True)
             self.label_port1_header.setVisible(True)
+            self._align_output_settings_rows()
+            self._update_total_pout_label()
+            if not hasattr(self, '_pout_refresh_timer'):
+                # Safety net: refresh if a value is set programmatically without a signal
+                self._pout_refresh_timer = QTimer(self.parent)
+                self._pout_refresh_timer.setInterval(500)
+                self._pout_refresh_timer.timeout.connect(self._update_total_pout_label)
+                self._pout_refresh_timer.start()
 
             if ui.frame_add_tests_nominal_output_parameters.parent() != ui.frame_add_tests_i2c:
                 ui.verticalLayout_94.insertWidget(1, ui.frame_add_tests_nominal_output_parameters)
@@ -2355,6 +2401,7 @@ class AddTestPageHandler(QObject):
             ui.label_add_tests_i2c_settings.setText("Scope & Trigger Settings")
             if hasattr(self, 'label_port1_header'):
                 self.label_port1_header.setVisible(False)
+                self.frame_port1_header_row.setVisible(False)
 
             # Header for Nominal Output Ratings
 
@@ -2447,6 +2494,7 @@ class AddTestPageHandler(QObject):
                 ui.label_add_tests_i2c_settings.setText("I2C Options")
             if hasattr(self, 'label_port1_header'):
                 self.label_port1_header.setVisible(False)
+                self.frame_port1_header_row.setVisible(False)
             if hasattr(self, 'label_nominal_ratings_header'):
                 self.label_nominal_ratings_header.setVisible(False)
             if hasattr(self, 'frame_add_tests_max_output_current'):
