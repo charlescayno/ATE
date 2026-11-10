@@ -26,6 +26,30 @@ class RdsonMeasurementTest_2Port(SteadyStatePollWaveformTest_2Port):
     PNG_SUFFIX = "_RDSON"
     OUTPUT_PREFIX = "RDSON"
 
+    # Fast capture: scope setup is applied once at test start (not per sample),
+    # and the post-single wait polls for acquisition done instead of sleeping 1 s.
+    reapply_scope_before_capture = False
+    POLL_SCOPE_CAPTURE_GUESS_S = 4.0
+    ACQ_POLL_INTERVAL_S = 0.05
+    ACQ_WAIT_MAX_S = 1.0
+
+    def _wait_for_single_acquisition(self):
+        """Return as soon as the scope reports an acquisition (max 1 s), else fall back."""
+        from time import sleep, monotonic
+        device = getattr(self.oscilloscope, 'device', None)
+        query = getattr(device, 'query', None)
+        if query is None:
+            sleep(self.ACQ_WAIT_MAX_S)
+            return
+        deadline = monotonic() + self.ACQ_WAIT_MAX_S
+        try:
+            while monotonic() < deadline:
+                if int(float(query('ACQ:CURR?').strip())) >= 1:
+                    return
+                sleep(self.ACQ_POLL_INTERVAL_S)
+        except Exception:
+            sleep(max(0.0, deadline - monotonic()))
+
     CURSOR_SETS = (1, 2, 3, 4)
     # (column suffix, key returned by oscilloscope.get_cursor)
     CURSOR_FIELDS = (
@@ -45,7 +69,7 @@ class RdsonMeasurementTest_2Port(SteadyStatePollWaveformTest_2Port):
 
     POLL_DEFAULT_SCOPE_CHANNELS = {
         1: {'enabled': True, 'name': 'VDS', 'measurements': ['MAXimum'],
-            'derating': None, 'cursor': {'enabled': False, 'type': 'VERTical'}},
+            'derating': 1700.0, 'cursor': {'enabled': False, 'type': 'VERTical'}},
         2: {'enabled': True, 'name': 'IDS', 'measurements': ['MAXimum'],
             'derating': None, 'cursor': {'enabled': False, 'type': 'VERTical'}},
         3: {'enabled': False, 'name': '', 'measurements': [], 'derating': None, 'cursor': {}},
@@ -156,10 +180,45 @@ class RdsonMeasurementTest_2Port(SteadyStatePollWaveformTest_2Port):
 
     @classmethod
     def _build_rdson_tc_default(cls):
-        tc = cls._build_tc_default()
-        tc.name = cls.title
-        tc.scope_channels = deepcopy(cls.POLL_DEFAULT_SCOPE_CHANNELS)
-        return tc
+        """Defaults taken from the bench test plan 'ATE_test_plan_without fan.json'."""
+        from psu_tests.definitions import (
+            TestConditions, LineRange, LoadSettings, SoaktimeSettings,
+            GeneralOptions, USBPDOptions, LineRamp, I2CTestParameters)
+        # Param indices: 0-2 Vout2 / Iout2 / Fixed Aux, 3-9 hidden advanced
+        # (trigger delta, settle, discharge pulses, ambient, post-capture, trigger ch),
+        # 10 = time interval per sample, 11 = samples per load point,
+        # 12 = fan cooling (off), 13 = no integration (on)
+        params = [20.0, 0.1, 0.1, 0.0, 1.0, 1.0, 2.0, 25.0, 1.0, 1.0,
+                  30.0, 30.0, 0.0, 1.0]
+        return TestConditions(
+            name=cls.title,
+            nominal_output_voltage_V=48.0,
+            nominal_load_current_A=2.0,
+            max_load_current_A=2.0,
+            line_range=LineRange(name="Custom", vin_freq=[[860.0, 50.0]], custom=False),
+            load_range=LoadSettings.LOAD_SINGLE_VALUE_100_PCT,
+            soak_time=SoaktimeSettings.TST_326,
+            general_options=GeneralOptions(
+                measure_ripple=False,
+                use_eload_data=False,
+                eload_type='CC',
+                load_direction='Downward',
+                coupling='DC',
+            ),
+            usbpd_options=USBPDOptions(),
+            line_ramp_settings=LineRamp(),
+            i2c_test_parameters=I2CTestParameters(
+                params=params,
+                cbx_params=[
+                    "Option C: Fixed Aux / Swept Main (Port 2 Fixed Load)",
+                    "Yes",
+                    "None (Fully Automated)",
+                    "No",
+                ]),
+            unit_id="00",
+            ambient_temp=25.0,
+            scope_channels=deepcopy(cls.POLL_DEFAULT_SCOPE_CHANNELS),
+        )
 
 
 RdsonMeasurementTest_2Port.tc_default = RdsonMeasurementTest_2Port._build_rdson_tc_default()

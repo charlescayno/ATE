@@ -61,3 +61,9 @@ When adding decisions: date, decision, rationale, affected files.
 ## Poll/Rdson: 'No integration' option (2026-11)
 
 **Decision:** I2C param **13** (`NO_INTEGRATION_PARAM_INDEX`, default 0) turns Pin integration off for `SteadyStatePollWaveformTest_2Port` and `RdsonMeasurementTest_2Port`. Param 10 then means **Time interval per sample (s)**: an idle gap *after the previous sample finished* (scope + Excel row) before the next one; none before the first sample of a load point. Pin = instantaneous read with WT500 averaging (timer 0). Excel: Time Integration Start/End = Time Sampled; metadata shows 'Time interval per sample (s)' and 'Pin integration (s)' = Off. GUI: checkbox in the poll timing frame relabels the field.
+
+## Rdson Measurements defaults (2026-11)
+
+**Decision:** `RdsonMeasurementTest_2Port.tc_default` now mirrors the bench plan `ATE_test_plan_without fan.json`: Vout1 48 V / Iout1 2 A (max 2 A), line Custom 860 V / 50 Hz DC, Full Load, soak TST-326, Option C with Vout2 20 V / Iout2 0.1 A / Fixed Aux 0.1 A, interval 30 s, 30 samples, fan off, **no integration on**, prompts None (Fully Automated), Auto Find Trigger No, CH1 VDS (derating 1700 V) / CH2 IDS, cursors off. Verified in `scripts/verify_rdson_measurements.py`.
+
+- **Rdson fast capture:** Rdson sets `reapply_scope_before_capture=False` (scope setup applied once at start; per-sample relabel cost ~1 s/channel) and overrides `_wait_for_single_acquisition` to poll `ACQ:CURR?` (max 1 s, 50 ms steps) instead of fixed `sleep(1)`. Base hook defaults to `sleep(1)`; other tests unchanged. Hardware-unverified.

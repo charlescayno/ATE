@@ -2648,7 +2648,7 @@ class AddTestPageHandler(QObject):
         h_ch1.addWidget(self.ch1_checkbox)
         h_ch1.addWidget(self.ch1_lineedit)
         h_ch1.addWidget(self.ch1_settings_btn)
-        grid_ch.addWidget(f_ch1, 0, 0)
+        grid_ch.addWidget(self._wrap_channel_with_measurements(f_ch1, 1), 0, 0)
 
         # CH2
         f_ch2 = QFrame(self.frame_scope_channels)
@@ -2670,7 +2670,7 @@ class AddTestPageHandler(QObject):
         h_ch2.addWidget(self.ch2_checkbox)
         h_ch2.addWidget(self.ch2_lineedit)
         h_ch2.addWidget(self.ch2_settings_btn)
-        grid_ch.addWidget(f_ch2, 0, 1)
+        grid_ch.addWidget(self._wrap_channel_with_measurements(f_ch2, 2), 0, 1)
 
         # CH3
         f_ch3 = QFrame(self.frame_scope_channels)
@@ -2693,7 +2693,7 @@ class AddTestPageHandler(QObject):
         h_ch3.addWidget(self.ch3_checkbox)
         h_ch3.addWidget(self.ch3_lineedit)
         h_ch3.addWidget(self.ch3_settings_btn)
-        grid_ch.addWidget(f_ch3, 1, 0)
+        grid_ch.addWidget(self._wrap_channel_with_measurements(f_ch3, 3), 1, 0)
 
         # CH4
         f_ch4 = QFrame(self.frame_scope_channels)
@@ -2716,7 +2716,7 @@ class AddTestPageHandler(QObject):
         h_ch4.addWidget(self.ch4_checkbox)
         h_ch4.addWidget(self.ch4_lineedit)
         h_ch4.addWidget(self.ch4_settings_btn)
-        grid_ch.addWidget(f_ch4, 1, 1)
+        grid_ch.addWidget(self._wrap_channel_with_measurements(f_ch4, 4), 1, 1)
 
         # Signal connections
         self.ch1_checkbox.stateChanged.connect(lambda s: (self.ch1_lineedit.setEnabled(s != 0), self.update_vds_ids_trigger_channels(), self.sync_scope_channels_to_selected_test_item()))
@@ -2724,11 +2724,98 @@ class AddTestPageHandler(QObject):
         self.ch3_checkbox.stateChanged.connect(lambda s: (self.ch3_lineedit.setEnabled(s != 0), self.update_vds_ids_trigger_channels(), self.sync_scope_channels_to_selected_test_item()))
         self.ch4_checkbox.stateChanged.connect(lambda s: (self.ch4_lineedit.setEnabled(s != 0), self.update_vds_ids_trigger_channels(), self.sync_scope_channels_to_selected_test_item()))
 
+        for _chk in (self.ch1_checkbox, self.ch2_checkbox, self.ch3_checkbox, self.ch4_checkbox):
+            _chk.stateChanged.connect(self._refresh_meas_checkboxes)
+        self._refresh_meas_checkboxes()
+
         self.ch1_lineedit.textChanged.connect(lambda _: self.sync_scope_channels_to_selected_test_item())
         self.ch2_lineedit.textChanged.connect(lambda _: self.sync_scope_channels_to_selected_test_item())
         self.ch3_lineedit.textChanged.connect(lambda _: self.sync_scope_channels_to_selected_test_item())
         self.ch4_lineedit.textChanged.connect(lambda _: self.sync_scope_channels_to_selected_test_item())
 
+
+    SCOPE_MEAS_OPTIONS = (
+        ("MAXimum", "MAX"), ("MINimum", "MIN"), ("MEAN", "MEAN"),
+        ("RMS", "RMS"), ("PDELta", "PDEL"),
+    )
+
+    def _ensure_scope_dicts(self):
+        if not hasattr(self, 'scope_measurements'):
+            self.scope_measurements = {1: [], 2: [], 3: [], 4: []}
+        if not hasattr(self, 'scope_deratings'):
+            self.scope_deratings = {1: None, 2: None, 3: None, 4: None}
+        if not hasattr(self, 'scope_cursors'):
+            self.scope_cursors = {1: {}, 2: {}, 3: {}, 4: {}}
+
+    def _wrap_channel_with_measurements(self, row_frame, ch):
+        """Channel row + a one-line row of small measurement checkboxes below it."""
+        if not hasattr(self, 'scope_meas_checkboxes'):
+            self.scope_meas_checkboxes = {}
+            self.scope_meas_frames = {}
+        container = QFrame(self.frame_scope_channels)
+        vl = QVBoxLayout(container)
+        vl.setContentsMargins(0, 0, 0, 0)
+        vl.setSpacing(2)
+        vl.addWidget(row_frame)
+
+        meas_frame = QFrame(container)
+        hl = QHBoxLayout(meas_frame)
+        hl.setContentsMargins(24, 0, 0, 0)
+        hl.setSpacing(4)
+        # Compact indicator (the app-wide style makes them 21 px round buttons)
+        style = (
+            "QCheckBox { color: rgb(190, 190, 190); font-size: 10px; spacing: 3px; }"
+            "QCheckBox::indicator { width: 9px; height: 9px; border: 2px solid rgb(52, 59, 72);"
+            " border-radius: 6px; background: rgb(44, 49, 60); }"
+            "QCheckBox::indicator:hover { border: 2px solid rgb(58, 66, 81); }"
+            "QCheckBox::indicator:checked { border: 2px solid rgb(52, 59, 72);"
+            " background: rgb(0, 170, 230); }"
+            "QCheckBox:disabled { color: rgb(90, 90, 90); }"
+        )
+        boxes = {}
+        for full, short in self.SCOPE_MEAS_OPTIONS:
+            cb = QCheckBox(short, meas_frame)
+            cb.setStyleSheet(style)
+            cb.setToolTip(f"CH{ch} {full}")
+            cb.toggled.connect(lambda _checked, c=ch: self._on_meas_checkbox_toggled(c))
+            hl.addWidget(cb)
+            boxes[full] = cb
+        hl.addStretch()
+        vl.addWidget(meas_frame)
+        self.scope_meas_checkboxes[ch] = boxes
+        self.scope_meas_frames[ch] = meas_frame
+        return container
+
+    def _on_meas_checkbox_toggled(self, ch):
+        if getattr(self, '_meas_ui_updating', False):
+            return
+        self._ensure_scope_dicts()
+        boxes = self.scope_meas_checkboxes.get(ch, {})
+        selected = [opt for opt, cb in boxes.items() if cb.isChecked()]
+        # A derating limit needs the Max measurement (same rule as the gear dialog)
+        if self.scope_deratings.get(ch) is not None and "MAXimum" not in selected:
+            selected.insert(0, "MAXimum")
+            self._meas_ui_updating = True
+            boxes["MAXimum"].setChecked(True)
+            self._meas_ui_updating = False
+        self.scope_measurements[ch] = selected
+        self.sync_scope_channels_to_selected_test_item()
+
+    def _refresh_meas_checkboxes(self, *_args):
+        """Push scope_measurements and channel enable state into the inline checkboxes."""
+        if not hasattr(self, 'scope_meas_checkboxes'):
+            return
+        self._ensure_scope_dicts()
+        self._meas_ui_updating = True
+        try:
+            for ch, boxes in self.scope_meas_checkboxes.items():
+                current = self.scope_measurements.get(ch) or []
+                for opt, cb in boxes.items():
+                    cb.setChecked(opt in current)
+                chk = getattr(self, f'ch{ch}_checkbox', None)
+                self.scope_meas_frames[ch].setEnabled(chk.isChecked() if chk is not None else True)
+        finally:
+            self._meas_ui_updating = False
 
     def update_vds_ids_trigger_channels(self):
         # Dropdown 1 is the trigger channel only for Steady-State; other tests (e.g. Dual Load Mode) own it.
@@ -2840,7 +2927,8 @@ class AddTestPageHandler(QObject):
                 self.scope_cursors[channel] = {'enabled': True, 'type': cursor_type_combo.currentText()}
             else:
                 self.scope_cursors[channel] = {'enabled': False, 'type': 'VERTical'}
-                
+
+            self._refresh_meas_checkboxes()
             self.sync_scope_channels_to_selected_test_item()
 
     def get_scope_channels_from_ui(self) -> dict:
@@ -2920,6 +3008,7 @@ class AddTestPageHandler(QObject):
         self.ch3_checkbox.blockSignals(False)
         self.ch4_checkbox.blockSignals(False)
 
+        self._refresh_meas_checkboxes()
         self.update_vds_ids_trigger_channels()
 
     def reset_scope_channels(self):
@@ -2949,6 +3038,7 @@ class AddTestPageHandler(QObject):
             self.ch3_checkbox.blockSignals(False)
             self.ch4_checkbox.blockSignals(False)
 
+            self._refresh_meas_checkboxes()
             self.update_vds_ids_trigger_channels()
 
     def sync_scope_channels_to_selected_test_item(self):

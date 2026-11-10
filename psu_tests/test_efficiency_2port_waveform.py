@@ -859,7 +859,7 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
             if self.reapply_scope_before_capture:
                 self.apply_scope_setup()
             self.oscilloscope.run_single()
-            sleep(1)
+            self._wait_for_single_acquisition()
             self.oscilloscope.stop()
             meas = self.query_active_scope_measurements()
 
@@ -918,6 +918,10 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
             if not self.embed_images:
                 row.append(img_path)
             return row
+
+    def _wait_for_single_acquisition(self):
+        """Wait after run_single before stop(). Default: fixed 1 s."""
+        sleep(1)
 
     def _read_trigger_level(self) -> float:
         try:

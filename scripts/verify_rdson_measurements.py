@@ -41,6 +41,14 @@ def make(scope):
 def main():
     assert T in TestTypes, "not registered"
     assert T.tc_default is not None and T.tc_default.name == "Rdson Measurements"
+    tc = T.tc_default
+    p = [float(x) for x in tc.i2c_test_parameters.param]
+    assert (tc.nominal_output_voltage_V, tc.nominal_load_current_A, tc.max_load_current_A) == (48.0, 2.0, 2.0)
+    assert tc.line_range.vin_freq == [[860.0, 50.0]] and tc.general_options.coupling == 'DC'
+    assert tc.load_range.load_range_pct == [100] and tc.soak_time.name == "TST-326"
+    assert p[:3] == [20.0, 0.1, 0.1] and p[10] == 30.0 and p[11] == 30.0 and p[12] == 0.0 and p[13] == 1.0
+    assert tc.scope_channels[1]['derating'] == 1700.0 and tc.scope_channels[2]['name'] == 'IDS'
+    assert list(tc.i2c_test_parameters.cbx_param)[2:] == ["None (Fully Automated)", "No"]
     t = make(FakeScope())
     cols = t.define_scope_header()
     for n in (1, 2, 3, 4):
