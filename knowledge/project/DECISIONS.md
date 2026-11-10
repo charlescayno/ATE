@@ -73,3 +73,7 @@ When adding decisions: date, decision, rationale, affected files.
 - **Rdson acquisition wait:** `_wait_for_single_acquisition` now blocks on `*OPC?` after `RUNS` (VISA timeout temporarily `ACQ_WAIT_MAX_S` = 5 s, restored after). Replaces the `ACQ:CURR?` poll, which could return stale counts. Timeout (no trigger) prints a `[TIMING]` warning and continues. Hardware-unverified.
 
 - **Colored [DATA_ROW] in View Logs:** `main.py append_log` renders `[DATA_ROW]` via `page_controls/log_format.py` as grouped colored lines (Input, Port 1, Port 2, Result, Timing, Scope, Cursors, Rds, File). `app_log.txt`/stdout keep the raw single line. Falls back to the old single-line style on any error.
+
+- **Poll Time Sampled = acquisition time (no-integration mode):** `capture_waveform_at_point` stamps `last_acquisition_dt` right after the single-shot wait; with No integration, `Time Sampled`, the integration start/end columns, `Interval (s)` and `Elapsed (s)` (from the first sample's acquisition) use it instead of the end-of-capture time. Legacy integrate mode is unchanged.
+
+- **Rdson minimum interval (warn only):** `RdsonMeasurementTest_2Port.MIN_INTERVAL_S = 30`. In No-integration mode an interval below 30 s shows an orange 'Min 30 s recommended' label in the Add Test timing row (tooltip has details) and prints `[WARNING]` + status log at test start. Not enforced; only Rdson (not Steady-State Poll).

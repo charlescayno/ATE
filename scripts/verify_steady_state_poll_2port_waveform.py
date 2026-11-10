@@ -331,7 +331,17 @@ def test_no_integration(errors):
         orig_integ = test._integrate_source_pin_before_read
         test._integrate_source_pin_before_read = (
             lambda rb, rs: (integ_calls.append(1), orig_integ(rb, rs))[1])
+        pairs = []
+        orig_append = test._append_measurement_row
+        test._append_measurement_row = lambda row: (
+            pairs.append((test.last_acquisition_dt, test.poll_row_sampled_dt,
+                          test.poll_elapsed_s)), orig_append(row))[1]
         test.run()
+        check(errors, "no-integ Time Sampled == scope acquisition time",
+              len(pairs) == 3 and all(a is not None and a == s for a, s, _ in pairs), pairs)
+        check(errors, "no-integ elapsed counts from first acquisition",
+              pairs[0][2] == 0.0 and pairs[1][2] > 0 and pairs[2][2] > pairs[1][2],
+              [p[2] for p in pairs])
         check(errors, "no-integ idle gap before samples 2 and 3 only",
               waits == [2.0, 2.0], waits)
         wb = openpyxl.load_workbook(test.data_file_path)

@@ -2141,6 +2141,11 @@ class AddTestPageHandler(QObject):
             "Estimated time per load point (samples x [integration or interval] "
             "+ meter read + scope capture). Excludes soak and load changes.")
         timing_hl.addWidget(self.label_poll_estimate)
+        self.label_poll_min_warning = QLabel("", timing_row)
+        self.label_poll_min_warning.setStyleSheet(
+            "color: rgb(255, 170, 0); font-size: 11px; font-weight: bold;")
+        self.label_poll_min_warning.hide()
+        timing_hl.addWidget(self.label_poll_min_warning)
         timing_hl.addStretch()
         form.addRow(timing_row)
         interval_le.textChanged.connect(self._update_poll_estimate_label)
@@ -2184,6 +2189,27 @@ class AddTestPageHandler(QObject):
         est = SteadyStatePollWaveformTest_2Port.estimate_point_duration_s(
             interval, samples, self._poll_no_integration_checked())
         lbl.setText(f"Est. per load point: ~{self._format_duration(est)}")
+        self._update_poll_min_interval_warning(interval)
+
+    def _update_poll_min_interval_warning(self, interval=None):
+        """Rdson only: warn (not enforce) when the time interval is below the minimum."""
+        warn_lbl = getattr(self, 'label_poll_min_warning', None)
+        if warn_lbl is None:
+            return
+        selected = getattr(self, 'selected_test_class', None)
+        text = ""
+        if selected is not None and getattr(selected, 'title', '') == RDSON_MEASUREMENTS_TITLE:
+            if interval is None:
+                interval_le, _ = self._poll_timing_storage()
+                interval = float(interval_le.text()) if is_numeric(interval_le.text()) else None
+            if interval is not None and hasattr(selected, 'interval_warning'):
+                text = selected.interval_warning(interval, self._poll_no_integration_checked())
+        if text:
+            warn_lbl.setText(f"Min {selected.MIN_INTERVAL_S:g} s recommended")
+            warn_lbl.setToolTip(text)
+            warn_lbl.show()
+        else:
+            warn_lbl.hide()
 
     def _on_poll_no_integration_toggled(self, checked: bool):
         lbl = getattr(self, 'label_poll_interval', None)
@@ -2201,6 +2227,7 @@ class AddTestPageHandler(QObject):
         self.frame_poll_timing.setVisible(visible)
         if not visible:
             return
+        self._update_poll_estimate_label()
         ui = self.ui
         ui.gridLayout_12.removeWidget(self.frame_poll_timing)
         ui.gridLayout_12.addWidget(self.frame_poll_timing, 3, 0, 1, 2)

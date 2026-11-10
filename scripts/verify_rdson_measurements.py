@@ -127,6 +127,12 @@ def main():
     assert m2["Cursor Result 1 dY"] == 1.0 and m2["Cursor Result 1 dX"] == 1e-06
     assert m2["Cursor Result 3 Y1"] == "N/A" and m2["Rds_avg (ohm)"] == "N/A"
     assert m2["Rds1 (ohm)"] == 0.1
+    # minimum interval warning (warn only, 30 s)
+    assert T.MIN_INTERVAL_S == 30.0
+    assert T.interval_warning(30) == "" and T.interval_warning(45) == ""
+    assert "below the recommended minimum of 30 s" in T.interval_warning(20)
+    assert T.interval_warning(20, no_integration=False) == ""
+    assert T.interval_warning("abc") == ""
     # malformed batch reply -> fallback to per-field get_cursor, flagged once
     bad = BatchScope(bad=True)
     t = make(bad)

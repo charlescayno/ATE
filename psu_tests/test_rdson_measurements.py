@@ -111,8 +111,35 @@ class RdsonMeasurementTest_2Port(SteadyStatePollWaveformTest_2Port):
         cols.append(cls.RDS_AVG_LABEL)
         return cols
 
+    # Recommended minimum time interval per sample (s): scope capture + meters take
+    # ~13-25 s. Warn only; the value is not enforced.
+    MIN_INTERVAL_S = 30.0
+
+    @classmethod
+    def interval_warning(cls, interval_s, no_integration=True):
+        """Warning text when the interval is below the recommended minimum, else ''."""
+        if not no_integration:
+            return ""
+        try:
+            interval_s = float(interval_s)
+        except (TypeError, ValueError):
+            return ""
+        if interval_s < cls.MIN_INTERVAL_S:
+            return (f"Time interval per sample {interval_s:g} s is below the recommended "
+                    f"minimum of {cls.MIN_INTERVAL_S:g} s (scope capture + meter read take "
+                    f"~13-25 s). Samples may be spaced further apart than set.")
+        return ""
+
     def setup_equipment(self):
         super().setup_equipment()
+        warn = self.interval_warning(getattr(self, 'poll_interval_s', None),
+                                     getattr(self, 'no_integration', False))
+        if warn:
+            print(f"[WARNING] {warn}")
+            try:
+                self.update_status_log(warn, upcoming="Prepare test")
+            except Exception:
+                pass
         print(f"[RDSON] {self.CURSOR_NOTE}")
         try:
             self.update_status_log(

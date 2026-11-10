@@ -866,6 +866,7 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
             self.oscilloscope.run_single()
             _t['run_single'] = _pc()
             self._wait_for_single_acquisition()
+            self.last_acquisition_dt = datetime.datetime.now()  # moment the scope data was acquired
             _t['wait'] = _pc()
             self.oscilloscope.stop()
             _t['stop'] = _pc()

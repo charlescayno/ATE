@@ -643,6 +643,7 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
                 self._measure_poll_readings(i2_A)
                 self._poll_waveform_filename_tag = f"_S{self.poll_sample_index}"
                 cap_t0 = time.perf_counter()
+                self.last_acquisition_dt = None
                 scope_row = self.capture_waveform_at_point(vin_set, i1_A, i2_A)
                 self._timing_last_capture_end = time.perf_counter()
                 print(f"[TIMING] sample {self.poll_sample_index}/{n}: "
@@ -652,11 +653,18 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
                     0.05,
                     (read_t1 - read_t0).total_seconds(),
                 )
+                sampled_dt = datetime.datetime.now()
+                if no_integ:
+                    # Time Sampled = moment the scope acquired the waveform (not end of capture)
+                    sampled_dt = getattr(self, 'last_acquisition_dt', None) or sampled_dt
+                    if sample == 0 or getattr(self, '_poll_first_acq_dt', None) is None:
+                        self._poll_first_acq_dt = sampled_dt
+                    self.poll_elapsed_s = (sampled_dt - self._poll_first_acq_dt).total_seconds()
                 if len(scope_row) > 1 and scope_row[1] == "N/A":
-                    self.poll_row_sampled_dt = datetime.datetime.now()
+                    self.poll_row_sampled_dt = sampled_dt
                     self._append_measurement_row(scope_row)
                     return
-                self.poll_row_sampled_dt = datetime.datetime.now()
+                self.poll_row_sampled_dt = sampled_dt
                 self._append_measurement_row(scope_row)
         except (TestStopped, TestSkipped):
             self._note_partial_capture(records_before, rows_at_start)
