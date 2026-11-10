@@ -185,6 +185,34 @@ class RohdeSchwarzOscilloscope(OscilloscopeBaseClass):
         self.write(f"CURS{cursor_set}:Y1P {Y1}")
         self.write(f"CURS{cursor_set}:Y2P {Y2}")
 
+    CURSOR_FAST_FIELDS = (("state", "STAT"), ("y1 position", "Y1P"), ("y2 position", "Y2P"),
+                          ("delta x", "XDEL"), ("delta y", "YDEL"))
+
+    def get_cursors_fast(self, cursors=(1, 2, 3, 4), fields=None):
+        """Read several cursors in ONE query (';:'-joined) instead of 8 round trips each.
+
+        Returns {n: dict|None} with get_cursor-style keys (no x1/x2/source).
+        `fields` is a subset of CURSOR_FAST_FIELDS keys (default all); without "state"
+        no on/off check is made. Raises ValueError when the reply field count is wrong
+        so callers can fall back to get_cursor.
+        """
+        sel = [f for f in self.CURSOR_FAST_FIELDS if fields is None or f[0] in fields]
+        parts = [f"CURS{n}:{cmd}?" for n in cursors for _, cmd in sel]
+        reply = self.write(";:".join(parts))
+        values = [v.strip() for v in str(reply).split(";")]
+        if len(values) != len(parts):
+            raise ValueError(f"cursor batch reply has {len(values)} fields, expected {len(parts)}")
+        result = {}
+        k = 0
+        for n in cursors:
+            rec = {}
+            for key, _ in sel:
+                rec[key] = values[k]
+                k += 1
+            state = rec.pop("state", None)
+            result[n] = None if state is not None and state.upper() in ('0', 'OFF') else rec
+        return result
+
     def get_cursor(self, cursor=1):
         try:
             cursor_state = self.write(f'CURS{cursor}:STAT?')

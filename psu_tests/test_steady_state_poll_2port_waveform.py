@@ -1,6 +1,7 @@
 """Steady-state 2-port waveform test that polls meters for a timed window."""
 import datetime
 import math
+import os
 import time
 from copy import deepcopy
 from time import sleep
@@ -484,6 +485,64 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
             except Exception:
                 pass
 
+    TIMING_DIAG_CSV = False  # write <workbook>_timing.csv with per-sample timing diagnostics
+    TIMING_DIAG_FIELDS = (
+        "sample", "vin_V", "i1_A", "i2_A", "acquisition_time", "spacing_s", "target_interval_s",
+        "idle_wait_s", "behind_s", "pre_acq_s", "meter_read_s", "capture_total_s",
+        "trigger_read_s", "run_single_s", "acq_wait_s", "stop_s", "measure_cursors_s",
+        "screenshot_s", "run_s", "stop_opc_probe_s", "channel_meas_s", "cursor_read_s",
+        "cursor_items", "cursor_repeat_probe_s", "row_record_s")
+
+    def _timing_diag_path(self):
+        base = getattr(self, 'data_file_path', None)
+        if not base:
+            return None
+        return os.path.splitext(base)[0] + "_timing.csv"
+
+    def _write_timing_diag_row(self, vin_set, i1_A, i2_A, sampled_dt, t_int,
+                               capture_total_s=0.0, row_record_s=0.0):
+        """Append one per-sample timing row (seconds) to <workbook>_timing.csv."""
+        path = self._timing_diag_path()
+        if not path:
+            return
+        steps = getattr(self, '_last_capture_steps', None) or {}
+        meas = getattr(self, '_diag_meas', None) or {}
+        prev = getattr(self, '_diag_prev_acq', None)
+        spacing = (sampled_dt - prev).total_seconds() if prev is not None else ""
+        self._diag_prev_acq = sampled_dt
+
+        def r(v):
+            return round(v, 3) if isinstance(v, (int, float)) else (v if v is not None else "")
+        rec = {
+            "sample": self.poll_sample_index, "vin_V": vin_set, "i1_A": i1_A, "i2_A": i2_A,
+            "acquisition_time": sampled_dt.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],
+            "spacing_s": r(spacing), "target_interval_s": t_int,
+            "idle_wait_s": r(getattr(self, '_diag_idle_wait_s', "")),
+            "behind_s": r(getattr(self, '_diag_behind_s', "")),
+            "pre_acq_s": r(getattr(self, '_poll_pre_acq_s', "")),
+            "meter_read_s": r(getattr(self, '_diag_meter_read_s', "")),
+            "capture_total_s": r(capture_total_s),
+            "row_record_s": r(row_record_s),
+        }
+        for key in ("trigger_read_s", "run_single_s", "acq_wait_s", "stop_s",
+                    "measure_cursors_s", "screenshot_s", "run_s"):
+            rec[key] = r(steps.get(key, ""))
+        for key in ("stop_opc_probe_s", "channel_meas_s", "cursor_read_s",
+                    "cursor_items", "cursor_repeat_probe_s"):
+            rec[key] = r(meas.get(key, ""))
+        self._diag_idle_wait_s = ""
+        self._diag_behind_s = ""
+        try:
+            import csv
+            new_file = not os.path.exists(path)
+            with open(path, "a", newline="", encoding="utf-8") as f:
+                w = csv.DictWriter(f, fieldnames=self.TIMING_DIAG_FIELDS)
+                if new_file:
+                    w.writeheader()
+                w.writerow(rec)
+        except Exception as exc:
+            print(f"[Warning] Could not write timing diagnostics CSV: {exc}")
+
     @staticmethod
     def scheduled_wait_s(now, prev_acq, interval_s, pre_s):
         """(idle wait s, seconds behind schedule) so the next acquisition lands at
@@ -503,6 +562,8 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
         if pre is None:
             pre = self.PRE_ACQ_GUESS_S
         wait, behind = self.scheduled_wait_s(datetime.datetime.now(), prev, interval_s, pre)
+        self._diag_idle_wait_s = wait
+        self._diag_behind_s = behind
         if behind > 0.5:
             print(f"[WARNING] Poll sample {self.poll_sample_index}: behind schedule by "
                   f"{behind:.1f} s (interval {interval_s:g} s is shorter than the work per sample)")
@@ -649,6 +710,7 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
         self.poll_prev_sampled_dt = None
         self._poll_last_acq_dt = None
         self._poll_pre_acq_s = None
+        self._diag_prev_acq = None
         self._poll_repeat_read_duration_s = self.POLL_READ_DURATION_GUESS_S
         self.prepare_load_power_meters_for_poll_output()
         self.prepare_source_power_meter_for_poll_input()
@@ -689,9 +751,13 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
                 self.update_status_log(
                     f"Poll sample {self.poll_sample_index}/{n}",
                     upcoming="Capture Waveform")
+                _m0 = time.perf_counter()
                 self._measure_poll_readings(i2_A)
+                self._diag_meter_read_s = time.perf_counter() - _m0
                 self._poll_waveform_filename_tag = f"_S{self.poll_sample_index}"
                 cap_t0 = time.perf_counter()
+                self._last_capture_steps = {}
+                self._diag_meas = {}
                 self.last_acquisition_dt = None
                 scope_row = self.capture_waveform_at_point(vin_set, i1_A, i2_A)
                 self._timing_last_capture_end = time.perf_counter()
@@ -724,7 +790,13 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
                     self._append_measurement_row(scope_row)
                     return
                 self.poll_row_sampled_dt = sampled_dt
+                _r0 = time.perf_counter()
                 self._append_measurement_row(scope_row)
+                if self.TIMING_DIAG_CSV:
+                    self._write_timing_diag_row(
+                        vin_set, i1_A, i2_A, sampled_dt, t_int,
+                        capture_total_s=self._timing_last_capture_end - cap_t0,
+                        row_record_s=time.perf_counter() - _r0)
         except (TestStopped, TestSkipped):
             self._note_partial_capture(records_before, rows_at_start)
             raise

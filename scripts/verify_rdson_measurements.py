@@ -139,6 +139,54 @@ def main():
     overhead = T.POLL_READ_DURATION_GUESS_S + T.POLL_SCOPE_CAPTURE_GUESS_S
     assert abs(T.estimate_point_duration_s(30, 4, True) - (overhead + 3 * 30)) < 1e-6
     assert abs(T.estimate_point_duration_s(5, 4, True) - (overhead + 3 * overhead)) < 1e-6
+    # the REAL scope class (RohdeSchwarzOscilloscope) must provide get_cursors_fast
+    from equipment.oscilloscope_specs import RohdeSchwarzOscilloscope as RTO
+    assert hasattr(RTO, 'get_cursors_fast')
+    rto = RTO.__new__(RTO)
+    sent = []
+
+    def fake_write(cmd):
+        sent.append(cmd)
+        assert cmd.count("?") == cmd.count(";:") + 1  # one message, all queries
+        vals = []
+        for q in cmd.split(";:"):
+            n = int(q.split(":")[0].replace("CURS", ""))
+            f = q.split(":")[1].rstrip("?")
+            vals.append({"STAT": "0" if n == 3 else "1", "Y1P": str(CURSORS[n][0]),
+                         "Y2P": str(CURSORS[n][1]), "XDEL": "1e-6", "YDEL": "9"}[f])
+        return ";".join(vals)
+    rto.write = fake_write
+    full = rto.get_cursors_fast((1, 2, 3, 4))
+    assert len(sent) == 1 and full[3] is None and full[1]["y2 position"] == "2.0"
+    quick = rto.get_cursors_fast((1, 2, 4), fields=("y1 position", "y2 position"))
+    assert len(sent) == 2 and list(quick[1].keys()) == ["y1 position", "y2 position"]
+    assert sent[1].count("?") == 6
+    rto.write = lambda cmd: "1;2;3"
+    try:
+        rto.get_cursors_fast((1, 2))
+        raise AssertionError("expected ValueError")
+    except ValueError:
+        pass
+    # timing diagnostics CSV
+    import csv, tempfile
+    assert T.TIMING_DIAG_CSV is True
+    with tempfile.TemporaryDirectory() as d:
+        td = make(BatchScope())
+        td.data_file_path = os.path.join(d, "RDSON_x.xlsx")
+        td.poll_sample_index = 1
+        td._last_capture_steps = {"trigger_read_s": 0.33, "screenshot_s": 3.9}
+        td._diag_meas = {"cursor_read_s": 11.0, "cursor_items": 8, "cursor_repeat_probe_s": 0.3}
+        s1 = _dt.datetime(2026, 1, 1, 12, 0, 0)
+        td._write_timing_diag_row(860, 2, 0.1, s1, 30.0, capture_total_s=17.7, row_record_s=0.05)
+        td.poll_sample_index = 2
+        td._write_timing_diag_row(860, 2, 0.1, s1 + _dt.timedelta(seconds=30.1), 30.0,
+                                  capture_total_s=17.9, row_record_s=0.04)
+        path = os.path.join(d, "RDSON_x_timing.csv")
+        rows = list(csv.DictReader(open(path, newline="", encoding="utf-8")))
+        assert len(rows) == 2 and list(rows[0].keys()) == list(T.TIMING_DIAG_FIELDS)
+        assert rows[0]["spacing_s"] == "" and rows[1]["spacing_s"] == "30.1"
+        assert rows[0]["screenshot_s"] == "3.9" and rows[0]["cursor_read_s"] == "11.0"
+        assert rows[1]["sample"] == "2" and rows[0]["capture_total_s"] == "17.7"
     # minimum interval warning (warn only, 30 s)
     assert T.MIN_INTERVAL_S == 30.0
     assert T.interval_warning(30) == "" and T.interval_warning(45) == ""

@@ -31,6 +31,7 @@ class RdsonMeasurementTest_2Port(SteadyStatePollWaveformTest_2Port):
     reapply_scope_before_capture = False
     POLL_SCOPE_CAPTURE_GUESS_S = 10.0
     SCHEDULED_INTERVAL = True  # interval = time between acquisitions (no integration)
+    TIMING_DIAG_CSV = True     # per-sample timing CSV next to the workbook (<name>_timing.csv)
     ACQ_WAIT_MAX_S = 5.0  # max wait for the single-shot trigger
 
     def _wait_for_single_acquisition(self):
@@ -195,18 +196,31 @@ class RdsonMeasurementTest_2Port(SteadyStatePollWaveformTest_2Port):
         return out
 
     def _read_cursor_batch(self):
-        """Batched cursor read. The scope spends ~0.5 s per queried item, so after the
-        first sample only Y1P/Y2P are read (8 items); on/off state and dX are cached
-        from the first sample and dY = Y2 - Y1 is computed locally."""
+        """Batched cursor read. After the first sample only Y1P/Y2P are read (8 items);
+        on/off state and dX are cached from the first sample and dY = Y2 - Y1 is computed
+        locally. Bench CSV showed ~0.35 s per SCPI query and 11-16 s for the cursor step:
+        the real scope class (RohdeSchwarzOscilloscope in equipment/oscilloscope_specs.py)
+        had no get_cursors_fast, so the 32-query per-field fallback ran. Per-sample numbers
+        go to <workbook>_timing.csv."""
+        from time import perf_counter
         scope = self.oscilloscope
         static = getattr(self, '_cursor_static', None)
+        t0 = perf_counter()
+        try:
+            return self._read_cursor_batch_inner(scope, static)
+        finally:
+            self._diag_cursor_read_s = perf_counter() - t0
+
+    def _read_cursor_batch_inner(self, scope, static):
         if static is None:
+            self._diag_cursor_items = len(self.CURSOR_SETS) * 5
             full = scope.get_cursors_fast(self.CURSOR_SETS)
             self._cursor_static = {
                 n: (None if rec is None else {"delta x": rec.get("delta x")})
                 for n, rec in full.items()}
             return full
         on = [n for n in self.CURSOR_SETS if static.get(n) is not None]
+        self._diag_cursor_items = len(on) * 2
         quick = scope.get_cursors_fast(on, fields=("y1 position", "y2 position")) if on else {}
         out = {}
         for n in self.CURSOR_SETS:
@@ -288,11 +302,35 @@ class RdsonMeasurementTest_2Port(SteadyStatePollWaveformTest_2Port):
 
     def query_active_scope_measurements(self) -> dict:
         from time import perf_counter
+        diag = getattr(self, '_diag_meas', None)
+        if diag is None:
+            diag = self._diag_meas = {}
+        scope = self.oscilloscope
+        # Probe: does the scope still look busy right after STOP? (*OPC? round trip)
+        if self.TIMING_DIAG_CSV and hasattr(scope, 'write'):
+            tp = perf_counter()
+            try:
+                scope.write('*OPC?')
+            except Exception:
+                pass
+            diag["stop_opc_probe_s"] = perf_counter() - tp
         t0 = perf_counter()
         meas = super().query_active_scope_measurements()
         t1 = perf_counter()
         meas.update(self.query_cursor_results())
         t2 = perf_counter()
+        diag["channel_meas_s"] = t1 - t0
+        diag["cursor_read_s"] = getattr(self, '_diag_cursor_read_s', t2 - t1)
+        diag["cursor_items"] = getattr(self, '_diag_cursor_items', "")
+        # Probe: repeat one cursor query right after the batch. If this is fast, the
+        # first cursor query pays the cost (scope recalculation), not each item.
+        if self.TIMING_DIAG_CSV and hasattr(scope, 'write'):
+            tp = perf_counter()
+            try:
+                scope.write('CURS1:Y1P?')
+            except Exception:
+                pass
+            diag["cursor_repeat_probe_s"] = perf_counter() - tp
         print(f"[TIMING] measure detail: channel measurements {t1 - t0:.2f} s "
               f"| cursors+Rds {t2 - t1:.2f} s")
         return meas

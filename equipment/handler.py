@@ -16,6 +16,7 @@ import sink_controllers.epr_sink_control as STM32_EPR_SINK
 from sink_controllers import pat_tool
 from sink_controllers.pat_tool import SMBUS_STATE, PDSinkController, InnoProI2CControllerContainer
 from time import sleep
+import os
 
 import pyvisa
 from pyvisa.resources.resource import Resource
@@ -267,6 +268,11 @@ class EquipmentHandler():
             f'TCPIP::{address}::INSTR',
             f'TCPIP::{address}',
         )
+        # HiSLIP is much faster than VXI-11 (inst0) on R&S scopes: bench test on the RTO6
+        # showed writes 0.19 s -> 0.0001 s and queries 0.54 s -> 0.22 s. Try it first and
+        # fall back to the old resource names. Set PI_ATE_SCOPE_VXI11=1 to skip HiSLIP.
+        if os.environ.get('PI_ATE_SCOPE_VXI11', '').strip().lower() not in ('1', 'yes', 'true'):
+            resource_templates = (f'TCPIP0::{address}::hislip0::INSTR',) + resource_templates
         for resource_name in resource_templates:
             try:
                 device = self.rm.open_resource(resource_name, timeout=2100)

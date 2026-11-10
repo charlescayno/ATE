@@ -916,6 +916,15 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
             _t['screenshot'] = _pc()
             self.oscilloscope.run()
             _t['run'] = _pc()
+            self._last_capture_steps = {
+                "trigger_read_s": _t['trigger'] - _t['start'],
+                "run_single_s": _t['run_single'] - _t['trigger'],
+                "acq_wait_s": _t['wait'] - _t['run_single'],
+                "stop_s": _t['stop'] - _t['wait'],
+                "measure_cursors_s": _t['measure'] - _t['stop'],
+                "screenshot_s": _t['screenshot'] - _t['measure'],
+                "run_s": _t['run'] - _t['screenshot'],
+            }
             print("[TIMING] capture steps: "
                   f"trigger_read {_t['trigger'] - _t['start']:.2f} s | "
                   f"run_single {_t['run_single'] - _t['trigger']:.2f} s | "
