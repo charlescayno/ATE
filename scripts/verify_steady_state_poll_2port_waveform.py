@@ -97,8 +97,8 @@ def test_fan_cooling(errors):
 
 
 def test_sample_math(errors):
-    check(errors, "legacy duration migration", POLL.read_samples_per_point(
-        [0.0] * 10 + [30.0, 1200.0], 30.0) == 41)
+    check(errors, "large sample count kept (no legacy migration)", POLL.read_samples_per_point(
+        [0.0] * 10 + [10.0, 1200.0], 10.0) == 1200)
     check(errors, "direct sample count", POLL.read_samples_per_point(
         [0.0] * 10 + [30.0, 5.0], 30.0) == 5)
     check(errors, "samples min 1", POLL.read_samples_per_point(

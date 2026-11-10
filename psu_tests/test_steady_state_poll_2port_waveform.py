@@ -50,7 +50,7 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
     POLL_READ_DURATION_GUESS_S = 0.75
     POLL_SAMPLES_DEFAULT = 3
     POLL_DURATION_DEFAULT_S = 20 * 60.0  # legacy duration for migration only
-    LEGACY_POLL_DURATION_MIN_S = 60.0
+    LEGACY_POLL_DURATION_MIN_S = 1e5  # legacy duration migration effectively off: 1200 = 1200 samples
     POLL_SCOPE_CAPTURE_GUESS_S = 12.0
     # True: in No-integration mode the interval is the time between scope acquisitions
     # (idle wait is computed from the previous acquisition). False: wait after the capture.
