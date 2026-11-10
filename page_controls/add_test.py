@@ -2135,11 +2135,23 @@ class AddTestPageHandler(QObject):
             timing_hl.addWidget(lbl_row)
             timing_hl.addWidget(le)
             timing_hl.addSpacing(12)
+        # Editable total sampling time per load point, linked to Samples per load point
+        total_tip = ("Total sampling time per load point (samples x [integration or interval] "
+                     "+ meter read + scope capture). Excludes soak and load changes. "
+                     "Editing this changes Samples per load point, and vice versa.")
+        lbl_total = QLabel("Total sampling time (min):", timing_row)
+        lbl_total.setToolTip(total_tip)
+        self.lineedit_poll_total = QLineEdit(timing_row)
+        self.lineedit_poll_total.setValidator(duration_le.validator())
+        self.lineedit_poll_total.setMaximumWidth(70)
+        self.lineedit_poll_total.setToolTip(total_tip)
+        self.lineedit_poll_total.textEdited.connect(self._on_poll_total_edited)
+        self.lineedit_poll_total.editingFinished.connect(self._update_poll_estimate_label)
+        timing_hl.addWidget(lbl_total)
+        timing_hl.addWidget(self.lineedit_poll_total)
         self.label_poll_estimate = QLabel("", timing_row)
         self.label_poll_estimate.setStyleSheet("color: rgb(0, 190, 255); font-size: 11px;")
-        self.label_poll_estimate.setToolTip(
-            "Estimated time per load point (samples x [integration or interval] "
-            "+ meter read + scope capture). Excludes soak and load changes.")
+        self.label_poll_estimate.setToolTip(total_tip)
         timing_hl.addWidget(self.label_poll_estimate)
         self.label_poll_min_warning = QLabel("", timing_row)
         self.label_poll_min_warning.setStyleSheet(
@@ -2186,13 +2198,45 @@ class AddTestPageHandler(QObject):
         interval = float(interval_le.text())
         samples = SteadyStatePollWaveformTest_2Port.read_samples_per_point(
             [0.0] * 10 + [interval, float(samples_le.text())], interval)
+        est = self._poll_estimate_s(interval, samples)
+        lbl.setText(f"(~{self._format_duration(est)})")
+        total_le = getattr(self, 'lineedit_poll_total', None)
+        if total_le is not None and not getattr(self, '_poll_total_busy', False) \
+                and not total_le.hasFocus():
+            total_le.setText(f"{round(est / 60.0, 2):g}")
+        self._update_poll_min_interval_warning(interval)
+
+    def _poll_estimate_cls(self):
         est_cls = getattr(self, 'selected_test_class', None)
         if est_cls is None or not hasattr(est_cls, 'estimate_point_duration_s'):
             est_cls = SteadyStatePollWaveformTest_2Port
-        est = est_cls.estimate_point_duration_s(
+        return est_cls
+
+    def _poll_estimate_s(self, interval, samples):
+        return self._poll_estimate_cls().estimate_point_duration_s(
             interval, samples, self._poll_no_integration_checked())
-        lbl.setText(f"Est. per load point: ~{self._format_duration(est)}")
-        self._update_poll_min_interval_warning(interval)
+
+    def _on_poll_total_edited(self, text):
+        """Total sampling time typed -> derive Samples per load point (linked fields)."""
+        if not is_numeric(text):
+            return
+        interval_le, samples_le = self._poll_timing_storage()
+        if not is_numeric(interval_le.text()):
+            return
+        interval = float(interval_le.text())
+        total = float(text) * 60.0
+        one = self._poll_estimate_s(interval, 1)
+        step = self._poll_estimate_s(interval, 2) - one
+        if step <= 0:
+            return
+        n = max(1, int(round((total - one) / step)) + 1)
+        self._poll_total_busy = True
+        try:
+            samples_le.setText(f"{n:g}")
+        finally:
+            self._poll_total_busy = False
+        self.label_poll_estimate.setText(
+            f"(~{self._format_duration(self._poll_estimate_s(interval, n))}, {n} samples)")
 
     def _update_poll_min_interval_warning(self, interval=None):
         """Rdson only: warn (not enforce) when the time interval is below the minimum."""

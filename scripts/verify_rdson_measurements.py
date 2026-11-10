@@ -138,7 +138,7 @@ def main():
     # estimate: interval is between acquisitions, never shorter than the work per sample
     overhead = T.POLL_READ_DURATION_GUESS_S + T.POLL_SCOPE_CAPTURE_GUESS_S
     assert abs(T.estimate_point_duration_s(30, 4, True) - (overhead + 3 * 30)) < 1e-6
-    assert abs(T.estimate_point_duration_s(5, 4, True) - (overhead + 3 * overhead)) < 1e-6
+    assert abs(T.estimate_point_duration_s(1, 4, True) - (overhead + 3 * overhead)) < 1e-6
     # the REAL scope class (RohdeSchwarzOscilloscope) must provide get_cursors_fast
     from equipment.oscilloscope_specs import RohdeSchwarzOscilloscope as RTO
     assert hasattr(RTO, 'get_cursors_fast')
@@ -188,9 +188,9 @@ def main():
         assert rows[0]["screenshot_s"] == "3.9" and rows[0]["cursor_read_s"] == "11.0"
         assert rows[1]["sample"] == "2" and rows[0]["capture_total_s"] == "17.7"
     # minimum interval warning (warn only, 30 s)
-    assert T.MIN_INTERVAL_S == 30.0
-    assert T.interval_warning(30) == "" and T.interval_warning(45) == ""
-    assert "below the recommended minimum of 30 s" in T.interval_warning(20)
+    assert T.MIN_INTERVAL_S == 5.0
+    assert T.interval_warning(6) == "" and T.interval_warning(30) == ""
+    assert "below the recommended minimum of 5 s" in T.interval_warning(4)
     assert T.interval_warning(20, no_integration=False) == ""
     assert T.interval_warning("abc") == ""
     # malformed batch reply -> fallback to per-field get_cursor, flagged once

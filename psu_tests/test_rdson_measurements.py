@@ -29,7 +29,7 @@ class RdsonMeasurementTest_2Port(SteadyStatePollWaveformTest_2Port):
     # Fast capture: scope setup is applied once at test start (not per sample),
     # and the post-single wait polls for acquisition done instead of sleeping 1 s.
     reapply_scope_before_capture = False
-    POLL_SCOPE_CAPTURE_GUESS_S = 10.0
+    POLL_SCOPE_CAPTURE_GUESS_S = 1.0
     SCHEDULED_INTERVAL = True  # interval = time between acquisitions (no integration)
     TIMING_DIAG_CSV = True     # per-sample timing CSV next to the workbook (<name>_timing.csv)
     ACQ_WAIT_MAX_S = 5.0  # max wait for the single-shot trigger
@@ -113,9 +113,9 @@ class RdsonMeasurementTest_2Port(SteadyStatePollWaveformTest_2Port):
         cols.append(cls.RDS_AVG_LABEL)
         return cols
 
-    # Recommended minimum time interval per sample (s): scope capture + meters take
-    # ~13-25 s. Warn only; the value is not enforced.
-    MIN_INTERVAL_S = 30.0
+    # Minimum time interval per sample (s): scope capture + meters take ~1.4 s on a direct
+    # LAN (HiSLIP), ~25 s on a slow routed network. Warn only; the value is not enforced.
+    MIN_INTERVAL_S = 5.0
 
     @classmethod
     def interval_warning(cls, interval_s, no_integration=True):
@@ -129,7 +129,7 @@ class RdsonMeasurementTest_2Port(SteadyStatePollWaveformTest_2Port):
         if interval_s < cls.MIN_INTERVAL_S:
             return (f"Time interval per sample {interval_s:g} s is below the recommended "
                     f"minimum of {cls.MIN_INTERVAL_S:g} s (scope capture + meter read take "
-                    f"~13-25 s). Samples may be spaced further apart than set.")
+                    f"~1.4 s on a direct LAN, more on slow networks). Samples may be spaced further apart than set.")
         return ""
 
     def setup_equipment(self):
