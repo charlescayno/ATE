@@ -626,6 +626,20 @@ class SimulatedOscilloscope:
             return (['Max'], [round(peak, 3)])
         return (['Max'], [5.0])
 
+    def get_cursors_fast(self, cursors=(1, 2, 3, 4)):
+        """Synthetic batched cursor read (VDS on odd cursors, IDS on even)."""
+        iout = max(float(getattr(self.state, 'iout', 1.0) or 1.0), 0.1)
+        rds = 0.05
+        result = {}
+        for n in cursors:
+            if n % 2:
+                y1, y2 = round(iout * rds * 1.00, 6), round(iout * rds * 1.02, 6)
+            else:
+                y1, y2 = round(iout, 6), round(iout, 6)
+            result[n] = {"y1 position": str(y1), "y2 position": str(y2),
+                         "delta x": "1e-6", "delta y": str(round(y2 - y1, 6))}
+        return result
+
     def get_measure_all(self):
         return [
             {'channel': 1, 'labels': ['Max'], 'values': [round((self.state.vin * 1.414) + 115.0, 2)]},

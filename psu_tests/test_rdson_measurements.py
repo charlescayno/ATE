@@ -160,18 +160,62 @@ class RdsonMeasurementTest_2Port(SteadyStatePollWaveformTest_2Port):
         """Read Cursor 1..4 from the scope and compute Rds; unavailable values are 'N/A'."""
         out = {}
         raw = {}
+        batch = None
+        if hasattr(self.oscilloscope, 'get_cursors_fast') and not getattr(self, '_cursor_batch_failed', False):
+            try:
+                batch = self.oscilloscope.get_cursors_fast(self.CURSOR_SETS)
+            except Exception as exc:
+                self._cursor_batch_failed = True
+                print(f"[Warning] Batched cursor query failed, using per-field queries: {exc}")
         for n in self.CURSOR_SETS:
             cur = None
-            try:
-                cur = self.oscilloscope.get_cursor(cursor=n)
-            except Exception as exc:
-                print(f"[Warning] Cursor Result {n} query: {exc}")
+            if batch is not None:
+                cur = batch.get(n)
+            else:
+                try:
+                    cur = self.oscilloscope.get_cursor(cursor=n)
+                except Exception as exc:
+                    print(f"[Warning] Cursor Result {n} query: {exc}")
             for suffix, key in self.CURSOR_FIELDS:
                 val = self._to_float((cur or {}).get(key))
                 raw[(n, suffix)] = val
                 out[f"Cursor Result {n} {suffix}"] = round(val, 6) if val is not None else "N/A"
         out.update(self.compute_rds(raw))
         return out
+
+    def _get_scope_measure_items(self):
+        """Query only enabled channels (not all 8); ARN ON is sent once."""
+        scope = self.oscilloscope
+        items = []
+        raw_ok = hasattr(scope, 'write') and not getattr(self, '_meas_fast_failed', False)
+        for ch, data in sorted(self.scope_channels.items()):
+            if not data.get('enabled'):
+                continue
+            labels = values = None
+            try:
+                if raw_ok:
+                    if not getattr(self, '_arn_set', False):
+                        scope.write(f'MEAS{ch}:ARN ON')
+                    reply = scope.write(f'MEAS{ch}:ARES?')
+                    labels, values = [], []
+                    for part in str(reply).split(','):
+                        lbl, val = part.split(':')
+                        labels.append(lbl.strip())
+                        values.append(float(val.strip()))
+                else:
+                    labels, values = scope.get_measure(ch)
+            except Exception as exc:
+                if raw_ok:
+                    self._meas_fast_failed = True
+                    print(f"[Warning] Fast measurement query failed, using get_measure: {exc}")
+                try:
+                    labels, values = scope.get_measure(ch)
+                except Exception:
+                    labels = values = None
+            items.append({"channel": ch, "labels": labels, "values": values})
+        if raw_ok:
+            self._arn_set = True
+        return items
 
     def query_active_scope_measurements(self) -> dict:
         meas = super().query_active_scope_measurements()

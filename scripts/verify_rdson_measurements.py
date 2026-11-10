@@ -30,6 +30,41 @@ class FakeScope:
                 "delta x": "1e-6", "delta y": str(y2 - y1)}
 
 
+class BatchScope(FakeScope):
+    """Fake scope exposing write() and get_cursors_fast() like the real one."""
+    def __init__(self, off=(), bad=False):
+        super().__init__(off)
+        self.bad = bad
+        self.cursor_queries = 0
+        self.batch_calls = 0
+        self.measure_queries = []
+        self.arn_count = 0
+
+    def get_cursors_fast(self, cursors=(1, 2, 3, 4)):
+        self.batch_calls += 1
+        if self.bad:
+            raise ValueError("bad reply")
+        self.cursor_queries += 1
+        out = {}
+        for n in cursors:
+            if n in self.off:
+                out[n] = None
+                continue
+            y1, y2 = CURSORS[n]
+            out[n] = {"y1 position": str(y1), "y2 position": str(y2),
+                      "delta x": "1e-6", "delta y": str(y2 - y1)}
+        return out
+
+    def write(self, cmd):
+        if cmd.endswith("ARN ON"):
+            self.arn_count += 1
+            return None
+        if cmd.endswith(":ARES?"):
+            self.measure_queries.append(cmd.split(":")[0])
+            return "Max:1.5"
+        raise AssertionError(cmd)
+
+
 def make(scope):
     t = T.__new__(T)
     t.scope_channels = T.POLL_DEFAULT_SCOPE_CHANNELS
@@ -68,6 +103,23 @@ def main():
     assert meas["Cursor Result 3 Y1"] == "N/A"
     assert meas["Rds3 (ohm)"] == "N/A" and meas["Rds_avg (ohm)"] == "N/A"
     assert meas["Rds1 (ohm)"] == 0.1
+
+    # batched path: same Rds as per-field path, one write for all cursors
+    fast = BatchScope()
+    meas = make(fast).query_active_scope_measurements()
+    assert fast.cursor_queries == 1 and fast.measure_queries == ["MEAS1", "MEAS2"], (fast.cursor_queries, fast.measure_queries)
+    assert meas["Rds_avg (ohm)"] == 0.2 and meas["Rds1 (ohm)"] == 0.1
+    assert fast.arn_count == 2
+    # cursor 3 off in batch -> N/A
+    meas = make(BatchScope(off=(3,))).query_active_scope_measurements()
+    assert meas["Rds3 (ohm)"] == "N/A" and meas["Rds_avg (ohm)"] == "N/A"
+    # malformed batch reply -> fallback to per-field get_cursor, flagged once
+    bad = BatchScope(bad=True)
+    t = make(bad)
+    meas = t.query_active_scope_measurements()
+    assert meas["Rds_avg (ohm)"] == 0.2 and t._cursor_batch_failed
+    t.query_active_scope_measurements()
+    assert bad.batch_calls == 1
     print("OK:", len(cols), "scope columns")
 
 

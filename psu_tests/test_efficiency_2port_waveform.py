@@ -983,10 +983,14 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
         ch_info = self.scope_channels.get(ch_idx, {})
         return ch_info.get('name') or f"CH{ch_idx}"
 
+    def _get_scope_measure_items(self):
+        """Hook: list of {'channel','labels','values'}. Default queries all 8 channels."""
+        return self.oscilloscope.get_measure_all()
+
     def query_active_scope_measurements(self) -> dict:
         meas_dict = {}
         try:
-            for item in (self.oscilloscope.get_measure_all() or []):
+            for item in (self._get_scope_measure_items() or []):
                 labels = item.get('labels')
                 values = item.get('values')
                 ch_idx = item.get('channel', 1)

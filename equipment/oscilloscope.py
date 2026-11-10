@@ -168,6 +168,29 @@ class Oscilloscope(Equipment):
         }
         return result
 
+    CURSOR_FAST_FIELDS = (("state", "STAT"), ("y1 position", "Y1P"), ("y2 position", "Y2P"),
+                          ("delta x", "XDEL"), ("delta y", "YDEL"))
+
+    def get_cursors_fast(self, cursors=(1, 2, 3, 4)):
+        """Read several cursors in ONE query (';'-joined). Returns {n: dict|None}
+        with the same keys as get_cursor (no x1/x2/source). Raises ValueError if the
+        reply does not have the expected number of fields."""
+        parts = [f"CURS{n}:{cmd}?" for n in cursors for _, cmd in self.CURSOR_FAST_FIELDS]
+        reply = self.write(";:".join(parts))
+        values = [v.strip() for v in str(reply).split(";")]
+        if len(values) != len(parts):
+            raise ValueError(f"cursor batch reply has {len(values)} fields, expected {len(parts)}")
+        result = {}
+        k = 0
+        for n in cursors:
+            rec = {}
+            for key, _ in self.CURSOR_FAST_FIELDS:
+                rec[key] = values[k]
+                k += 1
+            state = rec.pop("state")
+            result[n] = None if state in ('0', 'OFF') else rec
+        return result
+
     def run(self):
         self.write('RUN')
         self.write('DISP:TRIG:LIN OFF')
