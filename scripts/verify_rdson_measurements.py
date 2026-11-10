@@ -127,6 +127,18 @@ def main():
     assert m2["Cursor Result 1 dY"] == 1.0 and m2["Cursor Result 1 dX"] == 1e-06
     assert m2["Cursor Result 3 Y1"] == "N/A" and m2["Rds_avg (ohm)"] == "N/A"
     assert m2["Rds1 (ohm)"] == 0.1
+    # scheduled interval: idle wait = prev acquisition + interval - pre-acquisition work - now
+    import datetime as _dt
+    t0 = _dt.datetime(2026, 1, 1, 12, 0, 0)
+    w, b = T.scheduled_wait_s(t0 + _dt.timedelta(seconds=12.75), t0, 30.0, 3.1)
+    assert abs(w - 14.15) < 1e-6 and b == 0.0, (w, b)
+    w, b = T.scheduled_wait_s(t0 + _dt.timedelta(seconds=28.0), t0, 30.0, 3.1)
+    assert w == 0.0 and abs(b - 1.1) < 1e-6, (w, b)
+    assert T.SCHEDULED_INTERVAL is True
+    # estimate: interval is between acquisitions, never shorter than the work per sample
+    overhead = T.POLL_READ_DURATION_GUESS_S + T.POLL_SCOPE_CAPTURE_GUESS_S
+    assert abs(T.estimate_point_duration_s(30, 4, True) - (overhead + 3 * 30)) < 1e-6
+    assert abs(T.estimate_point_duration_s(5, 4, True) - (overhead + 3 * overhead)) < 1e-6
     # minimum interval warning (warn only, 30 s)
     assert T.MIN_INTERVAL_S == 30.0
     assert T.interval_warning(30) == "" and T.interval_warning(45) == ""

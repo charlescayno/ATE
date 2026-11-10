@@ -29,7 +29,8 @@ class RdsonMeasurementTest_2Port(SteadyStatePollWaveformTest_2Port):
     # Fast capture: scope setup is applied once at test start (not per sample),
     # and the post-single wait polls for acquisition done instead of sleeping 1 s.
     reapply_scope_before_capture = False
-    POLL_SCOPE_CAPTURE_GUESS_S = 4.0
+    POLL_SCOPE_CAPTURE_GUESS_S = 10.0
+    SCHEDULED_INTERVAL = True  # interval = time between acquisitions (no integration)
     ACQ_WAIT_MAX_S = 5.0  # max wait for the single-shot trigger
 
     def _wait_for_single_acquisition(self):

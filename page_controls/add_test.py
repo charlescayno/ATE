@@ -2186,7 +2186,10 @@ class AddTestPageHandler(QObject):
         interval = float(interval_le.text())
         samples = SteadyStatePollWaveformTest_2Port.read_samples_per_point(
             [0.0] * 10 + [interval, float(samples_le.text())], interval)
-        est = SteadyStatePollWaveformTest_2Port.estimate_point_duration_s(
+        est_cls = getattr(self, 'selected_test_class', None)
+        if est_cls is None or not hasattr(est_cls, 'estimate_point_duration_s'):
+            est_cls = SteadyStatePollWaveformTest_2Port
+        est = est_cls.estimate_point_duration_s(
             interval, samples, self._poll_no_integration_checked())
         lbl.setText(f"Est. per load point: ~{self._format_duration(est)}")
         self._update_poll_min_interval_warning(interval)
@@ -2214,8 +2217,17 @@ class AddTestPageHandler(QObject):
     def _on_poll_no_integration_toggled(self, checked: bool):
         lbl = getattr(self, 'label_poll_interval', None)
         if lbl is not None:
-            lbl.setText("Time interval per sample (s):" if checked
-                        else "Pin integration per sample (s):")
+            scheduled = bool(getattr(getattr(self, 'selected_test_class', None),
+                                     'SCHEDULED_INTERVAL', False))
+            if checked and scheduled:
+                lbl.setText("Time between acquisitions (s):")
+                lbl.setToolTip(
+                    "Time from one scope acquisition to the next. The idle wait is "
+                    "computed from the work per sample (meter read + capture).")
+            else:
+                lbl.setText("Time interval per sample (s):" if checked
+                            else "Pin integration per sample (s):")
+                lbl.setToolTip("")
         self._update_poll_estimate_label()
 
     def _poll_no_integration_checked(self) -> bool:
@@ -2227,7 +2239,7 @@ class AddTestPageHandler(QObject):
         self.frame_poll_timing.setVisible(visible)
         if not visible:
             return
-        self._update_poll_estimate_label()
+        self._on_poll_no_integration_toggled(self._poll_no_integration_checked())
         ui = self.ui
         ui.gridLayout_12.removeWidget(self.frame_poll_timing)
         ui.gridLayout_12.addWidget(self.frame_poll_timing, 3, 0, 1, 2)

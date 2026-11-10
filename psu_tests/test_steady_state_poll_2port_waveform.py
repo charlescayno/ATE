@@ -51,6 +51,10 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
     POLL_DURATION_DEFAULT_S = 20 * 60.0  # legacy duration for migration only
     LEGACY_POLL_DURATION_MIN_S = 60.0
     POLL_SCOPE_CAPTURE_GUESS_S = 12.0
+    # True: in No-integration mode the interval is the time between scope acquisitions
+    # (idle wait is computed from the previous acquisition). False: wait after the capture.
+    SCHEDULED_INTERVAL = False
+    PRE_ACQ_GUESS_S = 3.0  # meter read + trigger/run_single/wait before the first schedule
     POLL_DEFAULT_SCOPE_CHANNELS = {
         1: {
             'enabled': True,
@@ -480,6 +484,42 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
             except Exception:
                 pass
 
+    @staticmethod
+    def scheduled_wait_s(now, prev_acq, interval_s, pre_s):
+        """(idle wait s, seconds behind schedule) so the next acquisition lands at
+        prev_acq + interval, given pre_s of work (meters + trigger) before it."""
+        target = prev_acq + datetime.timedelta(seconds=float(interval_s))
+        start_at = target - datetime.timedelta(seconds=float(pre_s))
+        wait = max(0.0, (start_at - now).total_seconds())
+        behind = max(0.0, (now + datetime.timedelta(seconds=float(pre_s)) - target).total_seconds())
+        return wait, behind
+
+    def _scheduled_poll_wait(self, interval_s, n, records_before, rows_at_start):
+        prev = getattr(self, '_poll_last_acq_dt', None)
+        if prev is None:
+            self._wait_or_stop(interval_s, records_before, rows_at_start)
+            return
+        pre = getattr(self, '_poll_pre_acq_s', None)
+        if pre is None:
+            pre = self.PRE_ACQ_GUESS_S
+        wait, behind = self.scheduled_wait_s(datetime.datetime.now(), prev, interval_s, pre)
+        if behind > 0.5:
+            print(f"[WARNING] Poll sample {self.poll_sample_index}: behind schedule by "
+                  f"{behind:.1f} s (interval {interval_s:g} s is shorter than the work per sample)")
+        self.update_status_log(
+            f"Poll sample {self.poll_sample_index}/{n}: idle {wait:.1f} s "
+            f"(acquisition every {interval_s:g} s)",
+            upcoming="Read meters")
+        print(f"[TIMING] scheduled idle wait {wait:.1f} s (pre-acquisition work ~{pre:.1f} s)")
+        # Deadline-based wait (no drift from summing many short sleeps)
+        deadline = datetime.datetime.now() + datetime.timedelta(seconds=wait)
+        while True:
+            self._raise_if_abort(records_before, rows_at_start)
+            remaining = (deadline - datetime.datetime.now()).total_seconds()
+            if remaining <= 0:
+                break
+            sleep(min(0.25, remaining))
+
     def _poll_per_sample_overhead_s(self) -> float:
         return max(
             float(getattr(self, '_poll_repeat_read_duration_s', self.POLL_READ_DURATION_GUESS_S)),
@@ -507,6 +547,10 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
             return 0.0
         integ = 0.0 if no_integration else interval
         read = max(float(read_s or 0), cls.POLL_READ_DURATION_GUESS_S)
+        if no_integration and cls.SCHEDULED_INTERVAL:
+            # Interval = time between acquisitions; never shorter than the work per sample
+            overhead = read + cls.POLL_SCOPE_CAPTURE_GUESS_S
+            return overhead + max(n - 1, 0) * max(interval, overhead)
         total = n * (integ + read + cls.POLL_SCOPE_CAPTURE_GUESS_S)
         if no_integration:
             # idle gap between samples (not before the first)
@@ -603,6 +647,8 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
         records_before = len(self.captured_records)
         rows_at_start = len(self.output_dataframe)
         self.poll_prev_sampled_dt = None
+        self._poll_last_acq_dt = None
+        self._poll_pre_acq_s = None
         self._poll_repeat_read_duration_s = self.POLL_READ_DURATION_GUESS_S
         self.prepare_load_power_meters_for_poll_output()
         self.prepare_source_power_meter_for_poll_input()
@@ -618,6 +664,8 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
                         self.poll_point_start_dt
                         + datetime.timedelta(seconds=self._estimated_poll_point_duration_s())
                     )
+                elif no_integ and t_int > 0 and self.SCHEDULED_INTERVAL:
+                    self._scheduled_poll_wait(t_int, n, records_before, rows_at_start)
                 elif no_integ and t_int > 0:
                     # Idle gap after the previous sample finished (scope + Excel row)
                     self.update_status_log(
@@ -629,6 +677,7 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
                     self.poll_elapsed_s = (
                         datetime.datetime.now() - self.poll_point_start_dt
                     ).total_seconds()
+                self._poll_sample_start_dt = datetime.datetime.now()
                 self.update_status_log(
                     f"Poll sample {self.poll_sample_index}/{n} "
                     + ("(no integration, instantaneous Pin)" if no_integ
@@ -660,6 +709,16 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
                     if sample == 0 or getattr(self, '_poll_first_acq_dt', None) is None:
                         self._poll_first_acq_dt = sampled_dt
                     self.poll_elapsed_s = (sampled_dt - self._poll_first_acq_dt).total_seconds()
+                    if self.SCHEDULED_INTERVAL:
+                        prev_acq = getattr(self, '_poll_last_acq_dt', None)
+                        if prev_acq is not None:
+                            print(f"[TIMING] acquisition spacing "
+                                  f"{(sampled_dt - prev_acq).total_seconds():.2f} s "
+                                  f"(target {t_int:g} s)")
+                        self._poll_last_acq_dt = sampled_dt
+                        start = getattr(self, '_poll_sample_start_dt', None)
+                        if start is not None:
+                            self._poll_pre_acq_s = max(0.0, (sampled_dt - start).total_seconds())
                 if len(scope_row) > 1 and scope_row[1] == "N/A":
                     self.poll_row_sampled_dt = sampled_dt
                     self._append_measurement_row(scope_row)
@@ -702,7 +761,11 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
             if self.enable_fan_cooling
             else ""
         )
-        if getattr(self, 'no_integration', False):
+        if getattr(self, 'no_integration', False) and self.SCHEDULED_INTERVAL:
+            timing = (
+                f"{self.poll_interval_s:g} s between scope acquisitions, no Pin integration "
+                f"(read, scope, row, idle). ")
+        elif getattr(self, 'no_integration', False):
             timing = (
                 f"{self.poll_interval_s:g} s time interval per sample, no Pin integration "
                 f"(read, scope, row, wait). ")
