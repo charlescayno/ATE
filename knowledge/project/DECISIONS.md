@@ -69,3 +69,5 @@ When adding decisions: date, decision, rationale, affected files.
 - **Rdson fast capture:** Rdson sets `reapply_scope_before_capture=False` (scope setup applied once at start; per-sample relabel cost ~1 s/channel) and overrides `_wait_for_single_acquisition` to poll `ACQ:CURR?` (max 1 s, 50 ms steps) instead of fixed `sleep(1)`. Base hook defaults to `sleep(1)`; other tests unchanged. Hardware-unverified.
 
 - **Rdson fast queries:** cursors read in one batched query (`Oscilloscope.get_cursors_fast`: `CURS1:STAT?;:CURS1:Y1P?;...`, split on `;`) and measurements only for enabled channels via `MEASn:ARES?` (`ARN ON` sent once) through the `_get_scope_measure_items` hook (base default still `get_measure_all`). Any batch/parse failure falls back once to per-field `get_cursor` / `get_measure`. Cuts ~44 round trips to ~3 per sample. Hardware-unverified.
+
+- **Rdson acquisition wait:** `_wait_for_single_acquisition` now blocks on `*OPC?` after `RUNS` (VISA timeout temporarily `ACQ_WAIT_MAX_S` = 5 s, restored after). Replaces the `ACQ:CURR?` poll, which could return stale counts. Timeout (no trigger) prints a `[TIMING]` warning and continues. Hardware-unverified.

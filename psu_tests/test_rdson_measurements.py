@@ -30,25 +30,35 @@ class RdsonMeasurementTest_2Port(SteadyStatePollWaveformTest_2Port):
     # and the post-single wait polls for acquisition done instead of sleeping 1 s.
     reapply_scope_before_capture = False
     POLL_SCOPE_CAPTURE_GUESS_S = 4.0
-    ACQ_POLL_INTERVAL_S = 0.05
-    ACQ_WAIT_MAX_S = 1.0
+    ACQ_WAIT_MAX_S = 5.0  # max wait for the single-shot trigger
 
     def _wait_for_single_acquisition(self):
-        """Return as soon as the scope reports an acquisition (max 1 s), else fall back."""
-        from time import sleep, monotonic
+        """Block on *OPC? until the single acquisition completes (max ACQ_WAIT_MAX_S).
+
+        Returns immediately when the scope is simulated (no VISA device). On timeout
+        (no trigger) a warning is printed and capture continues, so the sample is
+        flagged in the log rather than silently stale. Stop/Skip is honored afterwards.
+        """
+        from time import monotonic
         device = getattr(self.oscilloscope, 'device', None)
         query = getattr(device, 'query', None)
         if query is None:
-            sleep(self.ACQ_WAIT_MAX_S)
             return
-        deadline = monotonic() + self.ACQ_WAIT_MAX_S
+        t0 = monotonic()
+        old_timeout = getattr(device, 'timeout', None)
+        status = "done"
         try:
-            while monotonic() < deadline:
-                if int(float(query('ACQ:CURR?').strip())) >= 1:
-                    return
-                sleep(self.ACQ_POLL_INTERVAL_S)
-        except Exception:
-            sleep(max(0.0, deadline - monotonic()))
+            device.timeout = int(self.ACQ_WAIT_MAX_S * 1000)
+            query('*OPC?')
+        except Exception as exc:
+            status = f"TIMEOUT/ERROR ({exc.__class__.__name__}) - no trigger? capture may be stale"
+        finally:
+            if old_timeout is not None:
+                try:
+                    device.timeout = old_timeout
+                except Exception:
+                    pass
+        print(f"[TIMING] acquisition wait {monotonic() - t0:.3f} s ({status})")
 
     CURSOR_SETS = (1, 2, 3, 4)
     # (column suffix, key returned by oscilloscope.get_cursor)

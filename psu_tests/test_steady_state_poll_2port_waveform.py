@@ -575,6 +575,12 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
 
     def _append_measurement_row(self, scope_row):
         super()._append_measurement_row(scope_row)
+        t_end = time.perf_counter()
+        t_cap = getattr(self, '_timing_last_capture_end', None)
+        if t_cap is not None:
+            print(f"[TIMING] sample {getattr(self, 'poll_sample_index', '?')}: "
+                  f"after capture -> row recorded (dataframe + log + UI update) "
+                  f"{t_end - t_cap:.3f} s")
         if self.poll_row_sampled_dt is not None:
             self.poll_prev_sampled_dt = self.poll_row_sampled_dt
 
@@ -636,7 +642,11 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
                     upcoming="Capture Waveform")
                 self._measure_poll_readings(i2_A)
                 self._poll_waveform_filename_tag = f"_S{self.poll_sample_index}"
+                cap_t0 = time.perf_counter()
                 scope_row = self.capture_waveform_at_point(vin_set, i1_A, i2_A)
+                self._timing_last_capture_end = time.perf_counter()
+                print(f"[TIMING] sample {self.poll_sample_index}/{n}: "
+                      f"capture waveform took {self._timing_last_capture_end - cap_t0:.3f} s")
                 read_t1 = datetime.datetime.now()
                 self._poll_repeat_read_duration_s = max(
                     0.05,
@@ -651,6 +661,26 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
         except (TestStopped, TestSkipped):
             self._note_partial_capture(records_before, rows_at_start)
             raise
+
+    def _export_line_block(self):
+        t0 = time.perf_counter()
+        t_cap = getattr(self, '_timing_last_capture_end', None)
+        try:
+            return super()._export_line_block()
+        finally:
+            t1 = time.perf_counter()
+            msg = f"[TIMING] Excel export of Vin block (rows -> workbook) took {t1 - t0:.3f} s"
+            if t_cap is not None:
+                msg += f"; last capture -> Excel written {t1 - t_cap:.3f} s"
+            print(msg)
+
+    def embed_waveforms_in_excel(self):
+        t0 = time.perf_counter()
+        try:
+            return super().embed_waveforms_in_excel()
+        finally:
+            print(f"[TIMING] Embedding {len(getattr(self, 'captured_records', []) or [])} "
+                  f"waveform images in Excel took {time.perf_counter() - t0:.3f} s")
 
     def _link_capture_main_sheet_rows(self):
         """One embedded PNG per poll sample → one main sheet row per capture record."""
