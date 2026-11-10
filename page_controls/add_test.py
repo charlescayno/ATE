@@ -1962,6 +1962,7 @@ class AddTestPageHandler(QObject):
                     poll_interval_s=poll_interval_s,
                     sample_count=poll_samples_n,
                     fan_cooling=fan_cooling,
+                    no_integration=self._poll_no_integration_checked(),
                 )
                 editor = QTextEdit(img_host)
                 editor.setReadOnly(True)
@@ -2124,9 +2125,11 @@ class AddTestPageHandler(QObject):
         timing_row = QWidget(self.frame_poll_timing)
         timing_hl = QHBoxLayout(timing_row)
         timing_hl.setContentsMargins(0, 0, 0, 0)
-        for text, le in (("Pin integration per sample (s):", interval_le),
-                         ("Samples per load point:", duration_le)):
+        for key, text, le in (("interval", "Pin integration per sample (s):", interval_le),
+                              ("samples", "Samples per load point:", duration_le)):
             lbl_row = QLabel(text, timing_row)
+            if key == "interval":
+                self.label_poll_interval = lbl_row
             le.setParent(timing_row)
             le.setMaximumWidth(70)
             timing_hl.addWidget(lbl_row)
@@ -2134,10 +2137,28 @@ class AddTestPageHandler(QObject):
             timing_hl.addSpacing(12)
         timing_hl.addStretch()
         form.addRow(timing_row)
+        self.chk_poll_no_integration = QCheckBox(
+            "No integration (instantaneous Pin; time interval per sample)",
+            self.frame_poll_timing,
+        )
+        self.chk_poll_no_integration.setStyleSheet(cb_style)
+        self.chk_poll_no_integration.setChecked(False)
+        self.chk_poll_no_integration.toggled.connect(self._on_poll_no_integration_toggled)
+        form.addRow(self.chk_poll_no_integration)
         form.addRow(self.chk_poll_fan_cooling)
         form.addRow(hint)
         interval_le.show()
         duration_le.show()
+
+    def _on_poll_no_integration_toggled(self, checked: bool):
+        lbl = getattr(self, 'label_poll_interval', None)
+        if lbl is not None:
+            lbl.setText("Time interval per sample (s):" if checked
+                        else "Pin integration per sample (s):")
+
+    def _poll_no_integration_checked(self) -> bool:
+        chk = getattr(self, 'chk_poll_no_integration', None)
+        return chk is not None and chk.isChecked()
 
     def _apply_poll_timing_visibility(self, visible: bool):
         self._ensure_poll_timing_frame()
@@ -2174,6 +2195,9 @@ class AddTestPageHandler(QObject):
         if hasattr(self, 'chk_poll_fan_cooling'):
             enabled = cls.fan_cooling_enabled_from_params(params)
             self.chk_poll_fan_cooling.setChecked(enabled)
+        if hasattr(self, 'chk_poll_no_integration'):
+            self.chk_poll_no_integration.setChecked(
+                cls.no_integration_from_params(params))
 
     def _sync_startup_capture_timeout_from_i2c(self, i2c_params):
         if not i2c_params:
@@ -3882,6 +3906,7 @@ class AddTestPageHandler(QObject):
                 and self.chk_poll_fan_cooling.isChecked()
             )
             params.append(1.0 if fan_on else 0.0)
+            params.append(1.0 if self._poll_no_integration_checked() else 0.0)
 
         i2c_test_parameters = I2CTestParameters(params, cbx_params)
         return i2c_test_parameters

@@ -44,3 +44,4 @@ Many I2C / Transients / Light Load classes exist but are **commented out** of `T
 - **Rdson Measurements** test type: poll waveform 2 port + RTO6 Cursor Result 1-4 (Y1, Y2, dX, dY) recorded per sample in Excel.
 - Rdson Measurements computes Rds1-4 and Rds_avg from Cursor 1-4 (C1/C3 = VDS, C2/C4 = IDS).
 - Add Test (2-port waveform tests): blue 'Total Pout' label right of 'Scope & timing (advanced)' = Vout1*Iout1 + Vout2*Iout2 (Iout2 = Fixed Aux Load in Option C); updates live (`_update_total_pout_label` in add_test.py).
+- Poll + Rdson tests: 'No integration' checkbox (param 13): instantaneous Pin, param 10 = time interval per sample (idle gap after each sample).

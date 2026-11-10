@@ -292,6 +292,70 @@ def test_run_complete(errors):
               len([r for r in test.test_data_table.data if any(v != '' for v in r)]) == 3)
 
 
+def test_no_integration(errors):
+    check(errors, "no-integ default off", not POLL.no_integration_from_params(
+        list(POLL.tc_default.i2c_test_parameters.param)))
+    check(errors, "no-integ param on", POLL.no_integration_from_params(
+        [0.0] * POLL.NO_INTEGRATION_PARAM_INDEX + [1.0]))
+    soak = SoakTime(name="TST", initial=0, line=0, load=0, integration=0, custom=False)
+    conditions = TestConditions(
+        name=POLL.title,
+        nominal_output_voltage_V=5,
+        nominal_load_current_A=5,
+        max_load_current_A=5,
+        line_range=LineRange(name="115", vin_freq=[[115, 60]], custom=True),
+        load_range=LoadRange(name="100", load_range_pct=[100], custom=True),
+        soak_time=soak,
+        general_options=GeneralOptions(),
+        usbpd_options=USBPDOptions(),
+        i2c_test_parameters=I2CTestParameters(
+            params=[12.0, 2.0, 0.0, 0, 1.0, 0, 0, 25.0, 0, 1, 2.0, 3.0, 0.0, 1.0],
+            cbx_params=[OPTION_C, 'Yes', 'None (Fully Automated)', 'No']),
+        unit_id='P1', ambient_temp=25.0,
+        scope_channels={
+            1: {'enabled': True, 'name': 'Primary Vds', 'derating': 650, 'measurements': ['MAXimum']},
+            2: {'enabled': True, 'name': 'Ids', 'measurements': ['MAXimum']},
+            3: {'enabled': False, 'name': ''},
+            4: {'enabled': False, 'name': ''},
+        })
+    with tempfile.TemporaryDirectory() as out_dir:
+        test = POLL(FakeItem(FakeParent(), conditions))
+        test.output_folder_path = out_dir
+        check(errors, "no-integ flag unpacked", test.no_integration is True)
+        check(errors, "no-integ effective integration is 0",
+              test._effective_integration_s() == 0.0, test._effective_integration_s())
+        waits = []
+        real_wait = test._wait_or_stop
+        test._wait_or_stop = lambda s, rb, rs: (waits.append(s), real_wait(s, rb, rs))[1]
+        integ_calls = []
+        orig_integ = test._integrate_source_pin_before_read
+        test._integrate_source_pin_before_read = (
+            lambda rb, rs: (integ_calls.append(1), orig_integ(rb, rs))[1])
+        test.run()
+        check(errors, "no-integ idle gap before samples 2 and 3 only",
+              waits == [2.0, 2.0], waits)
+        wb = openpyxl.load_workbook(test.data_file_path)
+        ws = wb[test.sheet_name]
+        check(errors, "no-integ metadata",
+              ws['D2'].value == 'Time interval per sample (s)' and ws['E2'].value == 2
+              and ws['E4'].value == 'Off',
+              (ws['D2'].value, ws['E2'].value, ws['E4'].value))
+        hdr = test.excel_first_data_row
+        c_sampled = _poll_col(test, 'Time Sampled')
+        c_is = _poll_col(test, 'Time Integration Start')
+        c_ie = _poll_col(test, 'Time Integration End')
+        same = all(
+            ws.cell(row=hdr + i, column=c_sampled).value
+            == ws.cell(row=hdr + i, column=c_is).value
+            == ws.cell(row=hdr + i, column=c_ie).value
+            and ws.cell(row=hdr + i, column=c_sampled).value is not None
+            for i in (1, 2, 3))
+        check(errors, "no-integ integration columns carry sample time", same)
+        check(errors, "no-integ flow text",
+              "no Pin integration" in (build_flow_text_for_title(
+                  POLL.title, poll_interval_s=2.0, sample_count=3, no_integration=True) or ""))
+
+
 def test_abort_saves_excel(errors):
     """Stop after two samples; those rows must already be in the workbook."""
     test_control_flags['StopTest'] = False
@@ -380,6 +444,7 @@ def main():
     test_fan_cooling(errors)
     test_dialog(errors)
     test_run_complete(errors)
+    test_no_integration(errors)
     test_abort_saves_excel(errors)
     if errors:
         print("FAIL")

@@ -57,3 +57,7 @@ When adding decisions: date, decision, rationale, affected files.
 
 **Decision:** Cursors are assigned C1 = VDS #1, C2 = IDS #1, C3 = VDS #2, C4 = IDS #2 (pairs 1+2, 3+4). Per sample: Rds1 = C1.Y1/C2.Y1, Rds2 = C1.Y2/C2.Y2, Rds3 = C3.Y1/C4.Y1, Rds4 = C3.Y2/C4.Y2, Rds_avg = mean of the four (ohm, V/A). Any missing cursor or Ids ~ 0 gives N/A for that term and for Rds_avg. Supersedes the earlier 'no Rdson math' decision. Workbook name prefix is `OUTPUT_PREFIX` (RDSON; poll stays SSP).
 
+
+## Poll/Rdson: 'No integration' option (2026-11)
+
+**Decision:** I2C param **13** (`NO_INTEGRATION_PARAM_INDEX`, default 0) turns Pin integration off for `SteadyStatePollWaveformTest_2Port` and `RdsonMeasurementTest_2Port`. Param 10 then means **Time interval per sample (s)**: an idle gap *after the previous sample finished* (scope + Excel row) before the next one; none before the first sample of a load point. Pin = instantaneous read with WT500 averaging (timer 0). Excel: Time Integration Start/End = Time Sampled; metadata shows 'Time interval per sample (s)' and 'Pin integration (s)' = Off. GUI: checkbox in the poll timing frame relabels the field.

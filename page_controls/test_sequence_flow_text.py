@@ -207,6 +207,7 @@ def build_poll_flow_text(
     poll_duration_s: float = _POLL_DEFAULT_DURATION_S,
     sample_count: int = _POLL_DEFAULT_SAMPLE_COUNT,
     fan_cooling: bool = False,
+    no_integration: bool = False,
 ) -> str:
     pre_test, per_capture = _user_prompts_flags(user_prompts)
     mode_note = dual_load_mode.strip() or "Dual Load Mode"
@@ -214,8 +215,13 @@ def build_poll_flow_text(
         "STEADY-STATE POLL WAVEFORM 2 PORT — SEQUENCE",
         f"Dual Load Mode: {mode_note}",
         f"User Prompts: {user_prompts.strip() or '(default)'}",
-        f"Poll: {sample_count:g} samples/load point, {poll_interval_s:g} s Pin integration per sample "
-        f"(gear → advanced)",
+        (
+            f"Poll: {sample_count:g} samples/load point, {poll_interval_s:g} s time interval per sample, "
+            f"no Pin integration (instantaneous Pin)"
+            if no_integration
+            else f"Poll: {sample_count:g} samples/load point, {poll_interval_s:g} s Pin integration per sample "
+            f"(gear → advanced)"
+        ),
         "",
         "=== ONCE AT TEST START ===",
         _step(pre_test, "[USER] OK — Oscilloscope setup reminder"),
@@ -236,7 +242,11 @@ def build_poll_flow_text(
         "=== EACH LOAD POINT AT THIS Vin ===",
         "[AUTO] Set loads + load soak",
         "  →",
-        "[AUTO] Each sample: integrate Pin → meters → scope RUN SINGLE + PNG → Excel row",
+        (
+            "[AUTO] Each sample: meters (instantaneous Pin) → scope RUN SINGLE + PNG → Excel row → wait interval"
+            if no_integration
+            else "[AUTO] Each sample: integrate Pin → meters → scope RUN SINGLE + PNG → Excel row"
+        ),
         "  →",
         _step(per_capture, "[USER] Optional per-capture review (each sample if enabled)"),
         "  →",
@@ -269,6 +279,7 @@ def build_flow_text_for_title(
     poll_duration_s: float = _POLL_DEFAULT_DURATION_S,
     sample_count: int = _POLL_DEFAULT_SAMPLE_COUNT,
     fan_cooling: bool = False,
+    no_integration: bool = False,
 ) -> str | None:
     if title in (STEADY_STATE_POLL_WAVEFORM_2PORT_TITLE, RDSON_MEASUREMENTS_TITLE):
         text = build_poll_flow_text(
@@ -278,6 +289,7 @@ def build_flow_text_for_title(
             poll_duration_s=poll_duration_s,
             sample_count=sample_count,
             fan_cooling=fan_cooling,
+            no_integration=no_integration,
         )
         if title == RDSON_MEASUREMENTS_TITLE and text:
             text += (

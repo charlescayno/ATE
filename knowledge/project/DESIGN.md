@@ -50,3 +50,5 @@ Fan path uses `dc_source_aux` HMP (`prefer_hmp_as_aux()`), same as startup/smoke
 Class `RdsonMeasurementTest_2Port` extends `SteadyStatePollWaveformTest_2Port` (same sample loop, Excel layout, stop/skip). Default scope: CH1 `VDS`, CH2 `IDS` (MAX). `define_scope_header` appends `Cursor Result {1..4} {Y1,Y2,dX,dY}`; `query_active_scope_measurements` fills them from `get_cursor(n)`. UI treats the title like the poll test (`POLL_WAVEFORM_TITLES` in `add_test.py`).
 
 Rdson columns added after the cursor columns: `Rds1..Rds4 (ohm)`, `Rds_avg (ohm)` (`compute_rds` in `test_rdson_measurements.py`). Operator note about cursor assignment is shown in the flow text, test list text, and run log.
+
+No-integration mode: `no_integration` (param 13) -> `_effective_integration_s()` = 0; `_acquire_operating_point` calls `_wait_or_stop(poll_interval_s)` before samples 2..n; `process_data_row` fills integration start/end with the sample time; est. poll window adds (n-1) x interval. Add Test: `chk_poll_no_integration` / `_on_poll_no_integration_toggled` in `add_test.py`.

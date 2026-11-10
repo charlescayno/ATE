@@ -41,6 +41,7 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
     POLL_SAMPLES_PARAM_INDEX = 11
     POLL_DURATION_PARAM_INDEX = 11  # legacy alias (stored value is sample count)
     FAN_COOLING_PARAM_INDEX = 12
+    NO_INTEGRATION_PARAM_INDEX = 13  # 1 = no Pin integration; param 10 becomes time interval per sample
     FAN_COOLING_VOLTAGE_V = 12.0
     FAN_COOLING_CURRENT_A = 4.0
     HMP_FAN_CHANNEL = 2
@@ -78,6 +79,9 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
         while len(params) <= cls.FAN_COOLING_PARAM_INDEX:
             params.append(0.0)
         params[cls.FAN_COOLING_PARAM_INDEX] = 0.0
+        while len(params) <= cls.NO_INTEGRATION_PARAM_INDEX:
+            params.append(0.0)
+        params[cls.NO_INTEGRATION_PARAM_INDEX] = 0.0
         cbx = list(getattr(i2c, 'cbx_param', []) or [])
         while len(cbx) < 4:
             cbx.append('')
@@ -145,7 +149,13 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
             t = 0.0
         return t
 
+    @classmethod
+    def no_integration_from_params(cls, params) -> bool:
+        return cls._read_poll_param(params, cls.NO_INTEGRATION_PARAM_INDEX, 0.0) >= 0.5
+
     def _effective_integration_s(self) -> float:
+        if getattr(self, 'no_integration', False):
+            return 0.0
         return self.effective_integration_s(
             0,
             getattr(self, 'poll_interval_s', self.POLL_INTERVAL_DEFAULT_S),
@@ -260,6 +270,7 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
         params = list(getattr(i2c, 'param', []) or [])
         self.poll_interval_s = self._read_poll_param(
             params, self.POLL_INTERVAL_PARAM_INDEX, self.POLL_INTERVAL_DEFAULT_S)
+        self.no_integration = self.no_integration_from_params(params)
         self.poll_samples_n = self.read_samples_per_point(params, self.poll_interval_s)
         self.poll_sample_index = 1
         self.poll_elapsed_s = 0.0
@@ -297,14 +308,19 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
             )
         else:
             interval_s = 0.0
+        integ_start = self.poll_integ_start_dt
+        integ_end = self.poll_integ_end_dt
+        if getattr(self, 'no_integration', False):
+            # No integration: integration start/end columns carry the sample time
+            integ_start = integ_end = self.poll_row_sampled_dt
         return row + [
             int(self.poll_sample_index),
             round(float(self.poll_elapsed_s), 2),
             self.poll_point_start_dt,
             self.poll_point_end_dt,
             self.poll_row_sampled_dt,
-            self.poll_integ_start_dt,
-            self.poll_integ_end_dt,
+            integ_start,
+            integ_end,
             interval_s,
         ]
 
@@ -329,10 +345,13 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
 
     def _write_run_metadata_rows(self, ws):
         super()._write_run_metadata_rows(ws)
+        no_integ = getattr(self, 'no_integration', False)
         rows = (
-            (2, "Pin integration per sample (s)", self.poll_interval_s),
+            (2, "Time interval per sample (s)" if no_integ
+             else "Pin integration per sample (s)", self.poll_interval_s),
             (3, "Samples per load point", self._sample_count()),
-            (4, "Pin integration (s)", self._effective_integration_s()),
+            (4, "Pin integration (s)", "Off" if no_integ
+             else self._effective_integration_s()),
             (5, "Est. poll window (s)", round(self._estimated_poll_point_duration_s(), 1)),
             (6, "Fan cooling (HMP CH2)", "Yes" if self.enable_fan_cooling else "No"),
         )
@@ -473,7 +492,11 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
             return 0.0
         integ = max(self._effective_integration_s(), 0.0)
         per = integ + self._poll_per_sample_overhead_s()
-        return n * per
+        total = n * per
+        if getattr(self, 'no_integration', False):
+            # idle gap between samples (not before the first)
+            total += max(n - 1, 0) * max(float(self.poll_interval_s or 0), 0.0)
+        return total
 
     def _integrate_source_pin_before_read(self, records_before, rows_at_start):
         """Integrate Pin for T_int before meter read; honors Stop in 0.25 s slices."""
@@ -566,6 +589,7 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
             for sample in range(n):
                 self._raise_if_abort(records_before, rows_at_start)
                 self.poll_sample_index = sample + 1
+                no_integ = getattr(self, 'no_integration', False)
                 self.poll_elapsed_s = sample * t_int
                 if sample == 0:
                     self.poll_point_start_dt = datetime.datetime.now()
@@ -573,9 +597,21 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
                         self.poll_point_start_dt
                         + datetime.timedelta(seconds=self._estimated_poll_point_duration_s())
                     )
+                elif no_integ and t_int > 0:
+                    # Idle gap after the previous sample finished (scope + Excel row)
+                    self.update_status_log(
+                        f"Poll sample {self.poll_sample_index}/{n}: "
+                        f"waiting {t_int:g} s interval",
+                        upcoming="Read meters")
+                    self._wait_or_stop(t_int, records_before, rows_at_start)
+                if no_integ and sample > 0 and self.poll_point_start_dt is not None:
+                    self.poll_elapsed_s = (
+                        datetime.datetime.now() - self.poll_point_start_dt
+                    ).total_seconds()
                 self.update_status_log(
                     f"Poll sample {self.poll_sample_index}/{n} "
-                    f"(Pin integrate {self._effective_integration_s():g} s)",
+                    + ("(no integration, instantaneous Pin)" if no_integ
+                       else f"(Pin integrate {self._effective_integration_s():g} s)"),
                     upcoming="Read meters")
                 self._integrate_source_pin_before_read(
                     records_before, rows_at_start)
@@ -613,10 +649,17 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
             if self.enable_fan_cooling
             else ""
         )
+        if getattr(self, 'no_integration', False):
+            timing = (
+                f"{self.poll_interval_s:g} s time interval per sample, no Pin integration "
+                f"(read, scope, row, wait). ")
+        else:
+            timing = (
+                f"{self.poll_interval_s:g} s Pin integration per sample "
+                f"(integrate, read, scope, row). ")
         note = (
             f"Poll: {self._sample_count()} samples/load point, "
-            f"{self.poll_interval_s:g} s Pin integration per sample "
-            f"(integrate, read, scope, row). "
+            f"{timing}"
             f"{fan} "
             "Stop keeps rows already saved to Excel."
         ).replace("  ", " ")
