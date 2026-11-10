@@ -166,6 +166,33 @@ class RdsonMeasurementTest_2Port(SteadyStatePollWaveformTest_2Port):
             out[cls.RDS_AVG_LABEL] = "N/A"
         return out
 
+    def _read_cursor_batch(self):
+        """Batched cursor read. The scope spends ~0.5 s per queried item, so after the
+        first sample only Y1P/Y2P are read (8 items); on/off state and dX are cached
+        from the first sample and dY = Y2 - Y1 is computed locally."""
+        scope = self.oscilloscope
+        static = getattr(self, '_cursor_static', None)
+        if static is None:
+            full = scope.get_cursors_fast(self.CURSOR_SETS)
+            self._cursor_static = {
+                n: (None if rec is None else {"delta x": rec.get("delta x")})
+                for n, rec in full.items()}
+            return full
+        on = [n for n in self.CURSOR_SETS if static.get(n) is not None]
+        quick = scope.get_cursors_fast(on, fields=("y1 position", "y2 position")) if on else {}
+        out = {}
+        for n in self.CURSOR_SETS:
+            rec = quick.get(n)
+            if static.get(n) is None or rec is None:
+                out[n] = None
+                continue
+            rec = dict(rec)
+            rec["delta x"] = static[n]["delta x"]
+            y1, y2 = self._to_float(rec.get("y1 position")), self._to_float(rec.get("y2 position"))
+            rec["delta y"] = (y2 - y1) if (y1 is not None and y2 is not None) else None
+            out[n] = rec
+        return out
+
     def query_cursor_results(self) -> dict:
         """Read Cursor 1..4 from the scope and compute Rds; unavailable values are 'N/A'."""
         out = {}
@@ -173,7 +200,7 @@ class RdsonMeasurementTest_2Port(SteadyStatePollWaveformTest_2Port):
         batch = None
         if hasattr(self.oscilloscope, 'get_cursors_fast') and not getattr(self, '_cursor_batch_failed', False):
             try:
-                batch = self.oscilloscope.get_cursors_fast(self.CURSOR_SETS)
+                batch = self._read_cursor_batch()
             except Exception as exc:
                 self._cursor_batch_failed = True
                 print(f"[Warning] Batched cursor query failed, using per-field queries: {exc}")
@@ -204,9 +231,13 @@ class RdsonMeasurementTest_2Port(SteadyStatePollWaveformTest_2Port):
             labels = values = None
             try:
                 if raw_ok:
+                    from time import perf_counter
+                    ta = perf_counter()
                     if not getattr(self, '_arn_set', False):
                         scope.write(f'MEAS{ch}:ARN ON')
+                    tb = perf_counter()
                     reply = scope.write(f'MEAS{ch}:ARES?')
+                    print(f"[TIMING] MEAS{ch}: ARN ON {tb - ta:.2f} s | ARES? {perf_counter() - tb:.2f} s")
                     labels, values = [], []
                     for part in str(reply).split(','):
                         lbl, val = part.split(':')
@@ -228,8 +259,14 @@ class RdsonMeasurementTest_2Port(SteadyStatePollWaveformTest_2Port):
         return items
 
     def query_active_scope_measurements(self) -> dict:
+        from time import perf_counter
+        t0 = perf_counter()
         meas = super().query_active_scope_measurements()
+        t1 = perf_counter()
         meas.update(self.query_cursor_results())
+        t2 = perf_counter()
+        print(f"[TIMING] measure detail: channel measurements {t1 - t0:.2f} s "
+              f"| cursors+Rds {t2 - t1:.2f} s")
         return meas
 
     @classmethod

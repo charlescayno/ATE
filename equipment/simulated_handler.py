@@ -626,7 +626,7 @@ class SimulatedOscilloscope:
             return (['Max'], [round(peak, 3)])
         return (['Max'], [5.0])
 
-    def get_cursors_fast(self, cursors=(1, 2, 3, 4)):
+    def get_cursors_fast(self, cursors=(1, 2, 3, 4), fields=None):
         """Synthetic batched cursor read (VDS on odd cursors, IDS on even)."""
         iout = max(float(getattr(self.state, 'iout', 1.0) or 1.0), 0.1)
         rds = 0.05

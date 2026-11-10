@@ -36,23 +36,28 @@ class BatchScope(FakeScope):
         super().__init__(off)
         self.bad = bad
         self.cursor_queries = 0
+        self.field_log = []
         self.batch_calls = 0
         self.measure_queries = []
         self.arn_count = 0
 
-    def get_cursors_fast(self, cursors=(1, 2, 3, 4)):
+    def get_cursors_fast(self, cursors=(1, 2, 3, 4), fields=None):
         self.batch_calls += 1
         if self.bad:
             raise ValueError("bad reply")
         self.cursor_queries += 1
+        self.field_log.append((tuple(cursors), fields))
         out = {}
         for n in cursors:
-            if n in self.off:
+            if fields is None and n in self.off:
                 out[n] = None
                 continue
             y1, y2 = CURSORS[n]
-            out[n] = {"y1 position": str(y1), "y2 position": str(y2),
-                      "delta x": "1e-6", "delta y": str(y2 - y1)}
+            rec = {"y1 position": str(y1), "y2 position": str(y2),
+                   "delta x": "1e-6", "delta y": str(y2 - y1)}
+            if fields is not None:
+                rec = {k: v for k, v in rec.items() if k in fields}
+            out[n] = rec
         return out
 
     def write(self, cmd):
@@ -113,6 +118,15 @@ def main():
     # cursor 3 off in batch -> N/A
     meas = make(BatchScope(off=(3,))).query_active_scope_measurements()
     assert meas["Rds3 (ohm)"] == "N/A" and meas["Rds_avg (ohm)"] == "N/A"
+    # 2nd sample reads only Y1/Y2 of the cursors that were on; dY computed locally, dX cached
+    fast2 = BatchScope(off=(3,))
+    t2 = make(fast2)
+    t2.query_active_scope_measurements()
+    m2 = t2.query_active_scope_measurements()
+    assert fast2.field_log[1] == ((1, 2, 4), ("y1 position", "y2 position")), fast2.field_log
+    assert m2["Cursor Result 1 dY"] == 1.0 and m2["Cursor Result 1 dX"] == 1e-06
+    assert m2["Cursor Result 3 Y1"] == "N/A" and m2["Rds_avg (ohm)"] == "N/A"
+    assert m2["Rds1 (ohm)"] == 0.1
     # malformed batch reply -> fallback to per-field get_cursor, flagged once
     bad = BatchScope(bad=True)
     t = make(bad)

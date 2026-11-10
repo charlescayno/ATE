@@ -225,6 +225,19 @@ class MainWindow(QMainWindow):
         if not _echo_log_line(clean_text):
             return
 
+        if '[DATA_ROW]' in clean_text and ' | ' in clean_text:
+            try:
+                from page_controls.log_format import format_data_row_html
+                row_html = format_data_row_html(clean_text, now)
+                cursor = self.log_console.textCursor()
+                cursor.movePosition(QtGui.QTextCursor.End)
+                self.log_console.setTextCursor(cursor)
+                self.log_console.insertHtml(row_html)
+                self.log_console.ensureCursorVisible()
+                return
+            except Exception:
+                pass  # fall back to the plain single-line style below
+
         escaped_text = html.escape(clean_text).replace('\n', '<br>')
         
         font_weight = 'normal'

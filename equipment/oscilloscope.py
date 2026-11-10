@@ -171,11 +171,13 @@ class Oscilloscope(Equipment):
     CURSOR_FAST_FIELDS = (("state", "STAT"), ("y1 position", "Y1P"), ("y2 position", "Y2P"),
                           ("delta x", "XDEL"), ("delta y", "YDEL"))
 
-    def get_cursors_fast(self, cursors=(1, 2, 3, 4)):
+    def get_cursors_fast(self, cursors=(1, 2, 3, 4), fields=None):
         """Read several cursors in ONE query (';'-joined). Returns {n: dict|None}
-        with the same keys as get_cursor (no x1/x2/source). Raises ValueError if the
-        reply does not have the expected number of fields."""
-        parts = [f"CURS{n}:{cmd}?" for n in cursors for _, cmd in self.CURSOR_FAST_FIELDS]
+        with the same keys as get_cursor (no x1/x2/source). `fields` is a subset of
+        CURSOR_FAST_FIELDS keys (default all). Without "state" no on/off check is made.
+        Raises ValueError if the reply does not have the expected number of fields."""
+        sel = [f for f in self.CURSOR_FAST_FIELDS if fields is None or f[0] in fields]
+        parts = [f"CURS{n}:{cmd}?" for n in cursors for _, cmd in sel]
         reply = self.write(";:".join(parts))
         values = [v.strip() for v in str(reply).split(";")]
         if len(values) != len(parts):
@@ -184,10 +186,10 @@ class Oscilloscope(Equipment):
         k = 0
         for n in cursors:
             rec = {}
-            for key, _ in self.CURSOR_FAST_FIELDS:
+            for key, _ in sel:
                 rec[key] = values[k]
                 k += 1
-            state = rec.pop("state")
+            state = rec.pop("state", None)
             result[n] = None if state in ('0', 'OFF') else rec
         return result
 
