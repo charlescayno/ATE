@@ -68,6 +68,9 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
     BULK_CAP_RAMP_V_PER_S = EfficiencyTest_2Port.DC_VIN_RAMP_V_PER_S
     BULK_CAP_RAMP_STEP_S = EfficiencyTest_2Port.DC_VIN_RAMP_STEP_S
     BULK_CAP_RAMP_SKIP_FRACTION = EfficiencyTest_2Port.DC_VIN_RAMP_SKIP_FRACTION
+    # No-trigger handling (only tests whose _wait_for_single_acquisition returns False):
+    NO_TRIGGER_RETRIES = 0            # extra arm+wait attempts before giving up on a sample
+    NO_TRIGGER_MAX_CONSECUTIVE = 0    # stop the test after this many missed samples in a row (0 = never)
     excel_section_header_row = 14
     excel_first_data_row = 15
 
@@ -878,7 +881,17 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
             _t['trigger'] = _pc()
             self.oscilloscope.run_single()
             _t['run_single'] = _pc()
-            self._wait_for_single_acquisition()
+            acq_ok = self._wait_for_single_acquisition()
+            attempt = 0
+            while acq_ok is False and attempt < self.NO_TRIGGER_RETRIES:
+                attempt += 1
+                print(f"[WARNING] No trigger - re-arming scope (retry {attempt}/{self.NO_TRIGGER_RETRIES})")
+                self._recover_after_no_trigger()
+                self.oscilloscope.run_single()
+                acq_ok = self._wait_for_single_acquisition()
+            if acq_ok is False:
+                return self._no_trigger_row(vin_set, i1_A, i2_A, n_meas)
+            self._no_trigger_streak = 0
             self.last_acquisition_dt = datetime.datetime.now()  # moment the scope data was acquired
             _t['wait'] = _pc()
             self.oscilloscope.stop()
@@ -962,8 +975,44 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
             return row
 
     def _wait_for_single_acquisition(self):
-        """Wait after run_single before stop(). Default: fixed 1 s."""
+        """Wait after run_single before stop(). Default: fixed 1 s.
+
+        Return False when the scope did not trigger in time (None/True = acquired).
+        """
         sleep(1)
+
+    def _recover_after_no_trigger(self):
+        """Stop the scope and flush its reply buffer after a timed-out wait."""
+        try:
+            self.oscilloscope.stop()
+        except Exception:
+            pass
+        device = getattr(self.oscilloscope, 'device', None)
+        if device is not None and hasattr(device, 'clear'):
+            try:
+                device.clear()  # drop the late *OPC? reply so the next query is not off by one
+            except Exception:
+                pass
+
+    def _no_trigger_row(self, vin_set, i1_A, i2_A, n_meas) -> list:
+        """N/A scope row for a sample that never triggered (flagged in the Trig Ch cell)."""
+        self._recover_after_no_trigger()
+        try:
+            self.oscilloscope.run()
+        except Exception:
+            pass
+        streak = getattr(self, '_no_trigger_streak', 0) + 1
+        self._no_trigger_streak = streak
+        print(f"[WARNING] NO TRIGGER at {vin_set:g} V, Ch1 {i1_A:g} A, Ch2 {i2_A:g} A - "
+              f"scope data and Rds recorded as N/A ({streak} missed in a row)")
+        limit = self.NO_TRIGGER_MAX_CONSECUTIVE
+        if limit and streak >= limit:
+            print(f"[ERROR] {streak} samples in a row without a trigger - stopping the test")
+            raise TestStopped
+        row = [f"CH{self.trigger_channel} (NO TRIGGER)", "N/A"] + ["N/A"] * n_meas
+        if not self.embed_images:
+            row.append("")
+        return row
 
     def _read_trigger_level(self) -> float:
         try:

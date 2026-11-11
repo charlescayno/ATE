@@ -35,13 +35,15 @@ class RdsonMeasurementTest_2Port(SteadyStatePollWaveformTest_2Port):
     SCHEDULED_INTERVAL = True  # interval = time between acquisitions (no integration)
     TIMING_DIAG_CSV = True     # per-sample timing CSV next to the workbook (<name>_timing.csv)
     ACQ_WAIT_MAX_S = 5.0  # max wait for the single-shot trigger
+    NO_TRIGGER_RETRIES = 1  # re-arm once, then record the sample as N/A (NO TRIGGER)
+    NO_TRIGGER_MAX_CONSECUTIVE = 3  # stop the test after this many missed samples in a row
 
     def _wait_for_single_acquisition(self):
         """Block on *OPC? until the single acquisition completes (max ACQ_WAIT_MAX_S).
 
-        Returns immediately when the scope is simulated (no VISA device). On timeout
-        (no trigger) a warning is printed and capture continues, so the sample is
-        flagged in the log rather than silently stale. Stop/Skip is honored afterwards.
+        Returns None immediately when the scope is simulated (no VISA device), True when the
+        acquisition completed and False on timeout (no trigger). The caller then re-arms
+        (NO_TRIGGER_RETRIES) or records the sample as N/A with a NO TRIGGER flag.
         """
         from time import monotonic
         device = getattr(self.oscilloscope, 'device', None)
@@ -63,6 +65,7 @@ class RdsonMeasurementTest_2Port(SteadyStatePollWaveformTest_2Port):
                 except Exception:
                     pass
         print(f"[TIMING] acquisition wait {monotonic() - t0:.3f} s ({status})")
+        return status == "done"
 
     CURSOR_SETS = (1, 2, 3, 4)
     # (column suffix, key returned by oscilloscope.get_cursor)

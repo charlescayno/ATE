@@ -78,7 +78,66 @@ def make(scope):
     return t
 
 
+def check_no_trigger():
+    """No trigger: re-arm once, then N/A row flagged NO TRIGGER; stop after 3 in a row."""
+    from psu_tests.definitions import TestStopped
+
+    class Dev:
+        def __init__(self, trig):
+            self.trig, self.timeout, self.cleared = trig, 2000, 0
+
+        def query(self, cmd):
+            if cmd == '*OPC?' and not self.trig[0]:
+                raise TimeoutError("visa timeout")
+            return "1"
+
+        def clear(self):
+            self.cleared += 1
+
+    class Scope:
+        def __init__(self, trig):
+            self.device, self.log = Dev(trig), []
+
+        def run_single(self): self.log.append("single")
+        def stop(self): self.log.append("stop")
+        def run(self): self.log.append("run")
+        def get_screenshot(self, *a): self.log.append("shot")
+
+    def mk(trig):
+        t = T.__new__(T)
+        t.oscilloscope = Scope(trig)
+        t.scope_measurement_labels = ["VDS Max", "IDS Max"]
+        t.auto_find_trigger, t.embed_images, t.trigger_channel = False, True, 1
+        t.prompt_before_capture, t.captured_records = False, []
+        t.update_status_log = lambda *a, **k: None
+        t._read_trigger_level = lambda: 3.76
+        t.query_active_scope_measurements = lambda: {"VDS Max": 4.0, "IDS Max": 3.0}
+        t.vout_V, t.vout_2_V, t.i_max_A, t.i_max_2_A = 48.0, 20.0, 2.0, 0.1
+        t.waveform_filepath, t.unit_id, t.coupling = ".", "", "DC"
+        t.current_ch1_lbl, t.current_ch2_lbl, t.eff_total_pct = "100%", "0.1A", 88.0
+        return t
+
+    assert T.NO_TRIGGER_RETRIES == 1 and T.NO_TRIGGER_MAX_CONSECUTIVE == 3
+    trig = [False]
+    t = mk(trig)
+    row = t.capture_waveform_at_point(860, 2, 0.1)
+    assert row == ["CH1 (NO TRIGGER)", "N/A", "N/A", "N/A"], row
+    assert t.oscilloscope.log.count("single") == 2 and t.oscilloscope.log[-1] == "run"
+    assert t.oscilloscope.device.cleared == 2 and t._no_trigger_streak == 1
+    trig[0] = True  # trigger returns: normal row, streak reset
+    row = t.capture_waveform_at_point(860, 2, 0.1)
+    assert row[0] == "CH1" and row[1] == 3.76 and t._no_trigger_streak == 0, row
+    trig[0] = False
+    t.capture_waveform_at_point(860, 2, 0.1)
+    t.capture_waveform_at_point(860, 2, 0.1)
+    try:
+        t.capture_waveform_at_point(860, 2, 0.1)
+        raise AssertionError("expected TestStopped after 3 misses")
+    except TestStopped:
+        pass
+
 def main():
+    check_no_trigger()
     assert T in TestTypes, "not registered"
     assert T.tc_default is not None and T.tc_default.name == "Rdson Measurements"
     tc = T.tc_default
