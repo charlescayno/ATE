@@ -472,7 +472,7 @@ class LoadRegulationTest(BaseTestObject):
         else:
             text += "Load Measurement: Power Meter"
             
-        if self.status in [TestStatus.COMPLETE, TestStatus.FAILED] and getattr(self, 'output_folder_path', None):
+        if self.status in [TestStatus.COMPLETE, TestStatus.FAILED, TestStatus.STOPPED, TestStatus.SKIPPED] and getattr(self, 'output_folder_path', None):
             import os
             output_link = f"<a href='file:///{os.path.abspath(self.output_folder_path).replace(chr(92), '/')}'>Click here to view results folder</a>"
             if output_link not in text:

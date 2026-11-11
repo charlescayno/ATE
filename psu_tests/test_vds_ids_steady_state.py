@@ -1183,7 +1183,7 @@ class VdsIdsSteadyStateTest(BaseTestObject):
         if getattr(self, 'upcoming_event_log', None):
             text += f"Upcoming: {self.upcoming_event_log}\n"
             
-        if self.status in [TestStatus.COMPLETE, TestStatus.FAILED] and getattr(self, 'output_folder_path', None):
+        if self.status in [TestStatus.COMPLETE, TestStatus.FAILED, TestStatus.STOPPED, TestStatus.SKIPPED] and getattr(self, 'output_folder_path', None):
             import os
             output_link = f"<a href='file:///{os.path.abspath(self.output_folder_path).replace(chr(92), '/')}'>Click here to view results folder</a>"
             text += f"{output_link}\n"
