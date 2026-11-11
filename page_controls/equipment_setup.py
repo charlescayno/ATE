@@ -220,6 +220,35 @@ class EquipmentSetupPageHandler():
         }
         return config
 
+    def _keep_saved_roles_for_offline_equipment(self, config: dict) -> dict:
+        """Keep a saved role when its slot is '-' now and that instrument is not detected."""
+        saved = load_equipment_setup()
+        if not isinstance(saved, dict):
+            return config
+        eq = self.equipment
+
+        def detected(items):
+            return {getattr(d, "description", None) for d in (items or []) if d is not None}
+
+        def keep(cur, old, present):
+            if (cur in ("", "-", None)) and old not in ("", "-", None) and old not in present:
+                return old
+            return cur
+
+        ac_present, dc_present = detected(eq.ac_sources), detected(eq.dc_sources)
+        pm_present, el_present = detected(eq.power_meters), detected(eq.e_loads)
+        merged = dict(config)
+        merged["ac_source"] = keep(config.get("ac_source"), saved.get("ac_source"), ac_present)
+        merged["dc_source"] = keep(config.get("dc_source"), saved.get("dc_source"), dc_present)
+        merged["dc_source_aux"] = keep(
+            config.get("dc_source_aux"), saved.get("dc_source_aux"), dc_present)
+        for group, present in (("power_meters", pm_present), ("electronic_loads", el_present)):
+            cur_g = dict(config.get(group, {}))
+            old_g = saved.get(group, {}) or {}
+            for key in cur_g:
+                cur_g[key] = keep(cur_g[key], old_g.get(key), present)
+            merged[group] = cur_g
+        return merged
     def save_default_equipment_setup(self, silent=False):
         """Save the current equipment setup as the persistent default."""
         config = self.get_current_equipment_setup_dict()
@@ -236,6 +265,9 @@ class EquipmentSetupPageHandler():
             )
             if not has_equipment:
                 return
+            # Equipment that is switched off / not detected shows "-" in the UI; do not
+            # erase its saved role just because the app was closed while it was offline.
+            config = self._keep_saved_roles_for_offline_equipment(config)
 
         # Save oscilloscope address if present
         if config.get("oscilloscope_address"):
@@ -509,12 +541,13 @@ class EquipmentSetupPageHandler():
 
     def update_dc_source_aux_info(self):
         cbx = self.ui.cbx_equip_setup_sources_dcsource_aux
+        if self.ongoing_dc_source_aux_update:
+            # Repopulating the list (clear() fires currentIndexChanged); keep the role
+            return
         selection = cbx.currentIndex()
         if selection <= 0:
             self.equipment.dc_source_aux = None
             self._sync_manual_aux_dc_panel()
-            return
-        if self.ongoing_dc_source_aux_update:
             return
         desc = cbx.currentText()
         picked = next((d for d in self.equipment.dc_sources if d and d.description == desc), None)

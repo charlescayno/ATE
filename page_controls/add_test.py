@@ -2121,25 +2121,30 @@ class AddTestPageHandler(QObject):
         )
         self.chk_poll_fan_cooling.setStyleSheet(cb_style)
         self.chk_poll_fan_cooling.setChecked(False)
-        # Pin integration and sample count on a single line
+        # One row per field in a grid so no label is ever clipped on a narrow page
         timing_row = QWidget(self.frame_poll_timing)
-        timing_hl = QHBoxLayout(timing_row)
-        timing_hl.setContentsMargins(0, 0, 0, 0)
-        for key, text, le in (("interval", "Pin integration per sample (s):", interval_le),
-                              ("samples", "Samples per load point:", duration_le)):
+        timing_grid = QGridLayout(timing_row)
+        timing_grid.setContentsMargins(0, 0, 0, 0)
+        timing_grid.setHorizontalSpacing(10)
+        timing_grid.setVerticalSpacing(6)
+        timing_grid.setColumnStretch(3, 1)
+        for row_i, (key, text, le) in enumerate((
+                ("interval", "Pin integration per sample (s):", interval_le),
+                ("samples", "Samples per load point:", duration_le))):
             lbl_row = QLabel(text, timing_row)
+            lbl_row.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Preferred)
             if key == "interval":
                 self.label_poll_interval = lbl_row
             le.setParent(timing_row)
             le.setMaximumWidth(70)
-            timing_hl.addWidget(lbl_row)
-            timing_hl.addWidget(le)
-            timing_hl.addSpacing(12)
+            timing_grid.addWidget(lbl_row, row_i, 0)
+            timing_grid.addWidget(le, row_i, 1)
         # Editable total sampling time per load point, linked to Samples per load point
         total_tip = ("Total sampling time per load point (samples x [integration or interval] "
                      "+ meter read + scope capture). Excludes soak and load changes. "
                      "Editing this changes Samples per load point, and vice versa.")
         lbl_total = QLabel("Total sampling time (min):", timing_row)
+        lbl_total.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Preferred)
         lbl_total.setToolTip(total_tip)
         self.lineedit_poll_total = QLineEdit(timing_row)
         self.lineedit_poll_total.setValidator(duration_le.validator())
@@ -2147,18 +2152,19 @@ class AddTestPageHandler(QObject):
         self.lineedit_poll_total.setToolTip(total_tip)
         self.lineedit_poll_total.textEdited.connect(self._on_poll_total_edited)
         self.lineedit_poll_total.editingFinished.connect(self._update_poll_estimate_label)
-        timing_hl.addWidget(lbl_total)
-        timing_hl.addWidget(self.lineedit_poll_total)
+        timing_grid.addWidget(lbl_total, 2, 0)
+        timing_grid.addWidget(self.lineedit_poll_total, 2, 1)
         self.label_poll_estimate = QLabel("", timing_row)
         self.label_poll_estimate.setStyleSheet("color: rgb(0, 190, 255); font-size: 11px;")
         self.label_poll_estimate.setToolTip(total_tip)
-        timing_hl.addWidget(self.label_poll_estimate)
+        self.label_poll_estimate.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Preferred)
+        timing_grid.addWidget(self.label_poll_estimate, 2, 2, 1, 2)
         self.label_poll_min_warning = QLabel("", timing_row)
         self.label_poll_min_warning.setStyleSheet(
             "color: rgb(255, 170, 0); font-size: 11px; font-weight: bold;")
+        self.label_poll_min_warning.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Preferred)
         self.label_poll_min_warning.hide()
-        timing_hl.addWidget(self.label_poll_min_warning)
-        timing_hl.addStretch()
+        timing_grid.addWidget(self.label_poll_min_warning, 0, 2, 1, 2)
         form.addRow(timing_row)
         interval_le.textChanged.connect(self._update_poll_estimate_label)
         duration_le.textChanged.connect(self._update_poll_estimate_label)

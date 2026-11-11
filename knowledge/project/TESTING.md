@@ -28,3 +28,5 @@ Run headless or targeted script before claiming done (`always-verify-code` user 
 
 - Adjust expected values in `verify_steady_state_poll_2port_waveform.py`.  
 - Keep `test_type.py` registration checks if order matters.
+
+- `scripts/verify_equipment_setup_save.py` — headless equipment setup save/restore checks (Aux DC combo refresh, JSON round trip, restore by description, offline-equipment merge).
