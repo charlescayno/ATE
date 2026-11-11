@@ -93,3 +93,5 @@ When adding decisions: date, decision, rationale, affected files.
 - **Rdson terminal output (2026-11-11):** Rdson prints a compact multi-line block per sample (`[RDSON][860V][97.7W]` + IN/OUT/EFF/RDS/PEAKS/CURS/TIME/FILE) via `format_terminal_block` instead of the one-line `[DATA_ROW]` blob; `PI_ATE_DATA_ROW_RAW=1` restores the blob. Ohm sign only when stdout encoding supports it.
 
 - **Console log levels (2026-11-11):** `main.py` `LogFilter` (per consumer: terminal `DualLogger` and View Logs `append_log`) with `PI_ATE_LOG_LEVEL` quiet/normal(default)/verbose. Normal drops `[SCPI_*]` and rewrites equipment ON/OFF lines to short names, skipping repeated states. File log is unfiltered. Newline writes follow the previous line's shown/hidden decision.
+
+- **Terminal colors (2026-11-11):** `main.py` `colorize_terminal` wraps terminal output lines in ANSI codes by tag/label (errors red, warnings yellow, `[RDSON]` block per row label, equipment/scope tags); enabled only on a TTY with VT mode (Windows `SetConsoleMode`); `NO_COLOR` or `PI_ATE_COLOR=0` disables. `app_log.txt` and View Logs are not affected.

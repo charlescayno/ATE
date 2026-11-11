@@ -109,12 +109,74 @@ def _echo_log_line(message: str) -> bool:
     """Back-compat helper: True when the message would be shown at the current level."""
     return LogFilter().apply(message) not in (None, "")
 
+_RESET = "\033[0m"
+# (substring/prefix test, ANSI code); first match wins. Terminal only, never the log file.
+_ANSI_BY_TAG = (
+    ("[UNCAUGHT EXCEPTION]", "1;91"), ("Traceback", "1;91"), ("[ERROR]", "1;91"),
+    ("[WARNING]", "93"), ("[Warning]", "93"),
+    ("[RDSON]", "1;92"), ("[TEST_STEP]", "1;92"), ("[DATA_ROW]", "92"),
+    ("[E_LOAD]", "33"), ("[DC_SOURCE]", "96"), ("[AC_SOURCE]", "94"),
+    ("[SCOPE]", "35"), ("[POWER_METER]", "95"), ("[SOAK]", "93"),
+    ("[SCPI_QUERY]", "36"), ("[SCPI_WRITE]", "33"), ("[TIMING]", "90"),
+    ("[POLL]", "32"), ("[SKIP]", "93"), ("[RECAPTURE]", "93"),
+)
+# Rdson block rows start with a label
+_ANSI_BY_LABEL = (
+    ("IN:", "96"), ("OUT:", "92"), ("EFF:", "1;93"), ("RDS:", "1;95"),
+    ("PEAKS:", "91"), ("CURS:", "94"), ("TIME:", "90"), ("FILE:", "90"),
+)
+
+
+def colorize_terminal(message: str) -> str:
+    """Wrap each non-empty line of a terminal chunk in ANSI color codes."""
+    out = []
+    for line in message.split("\n"):
+        stripped = line.strip()
+        code = None
+        if stripped:
+            for tag, c in _ANSI_BY_TAG:
+                if tag in line:
+                    code = c
+                    break
+            else:
+                for label, c in _ANSI_BY_LABEL:
+                    if stripped.startswith(label):
+                        code = c
+                        break
+        out.append(f"\033[{code}m{line}{_RESET}" if code else line)
+    return "\n".join(out)
+
+
+def _enable_terminal_color(stream) -> bool:
+    """True when the console can show ANSI colors (enables VT mode on Windows)."""
+    if os.environ.get("NO_COLOR") or os.environ.get("PI_ATE_COLOR", "").strip().lower() in ("0", "no", "false"):
+        return False
+    try:
+        if not stream or not stream.isatty():
+            return False
+    except Exception:
+        return False
+    if os.name != "nt":
+        return True
+    try:
+        import ctypes
+        kernel32 = ctypes.windll.kernel32
+        kernel32.GetStdHandle.restype = ctypes.c_void_p  # 64-bit handle, not int
+        handle = ctypes.c_void_p(kernel32.GetStdHandle(-11))
+        mode = ctypes.c_uint32()
+        if not kernel32.GetConsoleMode(handle, ctypes.byref(mode)):
+            return False
+        return bool(kernel32.SetConsoleMode(handle, mode.value | 0x0004))
+    except Exception:
+        return False
+
 class DualLogger(object):
     def __init__(self, filepath="app_log.txt"):
         self.terminal = sys.stdout
         self.logfile = open(filepath, "a", encoding="utf-8", buffering=1)
         self._filter = LogFilter()
         self._last_shown = True
+        self._color = _enable_terminal_color(self.terminal)
 
     def write(self, message):
         try:
@@ -132,7 +194,7 @@ class DualLogger(object):
             return  # newline that belonged to a hidden line
         if self.terminal:
             try:
-                self.terminal.write(message)
+                self.terminal.write(colorize_terminal(message) if self._color else message)
             except Exception:
                 pass
 
