@@ -2127,7 +2127,9 @@ class AddTestPageHandler(QObject):
         timing_grid.setContentsMargins(0, 0, 0, 0)
         timing_grid.setHorizontalSpacing(10)
         timing_grid.setVerticalSpacing(6)
-        timing_grid.setColumnStretch(3, 1)
+        timing_grid.setColumnStretch(4, 1)
+        for r in range(2):
+            timing_grid.setRowMinimumHeight(r, 28)
         for row_i, (key, text, le) in enumerate((
                 ("interval", "Pin integration per sample (s):", interval_le),
                 ("samples", "Samples per load point:", duration_le))):
@@ -2137,8 +2139,10 @@ class AddTestPageHandler(QObject):
                 self.label_poll_interval = lbl_row
             le.setParent(timing_row)
             le.setMaximumWidth(70)
-            timing_grid.addWidget(lbl_row, row_i, 0)
-            timing_grid.addWidget(le, row_i, 1)
+            le.setFixedHeight(28)
+            # row 0: interval and samples side by side
+            timing_grid.addWidget(lbl_row, 0, row_i * 2)
+            timing_grid.addWidget(le, 0, row_i * 2 + 1)
         # Editable total sampling time per load point, linked to Samples per load point
         total_tip = ("Total sampling time per load point (samples x [integration or interval] "
                      "+ meter read + scope capture). Excludes soak and load changes. "
@@ -2149,22 +2153,23 @@ class AddTestPageHandler(QObject):
         self.lineedit_poll_total = QLineEdit(timing_row)
         self.lineedit_poll_total.setValidator(duration_le.validator())
         self.lineedit_poll_total.setMaximumWidth(70)
+        self.lineedit_poll_total.setFixedHeight(28)
         self.lineedit_poll_total.setToolTip(total_tip)
         self.lineedit_poll_total.textEdited.connect(self._on_poll_total_edited)
         self.lineedit_poll_total.editingFinished.connect(self._update_poll_estimate_label)
-        timing_grid.addWidget(lbl_total, 2, 0)
-        timing_grid.addWidget(self.lineedit_poll_total, 2, 1)
+        timing_grid.addWidget(lbl_total, 1, 0)
+        timing_grid.addWidget(self.lineedit_poll_total, 1, 1)
         self.label_poll_estimate = QLabel("", timing_row)
         self.label_poll_estimate.setStyleSheet("color: rgb(0, 190, 255); font-size: 11px;")
         self.label_poll_estimate.setToolTip(total_tip)
         self.label_poll_estimate.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Preferred)
-        timing_grid.addWidget(self.label_poll_estimate, 2, 2, 1, 2)
+        timing_grid.addWidget(self.label_poll_estimate, 1, 2)
         self.label_poll_min_warning = QLabel("", timing_row)
         self.label_poll_min_warning.setStyleSheet(
             "color: rgb(255, 170, 0); font-size: 11px; font-weight: bold;")
         self.label_poll_min_warning.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Preferred)
         self.label_poll_min_warning.hide()
-        timing_grid.addWidget(self.label_poll_min_warning, 0, 2, 1, 2)
+        timing_grid.addWidget(self.label_poll_min_warning, 1, 3, 1, 2)
         form.addRow(timing_row)
         interval_le.textChanged.connect(self._update_poll_estimate_label)
         duration_le.textChanged.connect(self._update_poll_estimate_label)
@@ -2177,7 +2182,10 @@ class AddTestPageHandler(QObject):
         self.chk_poll_no_integration.toggled.connect(self._on_poll_no_integration_toggled)
         form.addRow(self.chk_poll_no_integration)
         form.addRow(self.chk_poll_fan_cooling)
-        form.addRow(hint)
+        # The explanatory text moved into a tooltip: it took two lines of page height and
+        # pushed the scope channel rows (CH1/CH2) out of view.
+        self.chk_poll_no_integration.setToolTip(hint.text())
+        self.chk_poll_fan_cooling.setToolTip(hint.text())
         interval_le.show()
         duration_le.show()
         self._update_poll_estimate_label()
@@ -2293,6 +2301,9 @@ class AddTestPageHandler(QObject):
         ui = self.ui
         ui.gridLayout_12.removeWidget(self.frame_poll_timing)
         ui.gridLayout_12.addWidget(self.frame_poll_timing, 3, 0, 1, 2)
+        # keep the page from squeezing the stacked fields (text was cut off vertically)
+        self.frame_poll_timing.setMinimumHeight(
+            self.frame_poll_timing.layout().minimumSize().height())
         if hasattr(self, 'frame_scope_channels'):
             ui.gridLayout_12.removeWidget(self.frame_scope_channels)
             ui.gridLayout_12.addWidget(self.frame_scope_channels, 4, 0, 1, 2)
