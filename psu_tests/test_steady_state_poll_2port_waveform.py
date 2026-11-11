@@ -788,6 +788,8 @@ class SteadyStatePollWaveformTest_2Port(EfficiencyWaveformTest_2Port):
                 if len(scope_row) > 1 and scope_row[1] == "N/A":
                     self.poll_row_sampled_dt = sampled_dt
                     self._append_measurement_row(scope_row)
+                    if 'NO TRIGGER' in str(scope_row[0]):
+                        continue  # missed trigger: keep polling the remaining samples
                     return
                 self.poll_row_sampled_dt = sampled_dt
                 _r0 = time.perf_counter()

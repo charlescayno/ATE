@@ -69,6 +69,7 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
     BULK_CAP_RAMP_STEP_S = EfficiencyTest_2Port.DC_VIN_RAMP_STEP_S
     BULK_CAP_RAMP_SKIP_FRACTION = EfficiencyTest_2Port.DC_VIN_RAMP_SKIP_FRACTION
     # No-trigger handling (only tests whose _wait_for_single_acquisition returns False):
+    CAPTURE_AT_LOAD_START = False     # True: skip 2 s wait, load soak and settle; first capture right after the load step
     NO_TRIGGER_RETRIES = 0            # extra arm+wait attempts before giving up on a sample
     NO_TRIGGER_MAX_CONSECUTIVE = 0    # stop the test after this many missed samples in a row (0 = never)
     excel_section_header_row = 14
@@ -720,11 +721,13 @@ class EfficiencyWaveformTest_2Port(EfficiencyTest_2Port):
                 self.update_status_log(f"Setting Loads Ch1 {i1_A:g} A / Ch2 {i2_A:g} A", upcoming="Load Soak")
                 self._set_loads(i1_A, i2_A)
 
-                sleep(2)
+                if not self.CAPTURE_AT_LOAD_START:
+                    sleep(2)
                 self.correct_source_output()
-                self.update_status_log("Load Soak...", upcoming="Efficiency Measurement")
-                soak.do_soak_per_load()
-                sleep(self.settle_time)
+                if not self.CAPTURE_AT_LOAD_START:
+                    self.update_status_log("Load Soak...", upcoming="Efficiency Measurement")
+                    soak.do_soak_per_load()
+                    sleep(self.settle_time)
 
                 self._acquire_operating_point(vin_set, i1_A, i2_A)
 

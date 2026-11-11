@@ -36,7 +36,8 @@ class RdsonMeasurementTest_2Port(SteadyStatePollWaveformTest_2Port):
     TIMING_DIAG_CSV = True     # per-sample timing CSV next to the workbook (<name>_timing.csv)
     ACQ_WAIT_MAX_S = 5.0  # max wait for the single-shot trigger
     NO_TRIGGER_RETRIES = 1  # re-arm once, then record the sample as N/A (NO TRIGGER)
-    NO_TRIGGER_MAX_CONSECUTIVE = 3  # stop the test after this many missed samples in a row
+    CAPTURE_AT_LOAD_START = True      # Rds(on) is captured at the start of each load step (no soak)
+    NO_TRIGGER_MAX_CONSECUTIVE = 0  # stop the test after this many missed samples in a row
 
     def _wait_for_single_acquisition(self):
         """Block on *OPC? until the single acquisition completes (max ACQ_WAIT_MAX_S).

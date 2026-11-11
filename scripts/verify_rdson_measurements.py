@@ -117,7 +117,7 @@ def check_no_trigger():
         t.current_ch1_lbl, t.current_ch2_lbl, t.eff_total_pct = "100%", "0.1A", 88.0
         return t
 
-    assert T.NO_TRIGGER_RETRIES == 1 and T.NO_TRIGGER_MAX_CONSECUTIVE == 3
+    assert T.NO_TRIGGER_RETRIES == 1 and T.NO_TRIGGER_MAX_CONSECUTIVE == 0
     trig = [False]
     t = mk(trig)
     row = t.capture_waveform_at_point(860, 2, 0.1)
@@ -128,13 +128,11 @@ def check_no_trigger():
     row = t.capture_waveform_at_point(860, 2, 0.1)
     assert row[0] == "CH1" and row[1] == 3.76 and t._no_trigger_streak == 0, row
     trig[0] = False
-    t.capture_waveform_at_point(860, 2, 0.1)
-    t.capture_waveform_at_point(860, 2, 0.1)
-    try:
-        t.capture_waveform_at_point(860, 2, 0.1)
-        raise AssertionError("expected TestStopped after 3 misses")
-    except TestStopped:
-        pass
+    for _ in range(5):
+        row = t.capture_waveform_at_point(860, 2, 0.1)
+        assert row[1] == "N/A"
+    assert t._no_trigger_streak == 5  # never stops; keeps polling
+
 
 def main():
     check_no_trigger()
